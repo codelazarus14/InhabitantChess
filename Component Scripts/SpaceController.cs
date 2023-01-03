@@ -4,8 +4,9 @@ using UnityEngine;
 
 public class SpaceController : MonoBehaviour
 {
-    private GameObject _occupant;
-    private bool _inBeam = false;
+    public bool _inBeam = false;
+
+    private GameObject _occupant = null;
 
     // Start is called before the first frame update
     void Start()

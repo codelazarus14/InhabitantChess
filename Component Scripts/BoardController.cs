@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class BoardController : MonoBehaviour
@@ -15,20 +16,52 @@ public class BoardController : MonoBehaviour
     private static Vector3 WOffset = new Vector3(-0.05584711f, 0, 0.09673002f);
     private static float[] BoardLevels = { 0.05f, 0.0815f, 0.1142f };
     private static int Rows = 7;
+    private static (int, int) BadPos = (99, 99);
 
+    // this may change in future bc it depends on world, not local space
     private Vector3 _startingPos = new Vector3(0.3350971f, BoardLevels[0], -0.58038f);
     private Dictionary<(int up, int across), GameObject> _spaceDict;
+    private List<(GameObject g, (int up, int across) pos, PieceType type)> _pieces;
+    private bool _playingGame = false;
+
+    private enum PieceType
+    {
+        Blocker,
+        Antler,
+        Eye
+    }
 
     void Start()
     {
         _spaceDict = GenerateBoard();
-        Setup();
-        
+        _pieces = SetupBoard();
+        _playingGame = true;
     }
 
     void Update()
     {
+        if (!_playingGame) return;
+        // testing without input
+        StartCoroutine(moveWaiter());
+        _playingGame = false;
+    }
 
+    private IEnumerator moveWaiter()
+    {
+        int waitTime = 1;
+        yield return new WaitForSeconds(waitTime);
+        TryMove(0, (1, 1));
+        // should log an error
+        yield return new WaitForSeconds(waitTime);
+        TryMove(0, (0, 1));
+        yield return new WaitForSeconds(waitTime);
+        TryMove(0, (1, 2));
+        yield return new WaitForSeconds(waitTime);
+        TryMove(0, (1, 3));
+        yield return new WaitForSeconds(waitTime);
+        TryMove(0, (1, 4));
+        yield return new WaitForSeconds(waitTime);
+        TryMove(0, (2, 4));
     }
 
     private Dictionary<(int, int), GameObject> GenerateBoard()
@@ -114,51 +147,86 @@ public class BoardController : MonoBehaviour
         return resDict;
     }
 
-    private void Setup()
+    private List<(GameObject, (int, int), PieceType)> SetupBoard()
     {
+        var pieces = new List<(GameObject g, (int up, int across) pos, PieceType type)>();
         // place players
         Transform pieceParent = new GameObject("pieces").transform;
-        GameObject p1 = GameObject.Instantiate(blockerPrefab, pieceParent);
-        // optional oldPos argument if we're not updating a previous space
-        Transform p1_pos = MoveToFromSpace(p1, (0,0));
 
-        GameObject p2 = GameObject.Instantiate(antlerPrefab, pieceParent);
-        Transform p2_pos = MoveToFromSpace(p2, (0,1));
-
-        // testing - in future, should check for null returns
-        // and loop until we get a new move
-        p1_pos = MoveToFromSpace(p1, (1,1), p1_pos);
-        // should log an error
-        p1_pos = MoveToFromSpace(p1, (0,1), p1_pos);
+        pieces.Add(CreateAndPlacePiece(pieceParent, (0,0), PieceType.Blocker));
+        // oldPos argument optional if we're not updating a previous space
+        pieces.Add(CreateAndPlacePiece(pieceParent, (0,1), PieceType.Antler));
+        return pieces;
     }
 
-    public GameObject GetSpace(int x, int y)
+    private (GameObject, (int, int), PieceType) CreateAndPlacePiece(Transform parent, (int up, int across) pos, PieceType type)
     {
-        GameObject space = _spaceDict[(x, y)];
-        if (space == null)
+        GameObject piece = null;
+        // instantiate prefab
+        switch (type)
         {
-            Debug.LogWarning($"Invalid board position {x}, {y}!");
-            return null;
+            case PieceType.Blocker:
+                piece = GameObject.Instantiate(blockerPrefab, parent);
+                break;
+            case PieceType.Antler:
+                piece = GameObject.Instantiate(antlerPrefab, parent);
+                break;
+            case PieceType.Eye:
+                piece = GameObject.Instantiate(eyePrefab, parent);
+                break;
+            default:
+                Debug.LogWarning($"Invalid piece type {type}!");
+                break;
         }
-        else return space;
-    }
 
-    public (int, int)? GetPos(Transform t)
-    {
-        (int, int)? pos = null;
-        foreach (var s in _spaceDict)
+        // fix rotation from prefab
+        ChildRotationFix(piece, type);
+
+        // put in starting position/rotation
+        (GameObject, (int, int)?, PieceType) pieceTemp = (piece, null, type);
+        MoveToSpace(pieceTemp, pos);
+        if (IsBlack(pos))
         {
-            if (s.Value == t) pos = s.Key;
+            piece.transform.localRotation = Quaternion.AngleAxis(-30, Vector3.up);
         }
-        return pos;
+        else
+        {
+            piece.transform.localRotation = Quaternion.AngleAxis(-90, Vector3.up);
+        }
+        return (piece, pos, type);
     }
 
-    private Transform MoveToFromSpace(GameObject piece, (int up, int across) newPos, Transform oldSpc = null)
+    private void ChildRotationFix(GameObject g, PieceType type)
     {
+        // manually adjust prefab children's rotations to align w their Vector3.forward
+        foreach (Transform t in g.transform)
+        {
+            switch (type)
+            {
+                case PieceType.Blocker:
+                case PieceType.Eye:
+                    t.localRotation = Quaternion.AngleAxis(-90, Vector3.up);
+                    break;
+                case PieceType.Antler:
+                    t.localRotation = Quaternion.AngleAxis(-30, Vector3.up);
+                    break;
+            }
+        }
+    }
+
+    private bool IsBlack((int up, int across) pos)
+    {
+        bool even = (pos.up + pos.across) % 2 == 0;
+        return even && pos.up == 0 || !even && pos.up > 0;
+    }
+
+    private bool MoveToSpace((GameObject obj, (int up, int across)? oldPos, PieceType type) piece, (int up, int across) newPos)
+    {
+        (int up, int across) oldPosNN = piece.oldPos ?? BadPos;
         // nullable arg for oldPos = first-time setup
-        bool settingUp = oldSpc == null;
+        bool settingUp = oldPosNN.Item1 == BadPos.Item1;
 
-        GameObject newSpc = GetSpace(newPos.up, newPos.across);
+        GameObject newSpc = _spaceDict[(newPos.up, newPos.across)];
         // check for valid position
         if (newSpc != null)
         {
@@ -169,24 +237,38 @@ public class BoardController : MonoBehaviour
             {                
                 // move/rotate piece, set controller occupants
                 if (!settingUp) {
+                    GameObject oldSpc = _spaceDict[(oldPosNN.up, oldPosNN.across)];
                     SpaceController oldSpcController = oldSpc.GetComponent<SpaceController>();
                     oldSpcController.SetOccupant(null);
 
-                    //TODO: still not working
                     Vector3 lookPos = newSpc.transform.position - oldSpc.transform.position;
-                    piece.transform.localRotation = Quaternion.LookRotation(lookPos);
+                    // remove y component - only rotating in X/Z plane
+                    lookPos.y = 0.0f;
+                    Debug.DrawLine(newSpc.transform.position, oldSpc.transform.position, Color.white, 10);
+                    piece.obj.transform.localRotation = Quaternion.LookRotation(lookPos);
                 }
-                newSpcController.SetOccupant(piece);
-                piece.transform.localPosition = newSpc.transform.localPosition;
-                return newSpc.transform;
+                newSpcController.SetOccupant(piece.obj);
+                piece.obj.transform.localPosition = newSpc.transform.localPosition;
+                return true;
             }
             else
             {
                 Debug.LogWarning($"Tried to move to occupied position {newPos.up}, {newPos.across}!");
-                return null;
+                return false;
             }
         }
         Debug.LogWarning($"Tried to move to impossible position {newPos.up}, {newPos.across}!");
-        return null;
+        return false;
+    }
+
+    private bool TryMove(int pieceIdx, (int, int) newPos)
+    {
+        // avoid updating position unless we succeeded
+        bool succeeded = MoveToSpace(_pieces[pieceIdx], newPos);
+        if (succeeded)
+        {
+            _pieces[pieceIdx] = (_pieces[pieceIdx].g, newPos, _pieces[pieceIdx].type);
+        }
+        return succeeded;
     }
 }
