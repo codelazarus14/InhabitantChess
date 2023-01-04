@@ -49,11 +49,20 @@ public class BoardController : MonoBehaviour
     private IEnumerator moveWaiter()
     {
         int waitTime = 1;
+
+
+        var res = GetAdjacent(_pieces[0].pos.up, _pieces[0].pos.across);
+        ToggleSpaces(res);
+        foreach (var p in res)
+        {
+            Debug.Log(p);
+        }
+
         yield return new WaitForSeconds(waitTime);
         TryMove(0, (1, 1));
-        // should log an error
-        yield return new WaitForSeconds(waitTime);
-        TryMove(0, (0, 1));
+        //// should log an error
+        //yield return new WaitForSeconds(waitTime);
+        //TryMove(0, (0, 1));
         yield return new WaitForSeconds(waitTime);
         TryMove(0, (1, 2));
         yield return new WaitForSeconds(waitTime);
@@ -214,10 +223,65 @@ public class BoardController : MonoBehaviour
         }
     }
 
+    // helper to determine B/W based on coords
     private bool IsBlack((int up, int across) pos)
     {
         bool even = (pos.up + pos.across) % 2 == 0;
+        // black is only even on first row
         return even && pos.up == 0 || !even && pos.up > 0;
+    }
+
+    // check if coord pos is in bounds
+    private bool InBounds(int up, int across)
+    {
+        return (0 <= up && up < Rows) && (up <= across && across <= 2 * Rows - (up + 2));
+    }
+
+    // return list of adjacent positions to (up, across)
+    private List<(int, int)> GetAdjacent(int up, int across)
+    {
+        var result = new List<(int, int)>();
+
+        (int u, int a) left = (up, across - 1);
+        if (InBounds(left.u, left.a)) result.Add(left);
+
+        (int u, int a) right = (up, across + 1);
+        if (InBounds(right.u, right.a)) result.Add(right);
+
+        // W has lower face, B has upper face
+        (int u, int a) up_down;
+        if (IsBlack((up, across)))
+        {
+            if (up == 0)
+                up_down = (up + 1, across + 1);
+            else up_down = (up + 1, across);
+        }
+        else
+        {
+            up_down = (up - 1, across);
+        }
+        if (InBounds(up_down.u, up_down.a)) result.Add(up_down);
+
+        // remove occupied spaces
+        for (int i=result.Count() - 1; i >= 0; i--)
+        {
+            foreach (var piece in _pieces)
+            {
+                if (result[i] == piece.pos)
+                    result.RemoveAt(i);
+            }
+        }
+
+        return result;
+    }
+
+    private void ToggleSpaces(List<(int up, int across)> spaces)
+    {
+        foreach (var s in spaces)
+        {
+            GameObject spc = _spaceDict[(s.up, s.across)];
+            spc.SetActive(!spc.activeSelf);
+        }
     }
 
     private bool MoveToSpace((GameObject obj, (int up, int across)? oldPos, PieceType type) piece, (int up, int across) newPos)
@@ -230,32 +294,22 @@ public class BoardController : MonoBehaviour
         // check for valid position
         if (newSpc != null)
         {
-            SpaceController newSpcController = newSpc.GetComponent<SpaceController>();
-            // don't move to occupied position!
-            bool isOccupied = newSpcController.GetOccupant() != null;
-            if (!isOccupied)
-            {                
-                // move/rotate piece, set controller occupants
-                if (!settingUp) {
-                    GameObject oldSpc = _spaceDict[(oldPosNN.up, oldPosNN.across)];
-                    SpaceController oldSpcController = oldSpc.GetComponent<SpaceController>();
-                    oldSpcController.SetOccupant(null);
+        SpaceController newSpcController = newSpc.GetComponent<SpaceController>();
+            // move/rotate piece, set controller occupants
+            if (!settingUp) {
+                GameObject oldSpc = _spaceDict[(oldPosNN.up, oldPosNN.across)];
+                SpaceController oldSpcController = oldSpc.GetComponent<SpaceController>();
+                oldSpcController.SetOccupant(null);
 
-                    Vector3 lookPos = newSpc.transform.position - oldSpc.transform.position;
-                    // remove y component - only rotating in X/Z plane
-                    lookPos.y = 0.0f;
-                    Debug.DrawLine(newSpc.transform.position, oldSpc.transform.position, Color.white, 10);
-                    piece.obj.transform.localRotation = Quaternion.LookRotation(lookPos);
-                }
-                newSpcController.SetOccupant(piece.obj);
-                piece.obj.transform.localPosition = newSpc.transform.localPosition;
-                return true;
+                Vector3 lookPos = newSpc.transform.position - oldSpc.transform.position;
+                // remove y component - only rotating in X/Z plane
+                lookPos.y = 0.0f;
+                Debug.DrawLine(newSpc.transform.position, oldSpc.transform.position, Color.white, 10);
+                piece.obj.transform.localRotation = Quaternion.LookRotation(lookPos);
             }
-            else
-            {
-                Debug.LogWarning($"Tried to move to occupied position {newPos.up}, {newPos.across}!");
-                return false;
-            }
+            newSpcController.SetOccupant(piece.obj);
+            piece.obj.transform.localPosition = newSpc.transform.localPosition;
+            return true;
         }
         Debug.LogWarning($"Tried to move to impossible position {newPos.up}, {newPos.across}!");
         return false;
