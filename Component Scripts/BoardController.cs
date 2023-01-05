@@ -10,73 +10,37 @@ public class BoardController : MonoBehaviour
     public GameObject blockerPrefab;
     public GameObject antlerPrefab;
     public GameObject eyePrefab;
+    public (Color def, Color highlight) highlightColors = (Color.white, Color.green);
+    public List<(GameObject g, (int up, int across) pos, PieceType type)> players { get; private set; }
+    public bool isInitialized { get; private set; }
 
     private static float TriSize = 0.19346f;
     private static float TriHeight = Mathf.Sqrt(3) / 2 * TriSize;
-    private static Vector3 WOffset = new Vector3(-0.05584711f, 0, 0.09673002f);
     private static float[] BoardLevels = { 0.05f, 0.0815f, 0.1142f };
+    private static Vector3 WOffset = new Vector3(-0.05584711f, 0, 0.09673002f);
+    private static Vector3 StartingPos = new Vector3(0.3350971f, BoardLevels[0], -0.58038f);
     private static int Rows = 7;
-    private static (int, int) BadPos = (99, 99);
 
     // this may change in future bc it depends on world, not local space
-    private Vector3 _startingPos = new Vector3(0.3350971f, BoardLevels[0], -0.58038f);
     private Dictionary<(int up, int across), GameObject> _spaceDict;
-    private List<(GameObject g, (int up, int across) pos, PieceType type)> _pieces;
-    private bool _playingGame = false;
-
-    private enum PieceType
-    {
-        Blocker,
-        Antler,
-        Eye
-    }
 
     void Start()
     {
         _spaceDict = GenerateBoard();
-        _pieces = SetupBoard();
-        _playingGame = true;
+        players = SetupBoard();
+        isInitialized = true;
     }
 
     void Update()
     {
-        if (!_playingGame) return;
-        // testing without input
-        StartCoroutine(moveWaiter());
-        _playingGame = false;
-    }
 
-    private IEnumerator moveWaiter()
-    {
-        int waitTime = 1;
-
-
-        var res = GetAdjacent(_pieces[0].pos.up, _pieces[0].pos.across);
-        ToggleSpaces(res);
-        foreach (var p in res)
-        {
-            Debug.Log(p);
-        }
-
-        yield return new WaitForSeconds(waitTime);
-        TryMove(0, (1, 1));
-        //// should log an error
-        //yield return new WaitForSeconds(waitTime);
-        //TryMove(0, (0, 1));
-        yield return new WaitForSeconds(waitTime);
-        TryMove(0, (1, 2));
-        yield return new WaitForSeconds(waitTime);
-        TryMove(0, (1, 3));
-        yield return new WaitForSeconds(waitTime);
-        TryMove(0, (1, 4));
-        yield return new WaitForSeconds(waitTime);
-        TryMove(0, (2, 4));
     }
 
     private Dictionary<(int, int), GameObject> GenerateBoard()
     {
         var resDict = new Dictionary<(int up, int across), GameObject>();
-        Transform spcParent = new GameObject("spaces").transform;
+        Transform spcParent = new GameObject("BoardGame_Spaces").transform;
+        spcParent.SetParent(transform.parent);
 
         for (int i = Rows; i > 0; i--)
         {
@@ -93,9 +57,9 @@ public class BoardController : MonoBehaviour
 
                 // find B positions relative to starting pos
                 Vector3 newPos = new Vector3(
-                    _startingPos.x - TriHeight * (Rows - i),
+                    StartingPos.x - TriHeight * (Rows - i),
                     newHeight,
-                    _startingPos.z + rowOffset + j * TriSize);
+                    StartingPos.z + rowOffset + j * TriSize);
 
                 // don't add W to left corner
                 if (Rows > i && j == 0)
@@ -107,6 +71,7 @@ public class BoardController : MonoBehaviour
                         newPos.z - WOffset.z);
 
                     hSpace = GameObject.Instantiate(spacePrefab, newPosW, Quaternion.identity);
+                    hSpace.GetComponent<SpaceController>().SetSpace(Rows - i, idx);
                     resDict[(Rows - i, idx)] = hSpace;
 
                     idx++;
@@ -121,6 +86,7 @@ public class BoardController : MonoBehaviour
 
                 // add B spaces
                 hSpace = GameObject.Instantiate(spacePrefab, newPos, Quaternion.identity);
+                hSpace.GetComponent<SpaceController>().SetSpace(Rows - i, idx);
                 resDict[(Rows - i, idx)] = hSpace;
 
                 idx++;
@@ -140,6 +106,7 @@ public class BoardController : MonoBehaviour
                         newPos.z + WOffset.z);
 
                     hSpace = GameObject.Instantiate(spacePrefab, newPosW, Quaternion.identity);
+                    hSpace.GetComponent<SpaceController>().SetSpace(Rows - i, idx);
                     resDict[(Rows - i, idx)] = hSpace;
 
                     idx++;
@@ -160,11 +127,12 @@ public class BoardController : MonoBehaviour
     {
         var pieces = new List<(GameObject g, (int up, int across) pos, PieceType type)>();
         // place players
-        Transform pieceParent = new GameObject("pieces").transform;
+        Transform pieceParent = new GameObject("BoardGame_Pieces").transform;
+        pieceParent.SetParent(transform.parent);
 
-        pieces.Add(CreateAndPlacePiece(pieceParent, (0,0), PieceType.Blocker));
-        // oldPos argument optional if we're not updating a previous space
-        pieces.Add(CreateAndPlacePiece(pieceParent, (0,1), PieceType.Antler));
+        pieces.Add(CreateAndPlacePiece(pieceParent, (0, 0), PieceType.Blocker));
+        pieces.Add(CreateAndPlacePiece(pieceParent, (0, 1), PieceType.Antler));
+        pieces.Add(CreateAndPlacePiece(pieceParent, (6, 7), PieceType.Eye));
         return pieces;
     }
 
@@ -234,11 +202,12 @@ public class BoardController : MonoBehaviour
     // check if coord pos is in bounds
     private bool InBounds(int up, int across)
     {
-        return (0 <= up && up < Rows) && (up <= across && across <= 2 * Rows - (up + 2));
+        bool firstRow = up == 0 && up <= across && across < (2 * Rows) - 1;
+        return firstRow || (0 < up && up < Rows && up <= across && across <= 2 * Rows - up);
     }
 
     // return list of adjacent positions to (up, across)
-    private List<(int, int)> GetAdjacent(int up, int across)
+    public List<(int, int)> GetAdjacent(int up, int across)
     {
         var result = new List<(int, int)>();
 
@@ -258,16 +227,18 @@ public class BoardController : MonoBehaviour
         }
         else
         {
-            up_down = (up - 1, across);
+            if (up == 1)
+                up_down = (up - 1, across - 1);
+            else up_down = (up - 1, across);
         }
         if (InBounds(up_down.u, up_down.a)) result.Add(up_down);
 
         // remove occupied spaces
         for (int i=result.Count() - 1; i >= 0; i--)
         {
-            foreach (var piece in _pieces)
+            foreach (var p in players)
             {
-                if (result[i] == piece.pos)
+                if (result[i] == p.pos)
                     result.RemoveAt(i);
             }
         }
@@ -275,7 +246,8 @@ public class BoardController : MonoBehaviour
         return result;
     }
 
-    private void ToggleSpaces(List<(int up, int across)> spaces)
+    // set highlight visibility
+    public void ToggleSpaces(List<(int up, int across)> spaces)
     {
         foreach (var s in spaces)
         {
@@ -284,8 +256,26 @@ public class BoardController : MonoBehaviour
         }
     }
 
+    public void ToggleHighlight(GameObject piece)
+    {
+        MeshRenderer[] renderers = piece.GetComponentsInChildren<MeshRenderer>();
+
+        foreach (Renderer r in renderers) {
+            foreach (Material m in r.materials)
+            {
+                // update to use the custom simulation shader?
+                if (m.color == highlightColors.def)
+                {
+                    m.color = highlightColors.highlight;
+                }
+                else m.color = highlightColors.def;
+            }
+        }
+    }
+
     private bool MoveToSpace((GameObject obj, (int up, int across)? oldPos, PieceType type) piece, (int up, int across) newPos)
     {
+        (int, int) BadPos = (99, 99);
         (int up, int across) oldPosNN = piece.oldPos ?? BadPos;
         // nullable arg for oldPos = first-time setup
         bool settingUp = oldPosNN.Item1 == BadPos.Item1;
@@ -315,14 +305,13 @@ public class BoardController : MonoBehaviour
         return false;
     }
 
-    private bool TryMove(int pieceIdx, (int, int) newPos)
+    public void TryMove(int pIdx, (int, int) newPos)
     {
         // avoid updating position unless we succeeded
-        bool succeeded = MoveToSpace(_pieces[pieceIdx], newPos);
+        bool succeeded = MoveToSpace(players[pIdx], newPos);
         if (succeeded)
         {
-            _pieces[pieceIdx] = (_pieces[pieceIdx].g, newPos, _pieces[pieceIdx].type);
+            players[pIdx] = (players[pIdx].g, newPos, players[pIdx].type);
         }
-        return succeeded;
     }
 }

@@ -4,7 +4,8 @@ using UnityEngine;
 
 public class SpaceController : MonoBehaviour
 {
-    public bool _inBeam = false;
+    public bool inBeam = false;
+    public (int up, int across) space { get; private set; }
 
     private GameObject _occupant = null;
 
@@ -28,5 +29,10 @@ public class SpaceController : MonoBehaviour
     public GameObject GetOccupant()
     {
         return _occupant;
+    }
+
+    public void SetSpace(int up, int across)
+    {
+        space = (up, across);
     }
 }
