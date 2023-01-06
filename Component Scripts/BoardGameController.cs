@@ -21,7 +21,6 @@ public class BoardGameController : MonoBehaviour
         Idle
     }
 
-    // Start is called before the first frame update
     IEnumerator Start()
     {
         // wait for board's Start() to finish
@@ -31,7 +30,6 @@ public class BoardGameController : MonoBehaviour
         StartCoroutine(Play());
     }
 
-    // Update is called once per frame
     void Update()
     {
         // check for user mouse input

@@ -10,15 +10,17 @@ public class BoardController : MonoBehaviour
     public GameObject blockerPrefab;
     public GameObject antlerPrefab;
     public GameObject eyePrefab;
-    public (Color def, Color highlight) highlightColors = (Color.white, Color.green);
+    public Synchronizer synchronizer;
+
     public List<(GameObject g, (int up, int across) pos, PieceType type)> players { get; private set; }
     public bool isInitialized { get; private set; }
 
     private static float TriSize = 0.19346f;
     private static float TriHeight = Mathf.Sqrt(3) / 2 * TriSize;
-    private static float[] BoardLevels = { 0.05f, 0.0815f, 0.1142f };
+    private static float[] BoardLevels = { 0.051f, 0.083f, 0.115f };
     private static Vector3 WOffset = new Vector3(-0.05584711f, 0, 0.09673002f);
     private static Vector3 StartingPos = new Vector3(0.3350971f, BoardLevels[0], -0.58038f);
+    private static (Color def, Color highlight) highlightColors = (Color.white, Color.green);
     private static int Rows = 7;
 
     // this may change in future bc it depends on world, not local space
@@ -71,7 +73,6 @@ public class BoardController : MonoBehaviour
                         newPos.z - WOffset.z);
 
                     hSpace = GameObject.Instantiate(spacePrefab, newPosW, Quaternion.identity);
-                    hSpace.GetComponent<SpaceController>().SetSpace(Rows - i, idx);
                     resDict[(Rows - i, idx)] = hSpace;
 
                     idx++;
@@ -86,7 +87,6 @@ public class BoardController : MonoBehaviour
 
                 // add B spaces
                 hSpace = GameObject.Instantiate(spacePrefab, newPos, Quaternion.identity);
-                hSpace.GetComponent<SpaceController>().SetSpace(Rows - i, idx);
                 resDict[(Rows - i, idx)] = hSpace;
 
                 idx++;
@@ -106,19 +106,21 @@ public class BoardController : MonoBehaviour
                         newPos.z + WOffset.z);
 
                     hSpace = GameObject.Instantiate(spacePrefab, newPosW, Quaternion.identity);
-                    hSpace.GetComponent<SpaceController>().SetSpace(Rows - i, idx);
                     resDict[(Rows - i, idx)] = hSpace;
 
                     idx++;
                 }
             }
         }
-        // set to invisible until further notice
-        foreach (var k in resDict.Keys)
+        // final edits, set to invisible until further notice
+        foreach ((int u, int a) k in resDict.Keys)
         {
             GameObject spc = resDict[k];
+            spc.GetComponent<SpaceController>().SetSpace(k.u, k.a);
             spc.transform.SetParent(spcParent, true);
+            if (!IsBlack(k)) spc.transform.localRotation = Quaternion.AngleAxis(-180, Vector3.up);
             spc.SetActive(false);
+            synchronizer.OnLerpComplete.AddListener(spc.GetComponent<SpaceController>().FlipHighlightLerp);
         }
         return resDict;
     }
@@ -234,16 +236,8 @@ public class BoardController : MonoBehaviour
         if (InBounds(up_down.u, up_down.a)) result.Add(up_down);
 
         // remove occupied spaces
-        for (int i=result.Count() - 1; i >= 0; i--)
-        {
-            foreach (var p in players)
-            {
-                if (result[i] == p.pos)
-                    result.RemoveAt(i);
-            }
-        }
-
-        return result;
+        var filtered = from r in result from p in players where r != p.pos select r;
+        return filtered.ToList();
     }
 
     // set highlight visibility
