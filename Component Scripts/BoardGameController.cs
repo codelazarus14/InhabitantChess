@@ -9,6 +9,7 @@ public class BoardGameController : MonoBehaviour
     public string boardGameTag = "BoardGame";
     public bool playing { get; private set; }
 
+    private float CPUTurnTime = 1.0f;
     private BoardController _board;
     private BoardState _boardState = BoardState.Idle;
     private SpaceController _selectedSpace;
@@ -62,8 +63,15 @@ public class BoardGameController : MonoBehaviour
         {
             for (int i = 0; i < _board.players.Count; i++)
             {
-                StartCoroutine(PlayerTurn(i));
-                // wait until player finishes
+                if (_board.players[i].type == PieceType.Eye)
+                {
+                    StartCoroutine(CPUTurn(i));
+                }
+                else
+                {
+                    StartCoroutine(PlayerTurn(i));
+                }
+                // wait until turn finishes
                 yield return new WaitUntil(() => _boardState == BoardState.Idle);
             }
             Debug.Log($"Turn {turnCount++} complete");
@@ -85,6 +93,28 @@ public class BoardGameController : MonoBehaviour
         _board.TryMove(pIdx, _selectedSpace.space);
         // reset highlighting/visibility and finish
         _board.ToggleHighlight(player.g);
+        _board.ToggleSpaces(adj);
+        _boardState = BoardState.Idle;
+    }
+
+    private IEnumerator CPUTurn(int pIdx)
+    {
+        (GameObject g, (int up, int across) pos, PieceType type) player = _board.players[pIdx];
+        List<(int, int)> adj = _board.GetAdjacent(player.pos.up, player.pos.across);
+        _board.ToggleSpaces(adj);
+        // add artificial wait
+        _boardState = BoardState.WaitingForInput;
+        yield return new WaitForSecondsRealtime(CPUTurnTime);
+        _boardState = BoardState.InputReceived;
+        // randomly choose an adjacent space
+        // in future - could replace this w a call to a function that uses AI rules
+        (int, int) randPos = adj[Random.Range(0, adj.Count)];
+        _selectedSpace = _board.spaceDict[randPos].GetComponent<SpaceController>();
+        Debug.Log(_selectedSpace);
+        // move to space
+        _boardState = BoardState.Moving;
+        _board.TryMove(pIdx, _selectedSpace.space);
+        // reset
         _board.ToggleSpaces(adj);
         _boardState = BoardState.Idle;
     }

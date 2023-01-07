@@ -13,6 +13,8 @@ public class BoardController : MonoBehaviour
     public Synchronizer synchronizer;
 
     public List<(GameObject g, (int up, int across) pos, PieceType type)> players { get; private set; }
+    // this may change in future bc it depends on world, not local space
+    public Dictionary<(int up, int across), GameObject> spaceDict { get; private set; }
     public bool isInitialized { get; private set; }
 
     private static float TriSize = 0.19346f;
@@ -23,12 +25,9 @@ public class BoardController : MonoBehaviour
     private static (Color def, Color highlight) highlightColors = (Color.white, Color.green);
     private static int Rows = 7;
 
-    // this may change in future bc it depends on world, not local space
-    private Dictionary<(int up, int across), GameObject> _spaceDict;
-
     void Start()
     {
-        _spaceDict = GenerateBoard();
+        spaceDict = GenerateBoard();
         players = SetupBoard();
         isInitialized = true;
     }
@@ -245,7 +244,7 @@ public class BoardController : MonoBehaviour
     {
         foreach (var s in spaces)
         {
-            GameObject spc = _spaceDict[(s.up, s.across)];
+            GameObject spc = spaceDict[(s.up, s.across)];
             spc.SetActive(!spc.activeSelf);
         }
     }
@@ -274,14 +273,14 @@ public class BoardController : MonoBehaviour
         // nullable arg for oldPos = first-time setup
         bool settingUp = oldPosNN.Item1 == BadPos.Item1;
 
-        GameObject newSpc = _spaceDict[(newPos.up, newPos.across)];
+        GameObject newSpc = spaceDict[(newPos.up, newPos.across)];
         // check for valid position
         if (newSpc != null)
         {
         SpaceController newSpcController = newSpc.GetComponent<SpaceController>();
             // move/rotate piece, set controller occupants
             if (!settingUp) {
-                GameObject oldSpc = _spaceDict[(oldPosNN.up, oldPosNN.across)];
+                GameObject oldSpc = spaceDict[(oldPosNN.up, oldPosNN.across)];
                 SpaceController oldSpcController = oldSpc.GetComponent<SpaceController>();
                 oldSpcController.SetOccupant(null);
 
