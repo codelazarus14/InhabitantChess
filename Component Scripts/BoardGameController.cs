@@ -73,6 +73,7 @@ public class BoardGameController : MonoBehaviour
                 }
                 // wait until turn finishes
                 yield return new WaitUntil(() => _boardState == BoardState.Idle);
+                _board.UpdateBeam();
             }
             Debug.Log($"Turn {turnCount++} complete");
         }
@@ -110,7 +111,6 @@ public class BoardGameController : MonoBehaviour
         // in future - could replace this w a call to a function that uses AI rules
         (int, int) randPos = adj[Random.Range(0, adj.Count)];
         _selectedSpace = _board.spaceDict[randPos].GetComponent<SpaceController>();
-        Debug.Log(_selectedSpace);
         // move to space
         _boardState = BoardState.Moving;
         _board.TryMove(pIdx, _selectedSpace.space);

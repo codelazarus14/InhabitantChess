@@ -8,8 +8,9 @@ public class SpaceController : MonoBehaviour
     public (int up, int across) space { get; private set; }
 
     private GameObject _occupant = null;
-    private float min = 0.0f, max = 0.4f;
     private Material _mat;
+    private float _min = 0.0f, _max = 0.4f;
+    private bool _beamVisualized;
 
     void Start()
     {
@@ -21,9 +22,14 @@ public class SpaceController : MonoBehaviour
         // animate slow blinking
         if (!inBeam)
         {
-            Material m = GetComponent<MeshRenderer>().material;
-            m.color = new Color(m.color.r, m.color.g, m.color.b, Mathf.Lerp(min, max, Synchronizer.t));
-            
+            if (_beamVisualized) _beamVisualized = false;
+            _mat.color = new Color(1, 1, 1, Mathf.Lerp(_min, _max, Synchronizer.t));
+        }
+        else if (!_beamVisualized)
+        {
+            Debug.Log($"in beam at {space}");
+            _mat.color = Color.blue;
+            _beamVisualized = true;
         }
     }
 
@@ -44,9 +50,9 @@ public class SpaceController : MonoBehaviour
 
     public void FlipHighlightLerp()
     {
-        float temp = max;
-        max = min;
-        min = temp;
+        float temp = _max;
+        _max = _min;
+        _min = temp;
     }
 
     public void SetOccupant(GameObject g)

@@ -25,10 +25,13 @@ public class BoardController : MonoBehaviour
     private static (Color def, Color highlight) highlightColors = (Color.white, Color.green);
     private static int Rows = 7;
 
+    private List<(int, int)> _beamSpaces;
+
     void Start()
     {
         spaceDict = GenerateBoard();
         players = SetupBoard();
+        _beamSpaces = new List<(int, int)>();
         isInitialized = true;
     }
 
@@ -201,10 +204,10 @@ public class BoardController : MonoBehaviour
     }
 
     // check if coord pos is in bounds
-    private bool InBounds(int up, int across)
+    private bool InBounds((int up, int across) pos)
     {
-        bool firstRow = up == 0 && up <= across && across < (2 * Rows) - 1;
-        return firstRow || (0 < up && up < Rows && up <= across && across <= 2 * Rows - up);
+        bool firstRow = pos.up == 0 && pos.up <= pos.across && pos.across < (2 * Rows) - 1;
+        return firstRow || (0 < pos.up && pos.up < Rows && pos.up <= pos.across && pos.across <= 2 * Rows - pos.up);
     }
 
     // return list of adjacent positions to (up, across)
@@ -213,10 +216,10 @@ public class BoardController : MonoBehaviour
         var result = new List<(int, int)>();
 
         (int u, int a) left = (up, across - 1);
-        if (InBounds(left.u, left.a)) result.Add(left);
+        if (InBounds(left)) result.Add(left);
 
         (int u, int a) right = (up, across + 1);
-        if (InBounds(right.u, right.a)) result.Add(right);
+        if (InBounds(right)) result.Add(right);
 
         // W has lower face, B has upper face
         (int u, int a) up_down;
@@ -232,7 +235,7 @@ public class BoardController : MonoBehaviour
                 up_down = (up - 1, across - 1);
             else up_down = (up - 1, across);
         }
-        if (InBounds(up_down.u, up_down.a)) result.Add(up_down);
+        if (InBounds(up_down)) result.Add(up_down);
 
         // remove occupied spaces
         var filtered = from r in result from p in players where r != p.pos select r;
@@ -240,12 +243,17 @@ public class BoardController : MonoBehaviour
     }
 
     // set highlight visibility
-    public void ToggleSpaces(List<(int up, int across)> spaces)
+    public void ToggleSpaces(List<(int up, int across)> spaces, bool? inBeam = null)
     {
         foreach (var s in spaces)
         {
-            GameObject spc = spaceDict[(s.up, s.across)];
-            spc.SetActive(!spc.activeSelf);
+            SpaceController spc = spaceDict[(s.up, s.across)].GetComponent<SpaceController>();
+            // don't toggle beam spaces if we're not updating the beam!
+            if (!spc.inBeam || inBeam != null)
+                spc.gameObject.SetActive(!spc.gameObject.activeSelf);
+            // allow beam spaces to be toggled when parameter supplied
+            if(inBeam != null) 
+                spc.inBeam = inBeam ?? spc.inBeam;
         }
     }
 
@@ -306,5 +314,69 @@ public class BoardController : MonoBehaviour
         {
             players[pIdx] = (players[pIdx].g, newPos, players[pIdx].type);
         }
+    }
+
+    public void UpdateBeam()
+    {
+        // see who's been hit and remove
+        CheckBeam();
+        var newBeamSpaces = new List<(int, int)>();
+        (int u, int a) eyePos = players.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
+
+        for (int i = 1; i < Rows; i++)
+        {
+            (int, int)[] currDepthSpaces;
+            // check first row conditions
+            int lowerOffset() => eyePos.u - i == 0 ? 1 : 0;
+            int upperOffset() => eyePos.u + i == 1 ? 1 : 0;
+            // add spaces to array along 3 lines stretching from triangle vertices
+            if (IsBlack(eyePos))
+            {
+                currDepthSpaces = new (int,int)[] {
+                    // below
+                    (eyePos.u - i, eyePos.a - lowerOffset()),
+                    // upper R diagonal
+                    (eyePos.u + i, eyePos.a + 3 * i - 1 + upperOffset()),
+                    (eyePos.u + i, eyePos.a + 3 * i + upperOffset()),
+                    // upper L diagonal
+                    (eyePos.u + i, eyePos.a - 3 * i + 1 + upperOffset()),
+                    (eyePos.u + i, eyePos.a - 3 * i + upperOffset())
+                };
+            }
+            else
+            {
+                currDepthSpaces = new (int,int)[] {
+                    // above
+                    (eyePos.u + i, eyePos.a + upperOffset()),
+                    // lower R diagonal
+                    (eyePos.u - i, eyePos.a + 3 * i - 1 - lowerOffset()),
+                    (eyePos.u - i, eyePos.a + 3 * i - lowerOffset()),
+                    // lower L diagonal
+                    (eyePos.u - i, eyePos.a - 3 * i + 1 - lowerOffset()),
+                    (eyePos.u - i, eyePos.a - 3 * i - lowerOffset())
+                };
+            }
+            // filter out-of-bounds
+            var currInBounds = from cSpc in currDepthSpaces where InBounds(cSpc) select cSpc;
+            newBeamSpaces.AddRange(currInBounds.ToList());
+        }
+        // reset (turn off) old spaces
+        ToggleSpaces(_beamSpaces, false);
+        // show new ones
+        _beamSpaces = newBeamSpaces;
+        ToggleSpaces(_beamSpaces, true);
+    }
+
+    private void CheckBeam()
+    {
+        var hitPlayers = from p in players from spc in _beamSpaces where p.pos == spc select p;
+        foreach (var hitP in hitPlayers)
+        {
+            Debug.Log($"player {hitP.g.name} hit at {hitP.pos}");
+            // the destructive aspects seem to be broken rn - fix later
+            //Destroy(hitP.g);
+        }
+        //players.RemoveAll(p => _beamSpaces.Contains(p.pos));
+
     }
 }
