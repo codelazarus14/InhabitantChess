@@ -9,6 +9,7 @@ public class SpaceController : MonoBehaviour
 
     private GameObject _occupant = null;
     private Material _mat;
+    private Color _beamColor = Color.green;
     private float _min = 0.0f, _max = 0.4f;
     private bool _beamVisualized;
 
@@ -27,8 +28,7 @@ public class SpaceController : MonoBehaviour
         }
         else if (!_beamVisualized)
         {
-            Debug.Log($"in beam at {space}");
-            _mat.color = Color.blue;
+            _mat.color = _beamColor;
             _beamVisualized = true;
         }
     }

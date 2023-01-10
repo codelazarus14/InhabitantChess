@@ -44,8 +44,9 @@ public class BoardGameController : MonoBehaviour
             Vector3 mousePos = Mouse.current.position.ReadValue();
             Ray ray = gameCamera.ScreenPointToRay(mousePos);
             RaycastHit hit;
-            if (Physics.Raycast(ray, out hit)) {
-               if (hit.collider.tag == boardGameTag)
+            if (Physics.Raycast(ray, out hit)) 
+            {
+                if (hit.collider.tag == boardGameTag)
                 {
                     SpaceController hitSpc = hit.collider.gameObject.GetComponent<SpaceController>();
                     // allow PlayerTurn to proceed
@@ -61,7 +62,7 @@ public class BoardGameController : MonoBehaviour
         int turnCount = 0;
         while (playing)
         {
-            for (int i = 0; i < _board.players.Count; i++)
+            for (int i = 0; i < _board.players.Count && playing; i++)
             {
                 if (_board.players[i].type == PieceType.Eye)
                 {
@@ -73,10 +74,21 @@ public class BoardGameController : MonoBehaviour
                 }
                 // wait until turn finishes
                 yield return new WaitUntil(() => _boardState == BoardState.Idle);
-                _board.UpdateBeam();
+                // deleted flagged players
+                var removed = _board.CheckBeam();
+                foreach (int r in removed)
+                {
+                    var temp = _board.players[r];
+                    _board.players.RemoveAt(r);
+                    Destroy(temp.g);
+                    if (r <= i) i--;
+                    Debug.Log($"Removed {temp.g.name}, i = {i}, list length {_board.players.Count}");
+                    playing = _board.players.Count > 1;
+                }
             }
             Debug.Log($"Turn {turnCount++} complete");
         }
+        Debug.Log("Game Over!");
     }
 
     private IEnumerator PlayerTurn(int pIdx) 
@@ -102,7 +114,7 @@ public class BoardGameController : MonoBehaviour
     {
         (GameObject g, (int up, int across) pos, PieceType type) player = _board.players[pIdx];
         List<(int, int)> adj = _board.GetAdjacent(player.pos.up, player.pos.across);
-        _board.ToggleSpaces(adj);
+        _board.ToggleHighlight(player.g);
         // add artificial wait
         _boardState = BoardState.WaitingForInput;
         yield return new WaitForSecondsRealtime(CPUTurnTime);
@@ -114,8 +126,9 @@ public class BoardGameController : MonoBehaviour
         // move to space
         _boardState = BoardState.Moving;
         _board.TryMove(pIdx, _selectedSpace.space);
+        _board.UpdateBeam();
         // reset
-        _board.ToggleSpaces(adj);
+        _board.ToggleHighlight(player.g);
         _boardState = BoardState.Idle;
     }
 }

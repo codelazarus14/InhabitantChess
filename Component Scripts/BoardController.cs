@@ -22,7 +22,7 @@ public class BoardController : MonoBehaviour
     private static float[] BoardLevels = { 0.051f, 0.083f, 0.115f };
     private static Vector3 WOffset = new Vector3(-0.05584711f, 0, 0.09673002f);
     private static Vector3 StartingPos = new Vector3(0.3350971f, BoardLevels[0], -0.58038f);
-    private static (Color def, Color highlight) highlightColors = (Color.white, Color.green);
+    private static (Color def, Color highlight) highlightColors = (Color.white, Color.cyan);
     private static int Rows = 7;
 
     private List<(int, int)> _beamSpaces;
@@ -213,33 +213,43 @@ public class BoardController : MonoBehaviour
     // return list of adjacent positions to (up, across)
     public List<(int, int)> GetAdjacent(int up, int across)
     {
-        var result = new List<(int, int)>();
+        var adj = new List<(int, int)>();
 
         (int u, int a) left = (up, across - 1);
-        if (InBounds(left)) result.Add(left);
+        if (InBounds(left)) adj.Add(left);
 
         (int u, int a) right = (up, across + 1);
-        if (InBounds(right)) result.Add(right);
+        if (InBounds(right)) adj.Add(right);
 
         // W has lower face, B has upper face
         (int u, int a) up_down;
         if (IsBlack((up, across)))
         {
-            if (up == 0)
-                up_down = (up + 1, across + 1);
+            if (up == 0) up_down = (up + 1, across + 1);
             else up_down = (up + 1, across);
         }
         else
         {
-            if (up == 1)
-                up_down = (up - 1, across - 1);
+            if (up == 1) up_down = (up - 1, across - 1);
             else up_down = (up - 1, across);
         }
-        if (InBounds(up_down)) result.Add(up_down);
+        if (InBounds(up_down)) adj.Add(up_down);
 
-        // remove occupied spaces
-        var filtered = from r in result from p in players where r != p.pos select r;
-        return filtered.ToList();
+        // filter out occupied spaces - would use a mask if i understood them
+        for (int i = 0; i < adj.Count; i++)
+        {
+            bool foundOccupied = false;
+            for (int j = 0; j < players.Count && !foundOccupied; j++)
+            {
+                if (players[j].pos == adj[i])
+                {
+                    adj.RemoveAt(i);
+                    i--;
+                    foundOccupied = true;
+                }
+            }
+        }
+        return adj;
     }
 
     // set highlight visibility
@@ -252,7 +262,7 @@ public class BoardController : MonoBehaviour
             if (!spc.inBeam || inBeam != null)
                 spc.gameObject.SetActive(!spc.gameObject.activeSelf);
             // allow beam spaces to be toggled when parameter supplied
-            if(inBeam != null) 
+            if (inBeam != null)
                 spc.inBeam = inBeam ?? spc.inBeam;
         }
     }
@@ -261,7 +271,8 @@ public class BoardController : MonoBehaviour
     {
         MeshRenderer[] renderers = piece.GetComponentsInChildren<MeshRenderer>();
 
-        foreach (Renderer r in renderers) {
+        foreach (Renderer r in renderers)
+        {
             foreach (Material m in r.materials)
             {
                 // update to use the custom simulation shader?
@@ -285,9 +296,10 @@ public class BoardController : MonoBehaviour
         // check for valid position
         if (newSpc != null)
         {
-        SpaceController newSpcController = newSpc.GetComponent<SpaceController>();
+            SpaceController newSpcController = newSpc.GetComponent<SpaceController>();
             // move/rotate piece, set controller occupants
-            if (!settingUp) {
+            if (!settingUp)
+            {
                 GameObject oldSpc = spaceDict[(oldPosNN.up, oldPosNN.across)];
                 SpaceController oldSpcController = oldSpc.GetComponent<SpaceController>();
                 oldSpcController.SetOccupant(null);
@@ -319,7 +331,6 @@ public class BoardController : MonoBehaviour
     public void UpdateBeam()
     {
         // see who's been hit and remove
-        CheckBeam();
         var newBeamSpaces = new List<(int, int)>();
         (int u, int a) eyePos = players.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
 
@@ -332,7 +343,7 @@ public class BoardController : MonoBehaviour
             // add spaces to array along 3 lines stretching from triangle vertices
             if (IsBlack(eyePos))
             {
-                currDepthSpaces = new (int,int)[] {
+                currDepthSpaces = new (int, int)[] {
                     // below
                     (eyePos.u - i, eyePos.a - lowerOffset()),
                     // upper R diagonal
@@ -345,7 +356,7 @@ public class BoardController : MonoBehaviour
             }
             else
             {
-                currDepthSpaces = new (int,int)[] {
+                currDepthSpaces = new (int, int)[] {
                     // above
                     (eyePos.u + i, eyePos.a + upperOffset()),
                     // lower R diagonal
@@ -367,16 +378,21 @@ public class BoardController : MonoBehaviour
         ToggleSpaces(_beamSpaces, true);
     }
 
-    private void CheckBeam()
+    public List<int> CheckBeam()
     {
-        var hitPlayers = from p in players from spc in _beamSpaces where p.pos == spc select p;
-        foreach (var hitP in hitPlayers)
+        // return a list of players by index to be removed
+        var result = new List<int>();
+        for (int i = 0; i < players.Count; i++)
         {
-            Debug.Log($"player {hitP.g.name} hit at {hitP.pos}");
-            // the destructive aspects seem to be broken rn - fix later
-            //Destroy(hitP.g);
+            foreach ((int, int) spc in _beamSpaces)
+            {
+                if (players[i].pos == spc)
+                {
+                    Debug.Log($"player {players[i].g.name} hit at {players[i].pos}");
+                    result.Add(i);
+                }
+            }
         }
-        //players.RemoveAll(p => _beamSpaces.Contains(p.pos));
-
+        return result;
     }
 }
