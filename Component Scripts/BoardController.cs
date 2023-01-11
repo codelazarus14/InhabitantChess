@@ -253,17 +253,17 @@ public class BoardController : MonoBehaviour
     }
 
     // set highlight visibility
-    public void ToggleSpaces(List<(int up, int across)> spaces, bool? inBeam = null)
+    public void ToggleSpaces(List<(int up, int across)> spaces, bool? setBeam = null)
     {
         foreach (var s in spaces)
         {
             SpaceController spc = spaceDict[(s.up, s.across)].GetComponent<SpaceController>();
             // don't toggle beam spaces if we're not updating the beam!
-            if (!spc.inBeam || inBeam != null)
+            if (!spc.inBeam || setBeam != null)
                 spc.gameObject.SetActive(!spc.gameObject.activeSelf);
             // allow beam spaces to be toggled when parameter supplied
-            if (inBeam != null)
-                spc.inBeam = inBeam ?? spc.inBeam;
+            if (setBeam != null)
+                spc.inBeam = setBeam ?? spc.inBeam;
         }
     }
 
@@ -333,39 +333,73 @@ public class BoardController : MonoBehaviour
         // see who's been hit and remove
         var newBeamSpaces = new List<(int, int)>();
         (int u, int a) eyePos = players.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
+        // list of flags to keep track of blocked beams
+        bool[] blocked = { false, false, false };
 
         for (int i = 1; i < Rows; i++)
         {
-            (int, int)[] currDepthSpaces;
+            var currDepthSpaces = new List<(int, int)>();
             // check first row conditions
             int lowerOffset() => eyePos.u - i == 0 ? 1 : 0;
             int upperOffset() => eyePos.u + i == 1 ? 1 : 0;
-            // add spaces to array along 3 lines stretching from triangle vertices
+            // add spaces to list along 3 lines stretching from triangle vertices
             if (IsBlack(eyePos))
             {
-                currDepthSpaces = new (int, int)[] {
-                    // below
-                    (eyePos.u - i, eyePos.a - lowerOffset()),
-                    // upper R diagonal
-                    (eyePos.u + i, eyePos.a + 3 * i - 1 + upperOffset()),
-                    (eyePos.u + i, eyePos.a + 3 * i + upperOffset()),
-                    // upper L diagonal
-                    (eyePos.u + i, eyePos.a - 3 * i + 1 + upperOffset()),
-                    (eyePos.u + i, eyePos.a - 3 * i + upperOffset())
-                };
+                // below
+                (int, int) below = (eyePos.u - i, eyePos.a - lowerOffset());
+                blocked[0] = IsBlocked(below, blocked[0]);
+                if (!blocked[0]) currDepthSpaces.Add(below);
+
+                // upper R diagonal
+                (int, int) upperR1 = (eyePos.u + i, eyePos.a + 3 * i - 1 + upperOffset());
+                (int, int) upperR2 = (eyePos.u + i, eyePos.a + 3 * i + upperOffset());
+                blocked[1] = IsBlocked(upperR1, blocked[1]);
+                if (!blocked[1])
+                {
+                    currDepthSpaces.Add(upperR1);
+                    blocked[1] = IsBlocked(upperR2, blocked[1]);
+                    if (!blocked[1]) currDepthSpaces.Add(upperR2);
+                }
+
+                // upper L diagonal
+                (int, int) upperL1 = (eyePos.u + i, eyePos.a - 3 * i + 1 + upperOffset());
+                (int, int) upperL2 = (eyePos.u + i, eyePos.a - 3 * i + upperOffset());
+                blocked[2] = IsBlocked(upperL1, blocked[2]);
+                if (!blocked[2])
+                {
+                    currDepthSpaces.Add(upperL1);
+                    blocked[2] = IsBlocked(upperL2, blocked[2]);
+                    if (!blocked[2]) currDepthSpaces.Add(upperL2);
+                }
             }
             else
             {
-                currDepthSpaces = new (int, int)[] {
-                    // above
-                    (eyePos.u + i, eyePos.a + upperOffset()),
-                    // lower R diagonal
-                    (eyePos.u - i, eyePos.a + 3 * i - 1 - lowerOffset()),
-                    (eyePos.u - i, eyePos.a + 3 * i - lowerOffset()),
-                    // lower L diagonal
-                    (eyePos.u - i, eyePos.a - 3 * i + 1 - lowerOffset()),
-                    (eyePos.u - i, eyePos.a - 3 * i - lowerOffset())
-                };
+                // above
+                (int, int) above = (eyePos.u + i, eyePos.a + upperOffset());
+                blocked[0] = IsBlocked(above, blocked[0]);
+                if (!blocked[0]) currDepthSpaces.Add(above);
+
+                // lower R diagonal
+                (int, int) lowerR1 = (eyePos.u - i, eyePos.a + 3 * i - 1 - lowerOffset());
+                (int, int) lowerR2 = (eyePos.u - i, eyePos.a + 3 * i - lowerOffset());
+                blocked[1] = IsBlocked(lowerR1, blocked[1]);
+                if (!blocked[1])
+                {
+                    currDepthSpaces.Add(lowerR1);
+                    blocked[1] = IsBlocked(lowerR2, blocked[1]);
+                    if (!blocked[1]) currDepthSpaces.Add(lowerR2);
+                }
+
+                // lower L diagonal
+                (int, int) lowerL1 = (eyePos.u - i, eyePos.a - 3 * i + 1 - lowerOffset());
+                (int, int) lowerL2 = (eyePos.u - i, eyePos.a - 3 * i - lowerOffset());
+                blocked[2] = IsBlocked(lowerL1, blocked[2]);
+                if (!blocked[2])
+                {
+                    currDepthSpaces.Add(lowerL1);
+                    blocked[2] = IsBlocked(lowerL2, blocked[2]);
+                    if (!blocked[2]) currDepthSpaces.Add(lowerL2);
+                }
             }
             // filter out-of-bounds
             var currInBounds = from cSpc in currDepthSpaces where InBounds(cSpc) select cSpc;
@@ -386,7 +420,7 @@ public class BoardController : MonoBehaviour
         {
             foreach ((int, int) spc in _beamSpaces)
             {
-                if (players[i].pos == spc)
+                if (players[i].pos == spc && players[i].type != PieceType.Blocker)
                 {
                     Debug.Log($"player {players[i].g.name} hit at {players[i].pos}");
                     result.Add(i);
@@ -394,5 +428,19 @@ public class BoardController : MonoBehaviour
             }
         }
         return result;
+    }
+
+    public bool IsBlocked((int u, int a) pos, bool wasBlocked)
+    {
+        // basically just OR-ing any past blocks in so that
+        // everything beyond the blocker piece is also shielded
+        bool blocked = wasBlocked;
+        foreach (var p in players)
+        {
+            if (p.pos == pos && p.type == PieceType.Blocker)
+                blocked = true;
+        }
+
+        return blocked;
     }
 }

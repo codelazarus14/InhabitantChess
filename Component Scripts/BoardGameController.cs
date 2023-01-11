@@ -107,6 +107,11 @@ public class BoardGameController : MonoBehaviour
         // reset highlighting/visibility and finish
         _board.ToggleHighlight(player.g);
         _board.ToggleSpaces(adj);
+        // blocker piece should update beam on move
+        if (player.type == PieceType.Blocker)
+        {
+            _board.UpdateBeam();
+        }
         _boardState = BoardState.Idle;
     }
 
