@@ -12,7 +12,8 @@ public class Synchronizer : MonoBehaviour
 
     void Start()
     {
-
+        if (OnLerpComplete == null)
+            OnLerpComplete = new UnityEvent();
     }
 
     void Update()

@@ -6,33 +6,31 @@ using UnityEngine;
 public class BoardController : MonoBehaviour
 
 {
-    public GameObject spacePrefab;
-    public GameObject blockerPrefab;
-    public GameObject antlerPrefab;
-    public GameObject eyePrefab;
-    public Synchronizer synchronizer;
+    public GameObject SpacePrefab;
+    public GameObject BlockerPrefab;
+    public GameObject AntlerPrefab;
+    public GameObject EyePrefab;
+    public Synchronizer Synchronizer;
 
-    public List<(GameObject g, (int up, int across) pos, PieceType type)> players { get; private set; }
+    public List<(GameObject g, (int up, int across) pos, PieceType type)> Players { get; private set; }
     // this may change in future bc it depends on world, not local space
-    public Dictionary<(int up, int across), GameObject> spaceDict { get; private set; }
-    public bool isInitialized { get; private set; }
+    public Dictionary<(int up, int across), GameObject> SpaceDict { get; private set; }
+    public bool IsInitialized { get; private set; }
 
-    private static float TriSize = 0.19346f;
-    private static float TriHeight = Mathf.Sqrt(3) / 2 * TriSize;
-    private static float[] BoardLevels = { 0.051f, 0.083f, 0.115f };
-    private static Vector3 WOffset = new Vector3(-0.05584711f, 0, 0.09673002f);
-    private static Vector3 StartingPos = new Vector3(0.3350971f, BoardLevels[0], -0.58038f);
-    private static (Color def, Color highlight) highlightColors = (Color.white, Color.cyan);
-    private static int Rows = 7;
+    private static float s_triSize = 0.19346f;
+    private static float s_triHeight = Mathf.Sqrt(3) / 2 * s_triSize;
+    private static float[] s_boardLevels = { 0.051f, 0.083f, 0.115f };
+    private static Vector3 s_wOffset = new Vector3(-0.05584711f, 0, 0.09673002f);
+    private static Vector3 s_startingPos = new Vector3(0.3350971f, s_boardLevels[0], -0.58038f);
+    private static (Color def, Color highlight) s_highlightColors = (Color.white, Color.cyan);
+    private static int s_Rows = 7;
 
     private List<(int, int)> _beamSpaces;
+    private Transform _spcParent, _pieceParent;
 
     void Start()
     {
-        spaceDict = GenerateBoard();
-        players = SetupBoard();
-        _beamSpaces = new List<(int, int)>();
-        isInitialized = true;
+        
     }
 
     void Update()
@@ -40,75 +38,96 @@ public class BoardController : MonoBehaviour
 
     }
 
+    public void Init()
+    {
+        SpaceDict = GenerateBoard();
+        Players = SetupBoard();
+        _beamSpaces = new List<(int, int)>();
+        IsInitialized = true;
+    }
+
     private Dictionary<(int, int), GameObject> GenerateBoard()
     {
-        var resDict = new Dictionary<(int up, int across), GameObject>();
-        Transform spcParent = new GameObject("BoardGame_Spaces").transform;
-        spcParent.SetParent(transform.parent);
+        if (SpaceDict != null) return SpaceDict;
 
-        for (int i = Rows; i > 0; i--)
+        var resDict = new Dictionary<(int up, int across), GameObject>();
+        if (_spcParent == null)
+        {
+            _spcParent = new GameObject("BoardGame_Spaces").transform;
+            _spcParent.SetParent(transform.parent);
+            _spcParent.localPosition = Vector3.zero;
+            _spcParent.localRotation = Quaternion.identity;
+        }
+
+        for (int i = s_Rows; i > 0; i--)
         {
             // j keep track of # of B spaces per row,
             // i will store real count in dict
-            int idx = Rows - i;
-            float rowOffset = idx * TriSize / 2;
+            int idx = s_Rows - i;
+            float rowOffset = idx * s_triSize / 2;
 
             for (int j = 0; j < i; j++)
             {
                 // default to lowest height level
-                float newHeight = BoardLevels[0];
+                float newHeight = s_boardLevels[0];
                 GameObject hSpace;
 
                 // find B positions relative to starting pos
                 Vector3 newPos = new Vector3(
-                    StartingPos.x - TriHeight * (Rows - i),
+                    s_startingPos.x - s_triHeight * (s_Rows - i),
                     newHeight,
-                    StartingPos.z + rowOffset + j * TriSize);
+                    s_startingPos.z + rowOffset + j * s_triSize);
 
                 // don't add W to left corner
-                if (Rows > i && j == 0)
+                if (s_Rows > i && j == 0)
                 {
                     // add W spaces to left edge 
                     Vector3 newPosW = new Vector3(
-                        newPos.x - WOffset.x,
+                        newPos.x - s_wOffset.x,
                         newHeight,
-                        newPos.z - WOffset.z);
+                        newPos.z - s_wOffset.z);
 
-                    hSpace = GameObject.Instantiate(spacePrefab, newPosW, Quaternion.identity);
-                    resDict[(Rows - i, idx)] = hSpace;
+                    hSpace = GameObject.Instantiate(SpacePrefab, _spcParent);
+                    hSpace.transform.localPosition = newPosW;
+                    hSpace.transform.localRotation = Quaternion.identity;
+                    resDict[(s_Rows - i, idx)] = hSpace;
 
                     idx++;
                 }
 
                 // determine height based on position
-                if (Rows - 1 > i && i > 4 && 1 < j && j < i - 2) newHeight = BoardLevels[2];
-                else if (Rows > i && i > 1 && 0 < j && j < i - 1) newHeight = BoardLevels[1];
+                if (s_Rows - 1 > i && i > 4 && 1 < j && j < i - 2) newHeight = s_boardLevels[2];
+                else if (s_Rows > i && i > 1 && 0 < j && j < i - 1) newHeight = s_boardLevels[1];
 
                 // only update y (x/z already defined for left edge W, which can never be elevated)
                 newPos.y = newHeight;
 
                 // add B spaces
-                hSpace = GameObject.Instantiate(spacePrefab, newPos, Quaternion.identity);
-                resDict[(Rows - i, idx)] = hSpace;
+                hSpace = GameObject.Instantiate(SpacePrefab, _spcParent);
+                hSpace.transform.localPosition = newPos;
+                hSpace.transform.localRotation = Quaternion.identity;
+                resDict[(s_Rows - i, idx)] = hSpace;
 
                 idx++;
 
                 // don't add W to right corner
-                if (Rows > i || j < i - 1)
+                if (s_Rows > i || j < i - 1)
                 {
                     // add W spaces to right of every other B piece
-                    if (Rows - 1 > i && i > 3 && 0 < j && j < i - 2) newHeight = BoardLevels[2];
-                    else if (Rows > i && i > 1 && 0 <= j && j < i - 1) newHeight = BoardLevels[1];
-                    else newHeight = BoardLevels[0];
+                    if (s_Rows - 1 > i && i > 3 && 0 < j && j < i - 2) newHeight = s_boardLevels[2];
+                    else if (s_Rows > i && i > 1 && 0 <= j && j < i - 1) newHeight = s_boardLevels[1];
+                    else newHeight = s_boardLevels[0];
 
                     // need to update all three components (right/down of B and also diff height)
                     Vector3 newPosW = new Vector3(
-                        newPos.x - WOffset.x,
+                        newPos.x - s_wOffset.x,
                         newHeight,
-                        newPos.z + WOffset.z);
+                        newPos.z + s_wOffset.z);
 
-                    hSpace = GameObject.Instantiate(spacePrefab, newPosW, Quaternion.identity);
-                    resDict[(Rows - i, idx)] = hSpace;
+                    hSpace = GameObject.Instantiate(SpacePrefab, _spcParent);
+                    hSpace.transform.localPosition = newPosW;
+                    hSpace.transform.localRotation = Quaternion.identity;
+                    resDict[(s_Rows - i, idx)] = hSpace;
 
                     idx++;
                 }
@@ -118,11 +137,11 @@ public class BoardController : MonoBehaviour
         foreach ((int u, int a) k in resDict.Keys)
         {
             GameObject spc = resDict[k];
-            spc.GetComponent<SpaceController>().SetSpace(k.u, k.a);
-            spc.transform.SetParent(spcParent, true);
+            SpaceController spcController = spc.AddComponent<SpaceController>();
+            spcController.SetSpace(k.u, k.a);
             if (!IsBlack(k)) spc.transform.localRotation = Quaternion.AngleAxis(-180, Vector3.up);
             spc.SetActive(false);
-            synchronizer.OnLerpComplete.AddListener(spc.GetComponent<SpaceController>().FlipHighlightLerp);
+            Synchronizer.OnLerpComplete.AddListener(spcController.FlipHighlightLerp);
         }
         return resDict;
     }
@@ -131,13 +150,29 @@ public class BoardController : MonoBehaviour
     {
         var pieces = new List<(GameObject g, (int up, int across) pos, PieceType type)>();
         // place players
-        Transform pieceParent = new GameObject("BoardGame_Pieces").transform;
-        pieceParent.SetParent(transform.parent);
+        if (_pieceParent == null)
+        {
+            _pieceParent = new GameObject("BoardGame_Pieces").transform;
+            _pieceParent.SetParent(transform.parent);
+            _pieceParent.localPosition = Vector3.zero;
+            _pieceParent.localRotation = Quaternion.identity;
+        }
 
-        pieces.Add(CreateAndPlacePiece(pieceParent, (0, 0), PieceType.Blocker));
-        pieces.Add(CreateAndPlacePiece(pieceParent, (0, 1), PieceType.Antler));
-        pieces.Add(CreateAndPlacePiece(pieceParent, (6, 7), PieceType.Eye));
+        pieces.Add(CreateAndPlacePiece(_pieceParent, (0, 0), PieceType.Blocker));
+        pieces.Add(CreateAndPlacePiece(_pieceParent, (0, 1), PieceType.Antler));
+        pieces.Add(CreateAndPlacePiece(_pieceParent, (6, 7), PieceType.Eye));
         return pieces;
+    }
+
+    public void ResetBoard()
+    {
+        IsInitialized = false;
+        // delete old game pieces before we lose track of them
+        foreach (var p in Players)
+        {
+            Destroy(p.g);
+        }
+        Init();
     }
 
     private (GameObject, (int, int), PieceType) CreateAndPlacePiece(Transform parent, (int up, int across) pos, PieceType type)
@@ -147,18 +182,19 @@ public class BoardController : MonoBehaviour
         switch (type)
         {
             case PieceType.Blocker:
-                piece = GameObject.Instantiate(blockerPrefab, parent);
+                piece = GameObject.Instantiate(BlockerPrefab, parent);
                 break;
             case PieceType.Antler:
-                piece = GameObject.Instantiate(antlerPrefab, parent);
+                piece = GameObject.Instantiate(AntlerPrefab, parent);
                 break;
             case PieceType.Eye:
-                piece = GameObject.Instantiate(eyePrefab, parent);
+                piece = GameObject.Instantiate(EyePrefab, parent);
                 break;
             default:
                 Debug.LogWarning($"Invalid piece type {type}!");
                 break;
         }
+        piece.SetActive(true);
 
         // fix rotation from prefab
         ChildRotationFix(piece, type);
@@ -206,8 +242,8 @@ public class BoardController : MonoBehaviour
     // check if coord pos is in bounds
     private bool InBounds((int up, int across) pos)
     {
-        bool firstRow = pos.up == 0 && pos.up <= pos.across && pos.across < (2 * Rows) - 1;
-        return firstRow || (0 < pos.up && pos.up < Rows && pos.up <= pos.across && pos.across <= 2 * Rows - pos.up);
+        bool firstRow = pos.up == 0 && pos.up <= pos.across && pos.across < (2 * s_Rows) - 1;
+        return firstRow || (0 < pos.up && pos.up < s_Rows && pos.up <= pos.across && pos.across <= 2 * s_Rows - pos.up);
     }
 
     // return list of adjacent positions to (up, across)
@@ -239,9 +275,9 @@ public class BoardController : MonoBehaviour
         for (int i = 0; i < adj.Count; i++)
         {
             bool foundOccupied = false;
-            for (int j = 0; j < players.Count && !foundOccupied; j++)
+            for (int j = 0; j < Players.Count && !foundOccupied; j++)
             {
-                if (players[j].pos == adj[i])
+                if (Players[j].pos == adj[i])
                 {
                     adj.RemoveAt(i);
                     i--;
@@ -257,13 +293,13 @@ public class BoardController : MonoBehaviour
     {
         foreach (var s in spaces)
         {
-            SpaceController spc = spaceDict[(s.up, s.across)].GetComponent<SpaceController>();
+            SpaceController spc = SpaceDict[(s.up, s.across)].GetComponent<SpaceController>();
             // don't toggle beam spaces if we're not updating the beam!
-            if (!spc.inBeam || setBeam != null)
+            if (!spc.InBeam || setBeam != null)
                 spc.gameObject.SetActive(!spc.gameObject.activeSelf);
             // allow beam spaces to be toggled when parameter supplied
             if (setBeam != null)
-                spc.inBeam = setBeam ?? spc.inBeam;
+                spc.InBeam = setBeam ?? spc.InBeam;
         }
     }
 
@@ -276,11 +312,11 @@ public class BoardController : MonoBehaviour
             foreach (Material m in r.materials)
             {
                 // update to use the custom simulation shader?
-                if (m.color == highlightColors.def)
+                if (m.color == s_highlightColors.def)
                 {
-                    m.color = highlightColors.highlight;
+                    m.color = s_highlightColors.highlight;
                 }
-                else m.color = highlightColors.def;
+                else m.color = s_highlightColors.def;
             }
         }
     }
@@ -292,7 +328,7 @@ public class BoardController : MonoBehaviour
         // nullable arg for oldPos = first-time setup
         bool settingUp = oldPosNN.Item1 == BadPos.Item1;
 
-        GameObject newSpc = spaceDict[(newPos.up, newPos.across)];
+        GameObject newSpc = SpaceDict[(newPos.up, newPos.across)];
         // check for valid position
         if (newSpc != null)
         {
@@ -300,14 +336,14 @@ public class BoardController : MonoBehaviour
             // move/rotate piece, set controller occupants
             if (!settingUp)
             {
-                GameObject oldSpc = spaceDict[(oldPosNN.up, oldPosNN.across)];
+                GameObject oldSpc = SpaceDict[(oldPosNN.up, oldPosNN.across)];
                 SpaceController oldSpcController = oldSpc.GetComponent<SpaceController>();
                 oldSpcController.SetOccupant(null);
 
-                Vector3 lookPos = newSpc.transform.position - oldSpc.transform.position;
+                Vector3 lookPos = newSpc.transform.localPosition - oldSpc.transform.localPosition;
                 // remove y component - only rotating in X/Z plane
                 lookPos.y = 0.0f;
-                Debug.DrawLine(newSpc.transform.position, oldSpc.transform.position, Color.white, 10);
+                Debug.DrawLine(newSpc.transform.localPosition, oldSpc.transform.localPosition, Color.white, 10);
                 piece.obj.transform.localRotation = Quaternion.LookRotation(lookPos);
             }
             newSpcController.SetOccupant(piece.obj);
@@ -321,10 +357,10 @@ public class BoardController : MonoBehaviour
     public void TryMove(int pIdx, (int, int) newPos)
     {
         // avoid updating position unless we succeeded
-        bool succeeded = MoveToSpace(players[pIdx], newPos);
+        bool succeeded = MoveToSpace(Players[pIdx], newPos);
         if (succeeded)
         {
-            players[pIdx] = (players[pIdx].g, newPos, players[pIdx].type);
+            Players[pIdx] = (Players[pIdx].g, newPos, Players[pIdx].type);
         }
     }
 
@@ -332,11 +368,11 @@ public class BoardController : MonoBehaviour
     {
         // see who's been hit and remove
         var newBeamSpaces = new List<(int, int)>();
-        (int u, int a) eyePos = players.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
+        (int u, int a) eyePos = Players.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
         // list of flags to keep track of blocked beams
         bool[] blocked = { false, false, false };
 
-        for (int i = 1; i < Rows; i++)
+        for (int i = 1; i < s_Rows; i++)
         {
             var currDepthSpaces = new List<(int, int)>();
             // check first row conditions
@@ -416,13 +452,13 @@ public class BoardController : MonoBehaviour
     {
         // return a list of players by index to be removed
         var result = new List<int>();
-        for (int i = 0; i < players.Count; i++)
+        for (int i = 0; i < Players.Count; i++)
         {
             foreach ((int, int) spc in _beamSpaces)
             {
-                if (players[i].pos == spc && players[i].type != PieceType.Blocker)
+                if (Players[i].pos == spc && Players[i].type != PieceType.Blocker)
                 {
-                    Debug.Log($"player {players[i].g.name} hit at {players[i].pos}");
+                    Debug.Log($"player {Players[i].g.name} hit at {Players[i].pos}");
                     result.Add(i);
                 }
             }
@@ -435,7 +471,7 @@ public class BoardController : MonoBehaviour
         // basically just OR-ing any past blocks in so that
         // everything beyond the blocker piece is also shielded
         bool blocked = wasBlocked;
-        foreach (var p in players)
+        foreach (var p in Players)
         {
             if (p.pos == pos && p.type == PieceType.Blocker)
                 blocked = true;

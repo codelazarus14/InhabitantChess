@@ -4,8 +4,8 @@ using UnityEngine;
 
 public class SpaceController : MonoBehaviour
 {
-    public bool inBeam = false;
-    public (int up, int across) space { get; private set; }
+    public bool InBeam = false;
+    public (int up, int across) Space { get; private set; }
 
     private GameObject _occupant = null;
     private Material _mat;
@@ -21,7 +21,7 @@ public class SpaceController : MonoBehaviour
     void Update()
     {
         // animate slow blinking
-        if (!inBeam)
+        if (!InBeam)
         {
             if (_beamVisualized) _beamVisualized = false;
             _mat.color = new Color(1, 1, 1, Mathf.Lerp(_min, _max, Synchronizer.t));
@@ -67,6 +67,6 @@ public class SpaceController : MonoBehaviour
 
     public void SetSpace(int up, int across)
     {
-        space = (up, across);
+        Space = (up, across);
     }
 }
