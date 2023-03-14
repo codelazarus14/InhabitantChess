@@ -14,10 +14,10 @@ public class BoardGameController : MonoBehaviour
 
     public Camera GameCamera;
     public GameObject StartText;
-    public string BoardGameTag = "BoardGame";
     public bool Playing { get; private set; }
 
     private float _CPUTurnTime = 1.0f;
+    private int _currPlyrIdx;
     private BoardController _board;
     private BoardState _boardState = BoardState.Idle;
     private SpaceController _selectedSpace;
@@ -35,16 +35,13 @@ public class BoardGameController : MonoBehaviour
     {
         _board = transform.Find("BoardGame_Board").gameObject.GetComponent<BoardController>();
         _board.Init();
+        _currPlyrIdx = -1;
     }
 
     void Update()
     {
-        if (!Playing && Keyboard.current.shiftKey.wasPressedThisFrame)
-        {
-            EnterGame();
-        }
         // check for user input
-        else if (_boardState == BoardState.WaitingForInput && Mouse.current.leftButton.wasPressedThisFrame)
+        if (_boardState == BoardState.WaitingForInput && Mouse.current.leftButton.wasPressedThisFrame)
         {
             CastRay();
         }
@@ -55,12 +52,13 @@ public class BoardGameController : MonoBehaviour
 
         void CastRay()
         {
+            // TODO: fix raycast - example scene used mouse cursor, now we need camera pos (center of screen)
             Vector3 mousePos = Mouse.current.position.ReadValue();
             Ray ray = GameCamera.ScreenPointToRay(mousePos);
             RaycastHit hit;
             if (Physics.Raycast(ray, out hit)) 
             {
-                if (hit.collider.tag == BoardGameTag)
+                if (hit.transform.gameObject.name.Contains("BoardGame_SpaceHighlight"))
                 {
                     SpaceController hitSpc = hit.collider.gameObject.GetComponent<SpaceController>();
                     // allow PlayerTurn to proceed
@@ -82,6 +80,13 @@ public class BoardGameController : MonoBehaviour
     public void ExitGame()
     {
         Playing = false;
+        if (_currPlyrIdx != -1)
+        {
+            var currPlayer = _board.Players[_currPlyrIdx];
+            _board.ToggleHighlight(currPlayer.g);
+            _board.ToggleSpaces(_board.GetAdjacent(currPlayer.pos.up, currPlayer.pos.across));
+            _board.UpdateBeam(true);
+        }
         StartText.SetActive(true);
     }
 
@@ -96,6 +101,7 @@ public class BoardGameController : MonoBehaviour
         {
             for (int i = 0; i < _board.Players.Count && Playing; i++)
             {
+                _currPlyrIdx = i;
                 if (_board.Players[i].type == PieceType.Eye)
                 {
                     StartCoroutine(CPUTurn(i));
@@ -128,11 +134,14 @@ public class BoardGameController : MonoBehaviour
     {
         (GameObject g, (int up, int across) pos, PieceType type) player = _board.Players[pIdx];
         List<(int, int)> adj = _board.GetAdjacent(player.pos.up, player.pos.across);
+
         _board.ToggleSpaces(adj);
         _board.ToggleHighlight(player.g);
         // wait for input, then move
-        _boardState = BoardState.WaitingForInput;
-        yield return new WaitUntil(() => _boardState == BoardState.InputReceived);
+        while (_selectedSpace == null || !adj.Contains(_selectedSpace.Space)) {
+            _boardState = BoardState.WaitingForInput;
+            yield return new WaitUntil(() => _boardState == BoardState.InputReceived);
+        }
         // we're ready to move
         // might use moving to check animation status later idk
         _boardState = BoardState.Moving;

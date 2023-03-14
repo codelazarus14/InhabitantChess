@@ -16,7 +16,6 @@ namespace InhabitantChess
         public static void Locator_OnSwitchActiveCamera_Postfix(OWCamera activeCamera)
         {
             Logger.Log($"Main camera switched to {activeCamera}");
-            InhabitantChess.Instance.GameCamera = activeCamera;
         }
     }
 }

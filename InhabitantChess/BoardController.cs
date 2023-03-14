@@ -364,88 +364,95 @@ public class BoardController : MonoBehaviour
         }
     }
 
-    public void UpdateBeam()
+    public void UpdateBeam(bool clear = false)
     {
-        // see who's been hit and remove
-        var newBeamSpaces = new List<(int, int)>();
-        (int u, int a) eyePos = Players.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
-        // list of flags to keep track of blocked beams
-        bool[] blocked = { false, false, false };
-
-        for (int i = 1; i < s_Rows; i++)
+        if (clear)
         {
-            var currDepthSpaces = new List<(int, int)>();
-            // check first row conditions
-            int lowerOffset() => eyePos.u - i == 0 ? 1 : 0;
-            int upperOffset() => eyePos.u + i == 1 ? 1 : 0;
-            // add spaces to list along 3 lines stretching from triangle vertices
-            if (IsBlack(eyePos))
-            {
-                // below
-                (int, int) below = (eyePos.u - i, eyePos.a - lowerOffset());
-                blocked[0] = IsBlocked(below, blocked[0]);
-                if (!blocked[0]) currDepthSpaces.Add(below);
-
-                // upper R diagonal
-                (int, int) upperR1 = (eyePos.u + i, eyePos.a + 3 * i - 1 + upperOffset());
-                (int, int) upperR2 = (eyePos.u + i, eyePos.a + 3 * i + upperOffset());
-                blocked[1] = IsBlocked(upperR1, blocked[1]);
-                if (!blocked[1])
-                {
-                    currDepthSpaces.Add(upperR1);
-                    blocked[1] = IsBlocked(upperR2, blocked[1]);
-                    if (!blocked[1]) currDepthSpaces.Add(upperR2);
-                }
-
-                // upper L diagonal
-                (int, int) upperL1 = (eyePos.u + i, eyePos.a - 3 * i + 1 + upperOffset());
-                (int, int) upperL2 = (eyePos.u + i, eyePos.a - 3 * i + upperOffset());
-                blocked[2] = IsBlocked(upperL1, blocked[2]);
-                if (!blocked[2])
-                {
-                    currDepthSpaces.Add(upperL1);
-                    blocked[2] = IsBlocked(upperL2, blocked[2]);
-                    if (!blocked[2]) currDepthSpaces.Add(upperL2);
-                }
-            }
-            else
-            {
-                // above
-                (int, int) above = (eyePos.u + i, eyePos.a + upperOffset());
-                blocked[0] = IsBlocked(above, blocked[0]);
-                if (!blocked[0]) currDepthSpaces.Add(above);
-
-                // lower R diagonal
-                (int, int) lowerR1 = (eyePos.u - i, eyePos.a + 3 * i - 1 - lowerOffset());
-                (int, int) lowerR2 = (eyePos.u - i, eyePos.a + 3 * i - lowerOffset());
-                blocked[1] = IsBlocked(lowerR1, blocked[1]);
-                if (!blocked[1])
-                {
-                    currDepthSpaces.Add(lowerR1);
-                    blocked[1] = IsBlocked(lowerR2, blocked[1]);
-                    if (!blocked[1]) currDepthSpaces.Add(lowerR2);
-                }
-
-                // lower L diagonal
-                (int, int) lowerL1 = (eyePos.u - i, eyePos.a - 3 * i + 1 - lowerOffset());
-                (int, int) lowerL2 = (eyePos.u - i, eyePos.a - 3 * i - lowerOffset());
-                blocked[2] = IsBlocked(lowerL1, blocked[2]);
-                if (!blocked[2])
-                {
-                    currDepthSpaces.Add(lowerL1);
-                    blocked[2] = IsBlocked(lowerL2, blocked[2]);
-                    if (!blocked[2]) currDepthSpaces.Add(lowerL2);
-                }
-            }
-            // filter out-of-bounds
-            var currInBounds = from cSpc in currDepthSpaces where InBounds(cSpc) select cSpc;
-            newBeamSpaces.AddRange(currInBounds.ToList());
+            ToggleSpaces(_beamSpaces, false);
         }
-        // reset (turn off) old spaces
-        ToggleSpaces(_beamSpaces, false);
-        // show new ones
-        _beamSpaces = newBeamSpaces;
-        ToggleSpaces(_beamSpaces, true);
+        else
+        {
+            // see who's been hit and remove
+            var newBeamSpaces = new List<(int, int)>();
+            (int u, int a) eyePos = Players.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
+            // list of flags to keep track of blocked beams
+            bool[] blocked = { false, false, false };
+
+            for (int i = 1; i < s_Rows; i++)
+            {
+                var currDepthSpaces = new List<(int, int)>();
+                // check first row conditions
+                int lowerOffset() => eyePos.u - i == 0 ? 1 : 0;
+                int upperOffset() => eyePos.u + i == 1 ? 1 : 0;
+                // add spaces to list along 3 lines stretching from triangle vertices
+                if (IsBlack(eyePos))
+                {
+                    // below
+                    (int, int) below = (eyePos.u - i, eyePos.a - lowerOffset());
+                    blocked[0] = IsBlocked(below, blocked[0]);
+                    if (!blocked[0]) currDepthSpaces.Add(below);
+
+                    // upper R diagonal
+                    (int, int) upperR1 = (eyePos.u + i, eyePos.a + 3 * i - 1 + upperOffset());
+                    (int, int) upperR2 = (eyePos.u + i, eyePos.a + 3 * i + upperOffset());
+                    blocked[1] = IsBlocked(upperR1, blocked[1]);
+                    if (!blocked[1])
+                    {
+                        currDepthSpaces.Add(upperR1);
+                        blocked[1] = IsBlocked(upperR2, blocked[1]);
+                        if (!blocked[1]) currDepthSpaces.Add(upperR2);
+                    }
+
+                    // upper L diagonal
+                    (int, int) upperL1 = (eyePos.u + i, eyePos.a - 3 * i + 1 + upperOffset());
+                    (int, int) upperL2 = (eyePos.u + i, eyePos.a - 3 * i + upperOffset());
+                    blocked[2] = IsBlocked(upperL1, blocked[2]);
+                    if (!blocked[2])
+                    {
+                        currDepthSpaces.Add(upperL1);
+                        blocked[2] = IsBlocked(upperL2, blocked[2]);
+                        if (!blocked[2]) currDepthSpaces.Add(upperL2);
+                    }
+                }
+                else
+                {
+                    // above
+                    (int, int) above = (eyePos.u + i, eyePos.a + upperOffset());
+                    blocked[0] = IsBlocked(above, blocked[0]);
+                    if (!blocked[0]) currDepthSpaces.Add(above);
+
+                    // lower R diagonal
+                    (int, int) lowerR1 = (eyePos.u - i, eyePos.a + 3 * i - 1 - lowerOffset());
+                    (int, int) lowerR2 = (eyePos.u - i, eyePos.a + 3 * i - lowerOffset());
+                    blocked[1] = IsBlocked(lowerR1, blocked[1]);
+                    if (!blocked[1])
+                    {
+                        currDepthSpaces.Add(lowerR1);
+                        blocked[1] = IsBlocked(lowerR2, blocked[1]);
+                        if (!blocked[1]) currDepthSpaces.Add(lowerR2);
+                    }
+
+                    // lower L diagonal
+                    (int, int) lowerL1 = (eyePos.u - i, eyePos.a - 3 * i + 1 - lowerOffset());
+                    (int, int) lowerL2 = (eyePos.u - i, eyePos.a - 3 * i - lowerOffset());
+                    blocked[2] = IsBlocked(lowerL1, blocked[2]);
+                    if (!blocked[2])
+                    {
+                        currDepthSpaces.Add(lowerL1);
+                        blocked[2] = IsBlocked(lowerL2, blocked[2]);
+                        if (!blocked[2]) currDepthSpaces.Add(lowerL2);
+                    }
+                }
+                // filter out-of-bounds
+                var currInBounds = from cSpc in currDepthSpaces where InBounds(cSpc) select cSpc;
+                newBeamSpaces.AddRange(currInBounds.ToList());
+            }
+            // reset (turn off) old spaces
+            ToggleSpaces(_beamSpaces, false);
+            // show new ones
+            _beamSpaces = newBeamSpaces;
+            ToggleSpaces(_beamSpaces, true);
+        }
     }
 
     public List<int> CheckBeam()
