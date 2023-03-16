@@ -54,6 +54,7 @@ namespace InhabitantChess
                 bController.Synchronizer = synch;
                 _bgController = BoardGame.AddComponent<BoardGameController>();
                 _bgController.StartText = BoardGame.transform.Find("StartText").gameObject;
+                Patches.BoardGameController = _bgController;
 
                 GameObject cockpitAttach = GameObject.Find("Ship_Body/Module_Cockpit/Systems_Cockpit/CockpitAttachPoint");
                 GameObject gameAttach = Instantiate(cockpitAttach, BoardGame.transform);
@@ -75,7 +76,7 @@ namespace InhabitantChess
         {
             yield return new WaitForSeconds(delay);
 
-            _bgController.GameCamera = Locator.GetActiveCamera().mainCamera;
+            _bgController.PlayerManip = Locator.GetPlayerTransform().GetComponentInChildren<FirstPersonManipulator>();
             _seatInteract.SetPromptText(UITextType.ItemUnknownArtifactPrompt);
             _seatInteract.OnPressInteract += this.OnPressInteract;
 

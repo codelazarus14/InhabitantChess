@@ -7,12 +7,12 @@ public class BoardGameController : MonoBehaviour
 {
     /**
      * TODO:
-     * - update higlight to only occur after pause, blinking intervals
      * - replace highlight materials (space and beam) with SIM in-game
      * - replace piece-teleporting with animated slerp or smth
+     * - add toggleable overview camera or adjust seat
      */
 
-    public Camera GameCamera;
+    public FirstPersonManipulator PlayerManip;
     public GameObject StartText;
     public bool Playing { get; private set; }
 
@@ -40,8 +40,8 @@ public class BoardGameController : MonoBehaviour
 
     void Update()
     {
-        // check for user input
-        if (_boardState == BoardState.WaitingForInput && Mouse.current.leftButton.wasPressedThisFrame)
+        // check for user input - should probably add a prompt to show space under cursor
+        if (_boardState == BoardState.WaitingForInput && OWInput.IsNewlyPressed(InputLibrary.interact, InputMode.All))
         {
             CastRay();
         }
@@ -52,15 +52,13 @@ public class BoardGameController : MonoBehaviour
 
         void CastRay()
         {
-            // TODO: fix raycast - example scene used mouse cursor, now we need camera pos (center of screen)
-            Vector3 mousePos = Mouse.current.position.ReadValue();
-            Ray ray = GameCamera.ScreenPointToRay(mousePos);
+            Transform manipTrans = PlayerManip.transform;
             RaycastHit hit;
-            if (Physics.Raycast(ray, out hit)) 
+            if (Physics.Raycast(manipTrans.position, manipTrans.forward, out hit, 75f, OWLayerMask.blockableInteractMask)) 
             {
-                if (hit.transform.gameObject.name.Contains("BoardGame_SpaceHighlight"))
-                {
-                    SpaceController hitSpc = hit.collider.gameObject.GetComponent<SpaceController>();
+                SpaceController hitSpc = hit.collider.gameObject.GetComponent<SpaceController>();
+                if (hitSpc != null) 
+                { 
                     // allow PlayerTurn to proceed
                     _boardState = BoardState.InputReceived;
                     _selectedSpace = hitSpc;
