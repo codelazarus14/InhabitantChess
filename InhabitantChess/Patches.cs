@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using HarmonyLib;
+using OWML.ModHelper;
 using UnityEngine;
 using Logger = InhabitantChess.Util.Logger;
 
@@ -12,8 +13,6 @@ namespace InhabitantChess
     [HarmonyPatch]
     public class Patches
     {
-        public static BoardGameController BoardGameController;
-
         // overriding player camera input for board game
         [HarmonyPrefix]
         [HarmonyPatch(typeof(PlayerCameraController), nameof(PlayerCameraController.UpdateInput))]
@@ -35,7 +34,7 @@ namespace InhabitantChess
             }
 
             // detect if we're playing the game and treat camera input like cockpit
-            flag = flag || (BoardGameController != null && BoardGameController.Playing);
+            flag = flag || InhabitantChess.Instance.Seated;
 
             if (flag)
             {
@@ -63,7 +62,7 @@ namespace InhabitantChess
                     __instance._degreesX = Mathf.Clamp(__instance._degreesX, -60f, 60f);
                     __instance._degreesY = Mathf.Clamp(__instance._degreesY, -35f, 80f);
                 }
-                else if (BoardGameController != null && BoardGameController.Playing)
+                else if (InhabitantChess.Instance.Seated)
                 {
                     __instance._degreesX = Mathf.Clamp(__instance._degreesX, -80f, 80f);
                     __instance._degreesY = Mathf.Clamp(__instance._degreesY, -80f, 35f);

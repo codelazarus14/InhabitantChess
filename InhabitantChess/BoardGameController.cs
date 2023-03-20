@@ -69,6 +69,8 @@ public class BoardGameController : MonoBehaviour
 
     public void EnterGame()
     {
+        if (Playing) return;
+
         StartText.SetActive(false);
         _board.ResetBoard();
         Playing = true;

@@ -15,7 +15,10 @@ namespace InhabitantChess
 
         public static InhabitantChess Instance { get; private set; }
         public GameObject BoardGame { get; private set; }
+        public bool Seated { get; private set; }
 
+        private float _seatExitTime;
+        private bool _completedStanding = true;
         private BoardGameController _bgController;
         private PlayerAttachPoint _attachPoint;
         private InteractZone _seatInteract;
@@ -54,7 +57,6 @@ namespace InhabitantChess
                 bController.Synchronizer = synch;
                 _bgController = BoardGame.AddComponent<BoardGameController>();
                 _bgController.StartText = BoardGame.transform.Find("StartText").gameObject;
-                Patches.BoardGameController = _bgController;
 
                 GameObject cockpitAttach = GameObject.Find("Ship_Body/Module_Cockpit/Systems_Cockpit/CockpitAttachPoint");
                 GameObject gameAttach = Instantiate(cockpitAttach, BoardGame.transform);
@@ -85,22 +87,45 @@ namespace InhabitantChess
 
         private void OnPressInteract()
         {
-            _seatInteract.DisableInteraction();
-            _attachPoint.AttachPlayer();
-            _bgController.EnterGame();
+            if (!Seated)
+            {
+                _seatInteract.DisableInteraction();
+                _attachPoint.AttachPlayer();
+                _bgController.EnterGame();
+                Seated = true;
+                _completedStanding = false;
+            }
+        }
+
+        private void CompleteStandingUp()
+        {
+            _attachPoint.DetachPlayer();
+            _seatInteract.ResetInteraction();
+            _seatInteract.EnableInteraction();
+            _completedStanding = true;
         }
 
         private void Update()
         {
             if (_seatInteract == null) return;
-            else if (_bgController.Playing && OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All))
+            else if (Seated && OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All))
             {
-                _bgController.ExitGame();
-                _attachPoint.DetachPlayer();
-                _seatInteract.ResetInteraction();
-                _seatInteract.EnableInteraction();
+                //_bgController.ExitGame();
+                Locator.GetPlayerCameraController().CenterCameraOverSeconds(0.2f, false);
+                Seated = false;
             }
         }
+
+        private void FixedUpdate()
+        {
+            // delay copied from ship cockpit controller to force recentering of camera
+            // Seated controls the logic for 
+            if (!Seated && !_completedStanding && Time.time >= _seatExitTime + 0.2f)
+            {
+                CompleteStandingUp();
+            }
+        }
+
         private void LoadPrefabs(AssetBundle bundle, string bundlePath)
         {
             (string label, string name)[] prefabs =
