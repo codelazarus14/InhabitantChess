@@ -11,6 +11,7 @@ public class BoardController : MonoBehaviour
     public GameObject AntlerPrefab;
     public GameObject EyePrefab;
     public Synchronizer Synchronizer;
+    public MeshRenderer HighlightMaterial;
 
     public List<(GameObject g, (int up, int across) pos, PieceType type)> Players { get; private set; }
     // this may change in future bc it depends on world, not local space
@@ -22,7 +23,6 @@ public class BoardController : MonoBehaviour
     private static float[] s_boardLevels = { 0.051f, 0.083f, 0.115f };
     private static Vector3 s_wOffset = new Vector3(-0.05584711f, 0, 0.09673002f);
     private static Vector3 s_startingPos = new Vector3(0.3350971f, s_boardLevels[0], -0.58038f);
-    private static (Color def, Color highlight) s_highlightColors = (Color.white, Color.cyan);
     private static int s_Rows = 7;
 
     private List<(int, int)> _beamSpaces;
@@ -210,6 +210,15 @@ public class BoardController : MonoBehaviour
         {
             piece.transform.localRotation = Quaternion.AngleAxis(-90, Vector3.up);
         }
+
+        // set highlight materials
+        GameObject highlight = piece.transform.Find("Highlighted").gameObject;
+        foreach (var mesh in highlight.GetComponentsInChildren<MeshRenderer>())
+        {
+            mesh.material.shader = HighlightMaterial.material.shader;
+            mesh.materials = HighlightMaterial.materials;
+        }
+
         return (piece, pos, type);
     }
 
@@ -305,20 +314,11 @@ public class BoardController : MonoBehaviour
 
     public void ToggleHighlight(GameObject piece)
     {
-        MeshRenderer[] renderers = piece.GetComponentsInChildren<MeshRenderer>();
-
-        foreach (Renderer r in renderers)
-        {
-            foreach (Material m in r.materials)
-            {
-                // update to use the custom simulation shader?
-                if (m.color == s_highlightColors.def)
-                {
-                    m.color = s_highlightColors.highlight;
-                }
-                else m.color = s_highlightColors.def;
-            }
-        }
+        // toggle parent transforms of normal/highlighted piece
+        GameObject normal = piece.transform.Find("Normal").gameObject;
+        GameObject highlight = piece.transform.Find("Highlighted").gameObject;
+        normal.SetActive(!normal.activeSelf);
+        highlight.SetActive(!highlight.activeSelf);
     }
 
     private bool MoveToSpace((GameObject obj, (int up, int across)? oldPos, PieceType type) piece, (int up, int across) newPos)

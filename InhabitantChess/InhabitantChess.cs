@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using InhabitantChess.Util;
 using OWML.Common;
 using OWML.ModHelper;
 using System;
@@ -55,6 +56,9 @@ namespace InhabitantChess
                 bController.AntlerPrefab = _prefabDict["antlerPrefab"];
                 bController.EyePrefab = _prefabDict["eyePrefab"];
                 bController.Synchronizer = synch;
+                // TODO: find out original boardgame materials and use the appropriate settings 
+                MeshRenderer dreamMatRenderer = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_2/Simulation_DreamZone_2/Props_DreamZone_2/Props_LeftHouse/OtherComponentsGroup/Effects_IP_SIM_BoardGame/BoardGame_Eye").GetComponent<MeshRenderer>();
+                bController.HighlightMaterial = dreamMatRenderer;
                 _bgController = BoardGame.AddComponent<BoardGameController>();
                 _bgController.StartText = BoardGame.transform.Find("StartText").gameObject;
 
