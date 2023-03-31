@@ -12,8 +12,8 @@ public class BoardController : MonoBehaviour
     public GameObject AntlerPrefab;
     public GameObject EyePrefab;
     public Synchronizer Synchronizer;
-    public MeshRenderer SpaceHighlight;
-    public Dictionary<PieceType, MeshRenderer> PieceHighlights;
+    public Shader HighlightShader;
+    public Material[] HighlightMaterials;
 
     public List<(GameObject g, (int up, int across) pos, PieceType type)> Players { get; private set; }
     // this may change in future bc it depends on world, not local space
@@ -141,6 +141,7 @@ public class BoardController : MonoBehaviour
             GameObject spc = resDict[k];
             SpaceController spcController = spc.AddComponent<SpaceController>();
             spcController.SetSpace(k.u, k.a);
+            spcController.SetMaterials(HighlightMaterials[0]);
             if (!IsBlack(k)) spc.transform.localRotation = Quaternion.AngleAxis(-180, Vector3.up);
             spc.SetActive(false);
             Synchronizer.OnLerpComplete.AddListener(spcController.FlipHighlightLerp);
@@ -162,6 +163,7 @@ public class BoardController : MonoBehaviour
 
         pieces.Add(CreateAndPlacePiece(_pieceParent, (0, 0), PieceType.Blocker));
         pieces.Add(CreateAndPlacePiece(_pieceParent, (0, 1), PieceType.Antler));
+        pieces.Add(CreateAndPlacePiece(_pieceParent, (0, 12), PieceType.Antler));
         pieces.Add(CreateAndPlacePiece(_pieceParent, (6, 7), PieceType.Eye));
         return pieces;
     }
@@ -215,13 +217,21 @@ public class BoardController : MonoBehaviour
 
         // set highlight materials - maybe move up near instantiating pieces? or if materials depend on type..
         GameObject highlight = piece.transform.Find("Highlighted").gameObject;
-        for (int i = 0; i < PieceHighlights[type].materials.Length; i++)
+        for (int i = 0; i < highlight.transform.childCount; i++)
         {
             MeshRenderer highlightRenderer = highlight.transform.GetChild(i).GetComponent<MeshRenderer>();
-            highlightRenderer.material.shader = PieceHighlights[type].material.shader;
+            highlightRenderer.material.shader = HighlightShader;
             // each object is split up in bundle - prefabs contain partial meshes w one material per
             // whereas ingame (PieceHighlights) the pieces are single meshes w 1-4 materials
-            highlightRenderer.materials = new Material[] { PieceHighlights[type].materials[i] };
+            if (type == PieceType.Antler)
+            {
+                // antler's meshes are reordered for some reason so there isn't a fancy index-based way
+                // to make them look right (0,1 - grey 2,3 - glowy)
+                if (i >= 2) highlightRenderer.materials = new Material[] { HighlightMaterials[0] };
+                else highlightRenderer.materials = new Material[] { HighlightMaterials[1] };
+            }
+            else 
+                highlightRenderer.materials = new Material[] { HighlightMaterials[(i+1)%2] };
         }
 
         return (piece, pos, type);
@@ -313,7 +323,7 @@ public class BoardController : MonoBehaviour
                 spc.gameObject.SetActive(!spc.gameObject.activeSelf);
             // allow beam spaces to be toggled when parameter supplied
             if (setBeam != null)
-                spc.InBeam = setBeam ?? spc.InBeam;
+                spc.SetBeam((bool)setBeam);
         }
     }
 

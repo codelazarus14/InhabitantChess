@@ -44,6 +44,8 @@ namespace InhabitantChess
                 if (loadScene != OWScene.SolarSystem) return;
                 var playerBody = FindObjectOfType<PlayerBody>();
 
+                Seated = false;
+
                 GameObject slate = GameObject.Find("Sector_TH/Sector_Village/Sector_StartingCamp/Characters_StartingCamp/Villager_HEA_Slate/Villager_HEA_Slate_ANIM_LogSit");
                 BoardGame = Instantiate(_prefabDict["chessPrefab"], slate.transform);
                 BoardGame.transform.localPosition = new Vector3(-5, 0.8f, 1.5f);
@@ -56,19 +58,13 @@ namespace InhabitantChess
                 bController.AntlerPrefab = _prefabDict["antlerPrefab"];
                 bController.EyePrefab = _prefabDict["eyePrefab"];
                 bController.Synchronizer = synch;
-                // TODO: find out original boardgame materials and use the appropriate settings 
-                // probably go to zone 1 ghost spawns after dam break and look at table in far building
+                // TODO: glowy VP is a little too bright - can we tone it down?
                 GameObject sampleBoardGame = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_1/Simulation_DreamZone_1/Props_DreamZone_1/Props_GenericHouse_B (1)/Effects_IP_SIM_BoardGame");
-                bController.SpaceHighlight = sampleBoardGame.GetComponent<MeshRenderer>();
-                MeshRenderer antlerMesh = sampleBoardGame.transform.Find("BoardGame_Antler").GetComponent<MeshRenderer>();
-                MeshRenderer blockerMesh = sampleBoardGame.transform.Find("BoardGame_Blocker").GetComponent<MeshRenderer>();
-                MeshRenderer eyeMesh = sampleBoardGame.transform.Find("BoardGame_Eye").GetComponent<MeshRenderer>();
-                bController.PieceHighlights = new Dictionary<PieceType, MeshRenderer>
-                {
-                    { PieceType.Antler, antlerMesh },
-                    { PieceType.Blocker, blockerMesh },
-                    { PieceType.Eye, eyeMesh }
-                };
+                MeshRenderer sampleMesh = sampleBoardGame.GetComponent<MeshRenderer>();
+                Material dreamGridVP = sampleMesh.materials[0];
+                Material dreamGrid = sampleMesh.materials[1];
+                bController.HighlightShader = sampleMesh.material.shader;
+                bController.HighlightMaterials = new Material[] { dreamGridVP, dreamGrid };
                 _bgController = BoardGame.AddComponent<BoardGameController>();
                 _bgController.StartText = BoardGame.transform.Find("StartText").gameObject;
 
