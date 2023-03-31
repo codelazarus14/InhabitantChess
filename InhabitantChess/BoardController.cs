@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.EnterpriseServices;
 using System.Linq;
 using UnityEngine;
 
@@ -11,7 +12,8 @@ public class BoardController : MonoBehaviour
     public GameObject AntlerPrefab;
     public GameObject EyePrefab;
     public Synchronizer Synchronizer;
-    public MeshRenderer HighlightMaterial;
+    public MeshRenderer SpaceHighlight;
+    public Dictionary<PieceType, MeshRenderer> PieceHighlights;
 
     public List<(GameObject g, (int up, int across) pos, PieceType type)> Players { get; private set; }
     // this may change in future bc it depends on world, not local space
@@ -30,7 +32,7 @@ public class BoardController : MonoBehaviour
 
     void Start()
     {
-        
+        // unused - BoardGameController.Start() runs Init() after finding component
     }
 
     void Update()
@@ -211,12 +213,15 @@ public class BoardController : MonoBehaviour
             piece.transform.localRotation = Quaternion.AngleAxis(-90, Vector3.up);
         }
 
-        // set highlight materials
+        // set highlight materials - maybe move up near instantiating pieces? or if materials depend on type..
         GameObject highlight = piece.transform.Find("Highlighted").gameObject;
-        foreach (var mesh in highlight.GetComponentsInChildren<MeshRenderer>())
+        for (int i = 0; i < PieceHighlights[type].materials.Length; i++)
         {
-            mesh.material.shader = HighlightMaterial.material.shader;
-            mesh.materials = HighlightMaterial.materials;
+            MeshRenderer highlightRenderer = highlight.transform.GetChild(i).GetComponent<MeshRenderer>();
+            highlightRenderer.material.shader = PieceHighlights[type].material.shader;
+            // each object is split up in bundle - prefabs contain partial meshes w one material per
+            // whereas ingame (PieceHighlights) the pieces are single meshes w 1-4 materials
+            highlightRenderer.materials = new Material[] { PieceHighlights[type].materials[i] };
         }
 
         return (piece, pos, type);

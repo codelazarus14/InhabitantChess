@@ -57,8 +57,18 @@ namespace InhabitantChess
                 bController.EyePrefab = _prefabDict["eyePrefab"];
                 bController.Synchronizer = synch;
                 // TODO: find out original boardgame materials and use the appropriate settings 
-                MeshRenderer dreamMatRenderer = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_2/Simulation_DreamZone_2/Props_DreamZone_2/Props_LeftHouse/OtherComponentsGroup/Effects_IP_SIM_BoardGame/BoardGame_Eye").GetComponent<MeshRenderer>();
-                bController.HighlightMaterial = dreamMatRenderer;
+                // probably go to zone 1 ghost spawns after dam break and look at table in far building
+                GameObject sampleBoardGame = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_1/Simulation_DreamZone_1/Props_DreamZone_1/Props_GenericHouse_B (1)/Effects_IP_SIM_BoardGame");
+                bController.SpaceHighlight = sampleBoardGame.GetComponent<MeshRenderer>();
+                MeshRenderer antlerMesh = sampleBoardGame.transform.Find("BoardGame_Antler").GetComponent<MeshRenderer>();
+                MeshRenderer blockerMesh = sampleBoardGame.transform.Find("BoardGame_Blocker").GetComponent<MeshRenderer>();
+                MeshRenderer eyeMesh = sampleBoardGame.transform.Find("BoardGame_Eye").GetComponent<MeshRenderer>();
+                bController.PieceHighlights = new Dictionary<PieceType, MeshRenderer>
+                {
+                    { PieceType.Antler, antlerMesh },
+                    { PieceType.Blocker, blockerMesh },
+                    { PieceType.Eye, eyeMesh }
+                };
                 _bgController = BoardGame.AddComponent<BoardGameController>();
                 _bgController.StartText = BoardGame.transform.Find("StartText").gameObject;
 

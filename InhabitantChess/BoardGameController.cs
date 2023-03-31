@@ -10,6 +10,8 @@ public class BoardGameController : MonoBehaviour
      * - replace highlight materials (space and beam) with SIM in-game
      * - replace piece-teleporting with animated slerp or smth
      * - add toggleable overview camera or adjust seat
+     * - refactor - maybe rename GetAdjacent to GetValid or something, avoid
+     *   hardcoding rules etc. and cleanup/document
      */
 
     public FirstPersonManipulator PlayerManip;
