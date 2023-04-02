@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using InhabitantChess.BoardGame;
 using InhabitantChess.Util;
 using OWML.Common;
 using OWML.ModHelper;
@@ -21,7 +22,7 @@ namespace InhabitantChess
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
         private BoardGameController _bgController;
         private PlayerCameraController _playerCamController;
-        private OWCamera _overheadCamera;
+        private OverheadCameraController _overheadCamController;
         private PlayerAttachPoint _attachPoint;
         private InteractZone _seatInteract;
         private Dictionary<string, GameObject> _prefabDict = new();
@@ -81,14 +82,15 @@ namespace InhabitantChess
                 gameSeat.transform.localPosition = new Vector3(1, -0.8f, 0);
                 gameSeat.transform.localRotation = Quaternion.Euler(0, 270, 0);
 
-                GameObject overhead = Instantiate(new GameObject("Overhead Camera"), BoardGame.transform);
+                GameObject overhead = new GameObject("Overhead Camera");
+                overhead.transform.SetParent(BoardGame.transform);
                 overhead.transform.localPosition = new Vector3(-0.1f, 1.5f, 0);
                 overhead.transform.localRotation = Quaternion.Euler(90, 270, 0);
-                _overheadCamera = overhead.AddComponent<OWCamera>();
-                _overheadCamera.aspect = 1.6f;
-                // TODO: fix culling, view lock on player camera (update patches?)
-                _overheadCamera.enabled = false;
-                // GameCamera and prompt text depend on Locator - have to wait a little longer
+                _overheadCamController = overhead.AddComponent<OverheadCameraController>();
+                _overheadCamController.OverheadCamera = overhead.AddComponent<OWCamera>();
+                _overheadCamController.SetEnabled(false);
+
+                // camera init, prompt text depend on Locator - have to wait a little longer
                 StartCoroutine(LateInit());
             };
         }
@@ -99,7 +101,10 @@ namespace InhabitantChess
 
             _bgController.PlayerManip = Locator.GetPlayerTransform().GetComponentInChildren<FirstPersonManipulator>();
             _playerCamController = Locator.GetPlayerCameraController();
-            var flashbackEffect = _overheadCamera.transform.gameObject.AddComponent<FlashbackScreenGrabImageEffect>();
+            // TODO: fix culling, view lock on player camera (update patches?)
+            _overheadCamController.Setup(Locator.GetPlayerCamera().cullingMask);
+
+            var flashbackEffect = _overheadCamController.transform.gameObject.AddComponent<FlashbackScreenGrabImageEffect>();
             var playerFlashEffect = _playerCamController.transform.GetComponent<FlashbackScreenGrabImageEffect>();
             flashbackEffect._downsampleShader = playerFlashEffect._downsampleShader;
             flashbackEffect._downsampleMaterial = playerFlashEffect._downsampleMaterial;
@@ -135,16 +140,18 @@ namespace InhabitantChess
             _initOverheadTime = Time.time;
             _playerCamController.SnapToDegreesOverSeconds(0f, -48.5f, 0.5f, true);
             _playerCamController.SnapToFieldOfView(24f, 0.5f, true);
+            OWInput.ChangeInputMode(InputMode.Map);
         }
 
         private void ExitOverheadView()
         {
             PlayerState = ChessPlayerState.ExitingOverhead;
             _exitOverheadTime = Time.time;
-            _overheadCamera.enabled = false;
+            _overheadCamController.SetEnabled(false);
             _playerCamController._playerCamera.enabled = true;
             _playerCamController.CenterCameraOverSeconds(0.5f, true);
             _playerCamController.SnapToInitFieldOfView(0.5f, true);
+            OWInput.ChangeInputMode(InputMode.Character);
             GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", _playerCamController._playerCamera);
         }
 
@@ -154,8 +161,8 @@ namespace InhabitantChess
             {
                 PlayerState = ChessPlayerState.InOverhead;
                 _playerCamController._playerCamera.enabled = false;
-                _overheadCamera.enabled = true;
-                GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", _overheadCamera);
+                _overheadCamController.SetEnabled(true);
+                GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", _overheadCamController.OverheadCamera);
             }
         }
 
