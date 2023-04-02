@@ -1,6 +1,4 @@
-﻿using System;
-
-public enum PieceType
+﻿public enum PieceType
 {
     Blocker,
     Antler,

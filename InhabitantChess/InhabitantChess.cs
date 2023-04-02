@@ -16,11 +16,12 @@ namespace InhabitantChess
 
         public static InhabitantChess Instance { get; private set; }
         public GameObject BoardGame { get; private set; }
-        public bool Seated { get; private set; }
+        public ChessPlayerState PlayerState { get; private set; }
 
-        private float _seatExitTime;
-        private bool _completedStanding = true;
+        private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
         private BoardGameController _bgController;
+        private PlayerCameraController _playerCamController;
+        private OWCamera _overheadCamera;
         private PlayerAttachPoint _attachPoint;
         private InteractZone _seatInteract;
         private Dictionary<string, GameObject> _prefabDict = new();
@@ -44,7 +45,7 @@ namespace InhabitantChess
                 if (loadScene != OWScene.SolarSystem) return;
                 var playerBody = FindObjectOfType<PlayerBody>();
 
-                Seated = false;
+                PlayerState = ChessPlayerState.None;
 
                 GameObject slate = GameObject.Find("Sector_TH/Sector_Village/Sector_StartingCamp/Characters_StartingCamp/Villager_HEA_Slate/Villager_HEA_Slate_ANIM_LogSit");
                 BoardGame = Instantiate(_prefabDict["chessPrefab"], slate.transform);
@@ -79,6 +80,14 @@ namespace InhabitantChess
                 GameObject gameSeat = Instantiate(gneissSeat, BoardGame.transform);
                 gameSeat.transform.localPosition = new Vector3(1, -0.8f, 0);
                 gameSeat.transform.localRotation = Quaternion.Euler(0, 270, 0);
+
+                GameObject overhead = Instantiate(new GameObject("Overhead Camera"), BoardGame.transform);
+                overhead.transform.localPosition = new Vector3(-0.1f, 1.5f, 0);
+                overhead.transform.localRotation = Quaternion.Euler(90, 270, 0);
+                _overheadCamera = overhead.AddComponent<OWCamera>();
+                _overheadCamera.aspect = 1.6f;
+                // TODO: fix culling, view lock on player camera (update patches?)
+                _overheadCamera.enabled = false;
                 // GameCamera and prompt text depend on Locator - have to wait a little longer
                 StartCoroutine(LateInit());
             };
@@ -89,6 +98,11 @@ namespace InhabitantChess
             yield return new WaitForSeconds(delay);
 
             _bgController.PlayerManip = Locator.GetPlayerTransform().GetComponentInChildren<FirstPersonManipulator>();
+            _playerCamController = Locator.GetPlayerCameraController();
+            var flashbackEffect = _overheadCamera.transform.gameObject.AddComponent<FlashbackScreenGrabImageEffect>();
+            var playerFlashEffect = _playerCamController.transform.GetComponent<FlashbackScreenGrabImageEffect>();
+            flashbackEffect._downsampleShader = playerFlashEffect._downsampleShader;
+            flashbackEffect._downsampleMaterial = playerFlashEffect._downsampleMaterial;
             _seatInteract.SetPromptText(UITextType.ItemUnknownArtifactPrompt);
             _seatInteract.OnPressInteract += this.OnPressInteract;
 
@@ -97,13 +111,12 @@ namespace InhabitantChess
 
         private void OnPressInteract()
         {
-            if (!Seated)
+            if (PlayerState == ChessPlayerState.None)
             {
                 _seatInteract.DisableInteraction();
                 _attachPoint.AttachPlayer();
                 _bgController.EnterGame();
-                Seated = true;
-                _completedStanding = false;
+                PlayerState = ChessPlayerState.Seated;
             }
         }
 
@@ -112,27 +125,79 @@ namespace InhabitantChess
             _attachPoint.DetachPlayer();
             _seatInteract.ResetInteraction();
             _seatInteract.EnableInteraction();
-            _completedStanding = true;
+            PlayerState = ChessPlayerState.None;
+        }
+
+        private void EnterOverheadView()
+        {
+            // my ability to directly lift mobius' code grows stronger with every passing day
+            PlayerState = ChessPlayerState.EnteringOverhead;
+            _initOverheadTime = Time.time;
+            _playerCamController.SnapToDegreesOverSeconds(0f, -48.5f, 0.5f, true);
+            _playerCamController.SnapToFieldOfView(24f, 0.5f, true);
+        }
+
+        private void ExitOverheadView()
+        {
+            PlayerState = ChessPlayerState.ExitingOverhead;
+            _exitOverheadTime = Time.time;
+            _overheadCamera.enabled = false;
+            _playerCamController._playerCamera.enabled = true;
+            _playerCamController.CenterCameraOverSeconds(0.5f, true);
+            _playerCamController.SnapToInitFieldOfView(0.5f, true);
+            GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", _playerCamController._playerCamera);
+        }
+
+        private void UpdateEnterOverheadTransition()
+        {
+            if (Time.time > _initOverheadTime + 0.45f) 
+            {
+                PlayerState = ChessPlayerState.InOverhead;
+                _playerCamController._playerCamera.enabled = false;
+                _overheadCamera.enabled = true;
+                GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", _overheadCamera);
+            }
         }
 
         private void Update()
         {
-            if (_seatInteract == null) return;
-            else if (Seated && OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All))
+            if (_seatInteract == null || PlayerState == ChessPlayerState.None) return;
+
+            if (PlayerState == ChessPlayerState.Seated && OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All))
             {
                 //_bgController.ExitGame();
                 Locator.GetPlayerCameraController().CenterCameraOverSeconds(0.2f, false);
-                Seated = false;
+                PlayerState = ChessPlayerState.StandingUp;
+            }
+            else if (PlayerState != ChessPlayerState.EnteringOverhead)
+            {
+                if (PlayerState != ChessPlayerState.InOverhead && OWInput.IsNewlyPressed(InputLibrary.landingCamera, InputMode.All))
+                {
+                    EnterOverheadView();
+                }
+                else if (PlayerState == ChessPlayerState.InOverhead && (OWInput.IsNewlyPressed(InputLibrary.landingCamera, InputMode.All) ||
+                        OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All)))
+                {
+                    InputLibrary.cancel.ConsumeInput();
+                    ExitOverheadView();
+                }
+            }
+            else if (PlayerState == ChessPlayerState.EnteringOverhead)
+            {
+                UpdateEnterOverheadTransition();
             }
         }
 
         private void FixedUpdate()
         {
             // delay copied from ship cockpit controller to force recentering of camera
-            // Seated controls the logic for 
-            if (!Seated && !_completedStanding && Time.time >= _seatExitTime + 0.2f)
+            if (PlayerState == ChessPlayerState.StandingUp && Time.time >= _exitSeatTime + 0.2f)
             {
                 CompleteStandingUp();
+            }
+            if (PlayerState == ChessPlayerState.ExitingOverhead && Time.time >= _exitOverheadTime + 0.45f)
+            {
+                PlayerState = ChessPlayerState.Seated;
             }
         }
 

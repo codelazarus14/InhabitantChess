@@ -34,7 +34,7 @@ namespace InhabitantChess
             }
 
             // detect if we're playing the game and treat camera input like cockpit
-            flag = flag || InhabitantChess.Instance.Seated;
+            flag = flag || InhabitantChess.Instance.PlayerState == ChessPlayerState.Seated;
 
             if (flag)
             {
@@ -62,7 +62,7 @@ namespace InhabitantChess
                     __instance._degreesX = Mathf.Clamp(__instance._degreesX, -60f, 60f);
                     __instance._degreesY = Mathf.Clamp(__instance._degreesY, -35f, 80f);
                 }
-                else if (InhabitantChess.Instance.Seated)
+                else if (InhabitantChess.Instance.PlayerState == ChessPlayerState.Seated)
                 {
                     __instance._degreesX = Mathf.Clamp(__instance._degreesX, -80f, 80f);
                     __instance._degreesY = Mathf.Clamp(__instance._degreesY, -80f, 35f);
@@ -78,6 +78,18 @@ namespace InhabitantChess
             Quaternion localRotation = __instance._rotationX * __instance._rotationY * Quaternion.identity;
             __instance._playerCamera.transform.localRotation = localRotation;
             return false;
+        }
+
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(FlashbackScreenGrabImageEffect), nameof(FlashbackScreenGrabImageEffect.Awake))]
+        public static bool FlashbackScreenGrabImageEffect_Awake_Prefix(FlashbackScreenGrabImageEffect __instance)
+        {
+            if (__instance._downsampleShader == null)
+            {
+                __instance.enabled = false;
+                return false;
+            }
+            return true;
         }
     }
 }
