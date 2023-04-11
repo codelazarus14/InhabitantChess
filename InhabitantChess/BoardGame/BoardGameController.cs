@@ -11,6 +11,8 @@ namespace InhabitantChess.BoardGame
          * TODO:
          * - replace piece-teleporting with animated slerp or smth
          * - add toggleable overview camera or adjust seat
+         * - add deadwood to side of board
+         * - add screen prompts for controls (interact, enter/exit overhead, lean forward)
          * - refactor - maybe rename GetAdjacent to GetValid or something, avoid
          *   hardcoding rules etc. and cleanup/document
          */

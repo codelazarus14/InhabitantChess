@@ -23,6 +23,7 @@ namespace InhabitantChess
         private BoardGameController _bgController;
         private PlayerCameraController _playerCamController;
         private OverheadCameraController _overheadCamController;
+        private ReticleController _reticule;
         private PlayerAttachPoint _attachPoint;
         private InteractZone _seatInteract;
         private Dictionary<string, GameObject> _prefabDict = new();
@@ -84,11 +85,13 @@ namespace InhabitantChess
 
                 GameObject overhead = new GameObject("Overhead Camera");
                 overhead.transform.SetParent(BoardGame.transform);
-                overhead.transform.localPosition = new Vector3(-0.1f, 1.5f, 0);
+                overhead.transform.localPosition = new Vector3(0f, 1.5f, 0);
                 overhead.transform.localRotation = Quaternion.Euler(90, 270, 0);
                 _overheadCamController = overhead.AddComponent<OverheadCameraController>();
                 _overheadCamController.OverheadCamera = overhead.AddComponent<OWCamera>();
                 _overheadCamController.SetEnabled(false);
+
+                _reticule = GameObject.Find("Reticule/Image").GetComponent<ReticleController>();
 
                 // camera init, prompt text depend on Locator - have to wait a little longer
                 StartCoroutine(LateInit());
@@ -109,7 +112,7 @@ namespace InhabitantChess
             flashbackEffect._downsampleShader = playerFlashEffect._downsampleShader;
             flashbackEffect._downsampleMaterial = playerFlashEffect._downsampleMaterial;
             _seatInteract.SetPromptText(UITextType.ItemUnknownArtifactPrompt);
-            _seatInteract.OnPressInteract += this.OnPressInteract;
+            _seatInteract.OnPressInteract += OnPressInteract;
 
             Logger.Log("Finished setup");
         }
@@ -137,6 +140,7 @@ namespace InhabitantChess
         {
             // my ability to directly lift mobius' code grows stronger with every passing day
             PlayerState = ChessPlayerState.EnteringOverhead;
+            _reticule.gameObject.SetActive(false);
             _initOverheadTime = Time.time;
             _playerCamController.SnapToDegreesOverSeconds(0f, -48.5f, 0.5f, true);
             _playerCamController.SnapToFieldOfView(24f, 0.5f, true);
@@ -146,6 +150,7 @@ namespace InhabitantChess
         private void ExitOverheadView()
         {
             PlayerState = ChessPlayerState.ExitingOverhead;
+            _reticule.gameObject.SetActive(true);
             _exitOverheadTime = Time.time;
             _overheadCamController.SetEnabled(false);
             _playerCamController._playerCamera.enabled = true;
