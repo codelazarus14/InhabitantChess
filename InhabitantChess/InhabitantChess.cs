@@ -18,8 +18,10 @@ namespace InhabitantChess
         public static InhabitantChess Instance { get; private set; }
         public GameObject BoardGame { get; private set; }
         public ChessPlayerState PlayerState { get; private set; }
+        public float LeanDist { get; private set; }
 
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
+        private float _maxLeanDist = 1f, _leanSpeed = 1.5f;
         private BoardGameController _bgController;
         private PlayerCameraController _playerCamController;
         private OverheadCameraController _overheadCamController;
@@ -175,15 +177,26 @@ namespace InhabitantChess
         {
             if (_seatInteract == null || PlayerState == ChessPlayerState.None) return;
 
-            if (PlayerState == ChessPlayerState.Seated && OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All))
+            if (PlayerState == ChessPlayerState.Seated)
             {
-                //_bgController.ExitGame();
-                Locator.GetPlayerCameraController().CenterCameraOverSeconds(0.2f, false);
-                PlayerState = ChessPlayerState.StandingUp;
+                if (OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All))
+                {
+                    //_bgController.ExitGame();
+                    LeanDist = 0f;
+                    _playerCamController.CenterCameraOverSeconds(0.2f, false);
+                    PlayerState = ChessPlayerState.StandingUp;
+                } 
+                else if (OWInput.IsPressed(InputLibrary.moveXZ, InputMode.All))
+                {
+                    float v = OWInput.GetAxisValue(InputLibrary.moveXZ).y;
+                    LeanDist += v *_leanSpeed * Time.deltaTime;
+                    LeanDist = Mathf.Clamp(LeanDist, 0.0f, _maxLeanDist);
+                    // update position ig?
+                }
             }
-            else if (PlayerState != ChessPlayerState.EnteringOverhead)
+            if (PlayerState != ChessPlayerState.EnteringOverhead)
             {
-                if (PlayerState != ChessPlayerState.InOverhead && OWInput.IsNewlyPressed(InputLibrary.landingCamera, InputMode.All))
+                if (PlayerState == ChessPlayerState.Seated && OWInput.IsNewlyPressed(InputLibrary.landingCamera, InputMode.All))
                 {
                     EnterOverheadView();
                 }
@@ -194,7 +207,7 @@ namespace InhabitantChess
                     ExitOverheadView();
                 }
             }
-            else if (PlayerState == ChessPlayerState.EnteringOverhead)
+            else
             {
                 UpdateEnterOverheadTransition();
             }

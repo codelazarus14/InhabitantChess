@@ -80,6 +80,18 @@ namespace InhabitantChess
             return false;
         }
 
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(PlayerCameraController), nameof(PlayerCameraController.UpdateCamera))]
+        public static void PlayerCameraController_UpdateCamera_Postfix(PlayerCameraController __instance)
+        {
+            if (InhabitantChess.Instance.PlayerState == ChessPlayerState.Seated)
+            {
+                float lean = InhabitantChess.Instance.LeanDist;
+                __instance._targetLocalPosition = new Vector3(__instance._targetLocalPosition.x, __instance._targetLocalPosition.y, lean);
+                __instance.transform.localPosition = Vector3.Lerp(__instance.transform.localPosition, __instance._targetLocalPosition, 0.1f);
+            }
+        }
+
         [HarmonyPrefix]
         [HarmonyPatch(typeof(FlashbackScreenGrabImageEffect), nameof(FlashbackScreenGrabImageEffect.Awake))]
         public static bool FlashbackScreenGrabImageEffect_Awake_Prefix(FlashbackScreenGrabImageEffect __instance)
