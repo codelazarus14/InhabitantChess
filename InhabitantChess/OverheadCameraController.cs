@@ -22,6 +22,7 @@ namespace InhabitantChess
 
         public void Setup(int cullingMask)
         {
+            // TODO: Fix culling mask (doesn't seem to hide helmet and show player head
             OverheadCamera.cullingMask = cullingMask;
             OverheadCamera.aspect = 1.6f;
         }

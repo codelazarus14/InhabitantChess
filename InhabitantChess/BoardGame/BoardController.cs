@@ -21,6 +21,7 @@ namespace InhabitantChess.BoardGame
         // this may change in future bc it depends on world, not local space
         public Dictionary<(int up, int across), GameObject> SpaceDict { get; private set; }
         public bool IsInitialized { get; private set; }
+        public bool Moving { get; private set; }
 
         private static float s_triSize = 0.19346f;
         private static float s_triHeight = Mathf.Sqrt(3) / 2 * s_triSize;
@@ -28,6 +29,11 @@ namespace InhabitantChess.BoardGame
         private static Vector3 s_wOffset = new Vector3(-0.05584711f, 0, 0.09673002f);
         private static Vector3 s_startingPos = new Vector3(0.3350971f, s_boardLevels[0], -0.58038f);
         private static int s_Rows = 7;
+
+        private float _travelTime = 0.8f, _initMoveTime, _curveHeight = 0.4f;
+        private GameObject _movingPiece;
+        private Vector3 _startMovePos, _destMovePos;
+        private Quaternion _startLookRot, _destLookRot;
 
         private List<(int, int)> _beamSpaces;
         private Transform _spcParent, _pieceParent;
@@ -39,7 +45,21 @@ namespace InhabitantChess.BoardGame
 
         private void Update()
         {
+            if (Moving)
+            {
+                float progress = (Time.time - _initMoveTime) / _travelTime;
+                if (progress > 1) Moving = false;
+                else
+                {
+                    // https://gamedev.stackexchange.com/questions/157642/moving-a-2d-object-along-circular-arc-between-two-points
+                    Vector3 c = _startMovePos + (_destMovePos - _startMovePos) / 2 + Vector3.up * _curveHeight; 
 
+                    Vector3 m1 = Vector3.Lerp(_startMovePos, c, progress);
+                    Vector3 m2 = Vector3.Lerp(c, _destMovePos, progress);
+                    _movingPiece.transform.localPosition = Vector3.Lerp(m1, m2, progress);
+                    _movingPiece.transform.localRotation = Quaternion.Slerp(_startLookRot, _destLookRot, progress);
+                }
+            }
         }
 
         public void Init()
@@ -353,18 +373,27 @@ namespace InhabitantChess.BoardGame
                 // move/rotate piece, set controller occupants
                 if (!settingUp)
                 {
+                    Moving = true;
+                    _movingPiece = piece.obj;
+
                     GameObject oldSpc = SpaceDict[(oldPosNN.up, oldPosNN.across)];
                     SpaceController oldSpcController = oldSpc.GetComponent<SpaceController>();
                     oldSpcController.SetOccupant(null);
 
+                    _startMovePos = oldSpc.transform.localPosition;
+                    _destMovePos = newSpc.transform.localPosition;
+                    _startLookRot = piece.obj.transform.localRotation;
                     Vector3 lookPos = newSpc.transform.localPosition - oldSpc.transform.localPosition;
                     // remove y component - only rotating in X/Z plane
                     lookPos.y = 0.0f;
-                    Debug.DrawLine(newSpc.transform.localPosition, oldSpc.transform.localPosition, Color.white, 10);
-                    piece.obj.transform.localRotation = Quaternion.LookRotation(lookPos);
+                    _destLookRot = Quaternion.LookRotation(lookPos);
+                    _initMoveTime = Time.time;
+                }
+                else
+                {
+                    piece.obj.transform.localPosition = newSpc.transform.localPosition;
                 }
                 newSpcController.SetOccupant(piece.obj);
-                piece.obj.transform.localPosition = newSpc.transform.localPosition;
                 return true;
             }
             Debug.LogWarning($"Tried to move to impossible position {newPos.up}, {newPos.across}!");

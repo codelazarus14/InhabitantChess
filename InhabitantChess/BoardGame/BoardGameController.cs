@@ -10,8 +10,7 @@ namespace InhabitantChess.BoardGame
         /**
          * TODO:
          * - replace piece-teleporting with animated slerp or smth
-         * - add toggleable overview camera or adjust seat
-         * - add deadwood to side of board
+         * - add deadwood to side of board (instantiate prefabs?)
          * - add screen prompts for controls (interact, enter/exit overhead, lean forward)
          * - refactor - maybe rename GetAdjacent to GetValid or something, avoid
          *   hardcoding rules etc. and cleanup/document
@@ -31,7 +30,7 @@ namespace InhabitantChess.BoardGame
         {
             WaitingForInput,
             InputReceived,
-            Moving,
+            DoneMoving,
             Idle,
             GameOver
         }
@@ -149,9 +148,9 @@ namespace InhabitantChess.BoardGame
                 yield return new WaitUntil(() => _boardState == BoardState.InputReceived);
             }
             // we're ready to move
-            // might use moving to check animation status later idk
-            _boardState = BoardState.Moving;
             _board.TryMove(pIdx, _selectedSpace.Space);
+            yield return new WaitUntil(() => !_board.Moving);
+            _boardState = BoardState.DoneMoving;
             // reset highlighting/visibility and finish
             _board.ToggleHighlight(player.g);
             _board.ToggleSpaces(adj);
@@ -177,8 +176,9 @@ namespace InhabitantChess.BoardGame
             (int, int) randPos = adj[Random.Range(0, adj.Count)];
             _selectedSpace = _board.SpaceDict[randPos].GetComponent<SpaceController>();
             // move to space
-            _boardState = BoardState.Moving;
             _board.TryMove(pIdx, _selectedSpace.Space);
+            yield return new WaitUntil(() => !_board.Moving);
+            _boardState = BoardState.DoneMoving;
             _board.UpdateBeam();
             // reset
             _board.ToggleHighlight(player.g);
