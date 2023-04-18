@@ -17,7 +17,7 @@ namespace InhabitantChess.BoardGame
         public Shader HighlightShader;
         public Material[] HighlightMaterials;
 
-        public List<(GameObject g, (int up, int across) pos, PieceType type)> Players { get; private set; }
+        public List<(GameObject g, (int up, int across) pos, PieceType type)> Pieces { get; private set; }
         // this may change in future bc it depends on world, not local space
         public Dictionary<(int up, int across), GameObject> SpaceDict { get; private set; }
         public bool IsInitialized { get; private set; }
@@ -35,8 +35,11 @@ namespace InhabitantChess.BoardGame
         private Vector3 _startMovePos, _destMovePos;
         private Quaternion _startLookRot, _destLookRot;
 
+        private int _deadwoodIdx;
+        private Vector3 _deadwoodOffset = new Vector3(s_startingPos.x, 0, -s_startingPos.z + 0.25f);
+        private GameObject[] _deadwood;
         private List<(int, int)> _beamSpaces;
-        private Transform _spcParent, _pieceParent;
+        private Transform _spcParent, _pieceParent, _deadwoodParent;
 
         private void Start()
         {
@@ -65,8 +68,11 @@ namespace InhabitantChess.BoardGame
         public void Init()
         {
             SpaceDict = GenerateBoard();
-            Players = SetupBoard();
+            Pieces = SetupBoard();
+
             _beamSpaces = new List<(int, int)>();
+            _deadwood = new GameObject[Pieces.Count];
+            _deadwoodIdx = 0;
             IsInitialized = true;
         }
 
@@ -182,6 +188,13 @@ namespace InhabitantChess.BoardGame
                 _pieceParent.localPosition = Vector3.zero;
                 _pieceParent.localRotation = Quaternion.identity;
             }
+            if (_deadwoodParent == null)
+            {
+                _deadwoodParent = new GameObject("BoardGame_Deadwood").transform;
+                _deadwoodParent.SetParent(transform.parent);
+                _deadwoodParent.localPosition = _deadwoodOffset;
+                _deadwoodParent.localRotation = Quaternion.identity;
+            }
 
             pieces.Add(CreateAndPlacePiece(_pieceParent, (0, 0), PieceType.Blocker));
             pieces.Add(CreateAndPlacePiece(_pieceParent, (0, 1), PieceType.Antler));
@@ -194,9 +207,13 @@ namespace InhabitantChess.BoardGame
         {
             IsInitialized = false;
             // delete old game pieces before we lose track of them
-            foreach (var p in Players)
+            foreach (var p in Pieces)
             {
                 Destroy(p.g);
+            }
+            foreach (var d in _deadwood)
+            {
+                Destroy(d);
             }
             Init();
         }
@@ -321,9 +338,9 @@ namespace InhabitantChess.BoardGame
             for (int i = 0; i < adj.Count; i++)
             {
                 bool foundOccupied = false;
-                for (int j = 0; j < Players.Count && !foundOccupied; j++)
+                for (int j = 0; j < Pieces.Count && !foundOccupied; j++)
                 {
-                    if (Players[j].pos == adj[i])
+                    if (Pieces[j].pos == adj[i])
                     {
                         adj.RemoveAt(i);
                         i--;
@@ -403,10 +420,10 @@ namespace InhabitantChess.BoardGame
         public void TryMove(int pIdx, (int, int) newPos)
         {
             // avoid updating position unless we succeeded
-            bool succeeded = MoveToSpace(Players[pIdx], newPos);
+            bool succeeded = MoveToSpace(Pieces[pIdx], newPos);
             if (succeeded)
             {
-                Players[pIdx] = (Players[pIdx].g, newPos, Players[pIdx].type);
+                Pieces[pIdx] = (Pieces[pIdx].g, newPos, Pieces[pIdx].type);
             }
         }
 
@@ -420,7 +437,7 @@ namespace InhabitantChess.BoardGame
             {
                 // see who's been hit and remove
                 var newBeamSpaces = new List<(int, int)>();
-                (int u, int a) eyePos = Players.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
+                (int u, int a) eyePos = Pieces.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
                 // list of flags to keep track of blocked beams
                 bool[] blocked = { false, false, false };
 
@@ -505,13 +522,13 @@ namespace InhabitantChess.BoardGame
         {
             // return a list of players by index to be removed
             var result = new List<int>();
-            for (int i = 0; i < Players.Count; i++)
+            for (int i = 0; i < Pieces.Count; i++)
             {
                 foreach ((int, int) spc in _beamSpaces)
                 {
-                    if (Players[i].pos == spc && Players[i].type != PieceType.Blocker)
+                    if (Pieces[i].pos == spc && Pieces[i].type != PieceType.Blocker)
                     {
-                        Debug.Log($"player {Players[i].g.name} hit at {Players[i].pos}");
+                        Debug.Log($"player {Pieces[i].g.name} hit at {Pieces[i].pos}");
                         result.Add(i);
                     }
                 }
@@ -524,13 +541,39 @@ namespace InhabitantChess.BoardGame
             // basically just OR-ing any past blocks in so that
             // everything beyond the blocker piece is also shielded
             bool blocked = wasBlocked;
-            foreach (var p in Players)
+            foreach (var p in Pieces)
             {
                 if (p.pos == pos && p.type == PieceType.Blocker)
                     blocked = true;
             }
 
             return blocked;
+        }
+
+        public void AddDeadwood(PieceType type)
+        {
+            GameObject newDeadwood = null;
+            switch (type)
+            {
+                case PieceType.Blocker:
+                    newDeadwood = GameObject.Instantiate(BlockerPrefab, _deadwoodParent);
+                    break;
+                case PieceType.Antler:
+                    newDeadwood = GameObject.Instantiate(AntlerPrefab, _deadwoodParent);
+                    break;
+                case PieceType.Eye:
+                    newDeadwood = GameObject.Instantiate(EyePrefab, _deadwoodParent);
+                    break;
+                default:
+                    Debug.LogWarning($"Invalid piece type {type}!");
+                    break;
+            }
+
+            Vector3 deadwoodPos = new Vector3(s_triHeight, 0, s_triSize / 2) * 0.8f;
+            newDeadwood.transform.localPosition -= _deadwoodIdx * deadwoodPos;
+            newDeadwood.SetActive(true);
+            _deadwood[_deadwoodIdx] = newDeadwood;
+            _deadwoodIdx++;
         }
     }
 }

@@ -10,7 +10,7 @@ namespace InhabitantChess.BoardGame
         /**
          * TODO:
          * - replace piece-teleporting with animated slerp or smth
-         * - add deadwood to side of board (instantiate prefabs?)
+         * - inscryption-style deadwood piece dropping
          * - add screen prompts for controls (interact, enter/exit overhead, lean forward)
          * - refactor - maybe rename GetAdjacent to GetValid or something, avoid
          *   hardcoding rules etc. and cleanup/document
@@ -86,7 +86,7 @@ namespace InhabitantChess.BoardGame
             Playing = false;
             if (_currPlyrIdx != -1)
             {
-                var currPlayer = _board.Players[_currPlyrIdx];
+                var currPlayer = _board.Pieces[_currPlyrIdx];
                 _board.ToggleHighlight(currPlayer.g);
                 _board.ToggleSpaces(_board.GetAdjacent(currPlayer.pos.up, currPlayer.pos.across));
                 _board.UpdateBeam(true);
@@ -103,10 +103,10 @@ namespace InhabitantChess.BoardGame
 
             while (Playing)
             {
-                for (int i = 0; i < _board.Players.Count && Playing; i++)
+                for (int i = 0; i < _board.Pieces.Count && Playing; i++)
                 {
                     _currPlyrIdx = i;
-                    if (_board.Players[i].type == PieceType.Eye)
+                    if (_board.Pieces[i].type == PieceType.Eye)
                     {
                         StartCoroutine(CPUTurn(i));
                     }
@@ -116,17 +116,10 @@ namespace InhabitantChess.BoardGame
                     }
                     // wait until turn finishes
                     yield return new WaitUntil(() => _boardState == BoardState.Idle);
-                    // deleted flagged players
+                    // deleted flagged pieces
                     var removed = _board.CheckBeam();
-                    foreach (int r in removed)
-                    {
-                        var temp = _board.Players[r];
-                        _board.Players.RemoveAt(r);
-                        Destroy(temp.g);
-                        if (r <= i) i--;
-                        Debug.Log($"Removed {temp.g.name}, i = {i}, list length {_board.Players.Count}");
-                        Playing = _board.Players.Count > 1;
-                    }
+                    i = RemovePieces(removed, i);
+                    Playing = _board.Pieces.Count > 1;
                 }
                 Debug.Log($"Turn {turnCount++} complete");
             }
@@ -136,7 +129,7 @@ namespace InhabitantChess.BoardGame
 
         private IEnumerator PlayerTurn(int pIdx)
         {
-            (GameObject g, (int up, int across) pos, PieceType type) player = _board.Players[pIdx];
+            (GameObject g, (int up, int across) pos, PieceType type) player = _board.Pieces[pIdx];
             List<(int, int)> adj = _board.GetAdjacent(player.pos.up, player.pos.across);
 
             _board.ToggleSpaces(adj);
@@ -164,7 +157,7 @@ namespace InhabitantChess.BoardGame
 
         private IEnumerator CPUTurn(int pIdx)
         {
-            (GameObject g, (int up, int across) pos, PieceType type) player = _board.Players[pIdx];
+            (GameObject g, (int up, int across) pos, PieceType type) player = _board.Pieces[pIdx];
             List<(int, int)> adj = _board.GetAdjacent(player.pos.up, player.pos.across);
             _board.ToggleHighlight(player.g);
             // add artificial wait
@@ -183,6 +176,21 @@ namespace InhabitantChess.BoardGame
             // reset
             _board.ToggleHighlight(player.g);
             _boardState = BoardState.Idle;
+        }
+
+        private int RemovePieces(List<int> Pieces, int currTurn)
+        {
+            int i = currTurn;
+            foreach (int r in Pieces)
+            {
+                var plyr = _board.Pieces[r];
+                _board.Pieces.RemoveAt(r);
+                _board.AddDeadwood(plyr.type);
+                Destroy(plyr.g);
+                if (r <= i) i--;
+                Debug.Log($"Removed {plyr.g.name}, i = {i}, list length {_board.Pieces.Count}");
+            }
+            return i;
         }
     }
 }
