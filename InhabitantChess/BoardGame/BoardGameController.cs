@@ -44,6 +44,8 @@ namespace InhabitantChess.BoardGame
 
         private void Update()
         {
+            if (!_board.IsInitialized) return;
+
             // check for user input - should probably add a prompt to show space under cursor
             if (_boardState == BoardState.WaitingForInput && OWInput.IsNewlyPressed(InputLibrary.interact, InputMode.All))
             {
@@ -88,7 +90,7 @@ namespace InhabitantChess.BoardGame
             {
                 var currPlayer = _board.Pieces[_currPlyrIdx];
                 _board.ToggleHighlight(currPlayer.g);
-                _board.ToggleSpaces(_board.GetAdjacent(currPlayer.pos.up, currPlayer.pos.across));
+                _board.ToggleSpaces(_board.LegalMoves(currPlayer.pos, currPlayer.type));
                 _board.UpdateBeam(true);
             }
             StartText.SetActive(true);
@@ -130,7 +132,7 @@ namespace InhabitantChess.BoardGame
         private IEnumerator PlayerTurn(int pIdx)
         {
             (GameObject g, (int up, int across) pos, PieceType type) player = _board.Pieces[pIdx];
-            List<(int, int)> adj = _board.GetAdjacent(player.pos.up, player.pos.across);
+            List<(int, int)> adj = _board.LegalMoves(player.pos, player.type);
 
             _board.ToggleSpaces(adj);
             _board.ToggleHighlight(player.g);
@@ -158,7 +160,7 @@ namespace InhabitantChess.BoardGame
         private IEnumerator CPUTurn(int pIdx)
         {
             (GameObject g, (int up, int across) pos, PieceType type) player = _board.Pieces[pIdx];
-            List<(int, int)> adj = _board.GetAdjacent(player.pos.up, player.pos.across);
+            List<(int, int)> adj = _board.LegalMoves(player.pos, player.type);
             _board.ToggleHighlight(player.g);
             // add artificial wait
             _boardState = BoardState.WaitingForInput;
@@ -183,10 +185,13 @@ namespace InhabitantChess.BoardGame
             int i = currTurn;
             foreach (int r in Pieces)
             {
+                // replace piece w new deadwood
                 var plyr = _board.Pieces[r];
                 _board.Pieces.RemoveAt(r);
                 _board.AddDeadwood(plyr.type);
                 Destroy(plyr.g);
+                // dec currTurn if removed piece would shift piece list index up 1
+                // so we don't skip the next one in Play() loop
                 if (r <= i) i--;
                 Debug.Log($"Removed {plyr.g.name}, i = {i}, list length {_board.Pieces.Count}");
             }

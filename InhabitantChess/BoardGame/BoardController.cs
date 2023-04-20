@@ -67,8 +67,8 @@ namespace InhabitantChess.BoardGame
 
         public void Init()
         {
-            SpaceDict = GenerateBoard();
-            Pieces = SetupBoard();
+            GenerateBoard();
+            SetupBoard(_pieceParent == null);
 
             _beamSpaces = new List<(int, int)>();
             _deadwood = new GameObject[Pieces.Count];
@@ -76,149 +76,129 @@ namespace InhabitantChess.BoardGame
             IsInitialized = true;
         }
 
-        private Dictionary<(int, int), GameObject> GenerateBoard()
+        private void GenerateBoard()
         {
-            if (SpaceDict != null) return SpaceDict;
-
-            var resDict = new Dictionary<(int up, int across), GameObject>();
-            if (_spcParent == null)
+            if (SpaceDict == null)
             {
+                SpaceDict = new Dictionary<(int up, int across), GameObject>();
+
                 _spcParent = new GameObject("BoardGame_Spaces").transform;
                 _spcParent.SetParent(transform.parent);
                 _spcParent.localPosition = Vector3.zero;
                 _spcParent.localRotation = Quaternion.identity;
-            }
 
-            for (int i = s_Rows; i > 0; i--)
-            {
-                // j keep track of # of B spaces per row,
-                // i will store real count in dict
-                int idx = s_Rows - i;
-                float rowOffset = idx * s_triSize / 2;
-
-                for (int j = 0; j < i; j++)
+                for (int i = s_Rows; i > 0; i--)
                 {
-                    // default to lowest height level
-                    float newHeight = s_boardLevels[0];
-                    GameObject hSpace;
+                    // j keep track of # of B spaces per row,
+                    // i will store real count in dict
+                    int idx = s_Rows - i;
+                    float rowOffset = idx * s_triSize / 2;
 
-                    // find B positions relative to starting pos
-                    Vector3 newPos = new Vector3(
-                        s_startingPos.x - s_triHeight * (s_Rows - i),
-                        newHeight,
-                        s_startingPos.z + rowOffset + j * s_triSize);
-
-                    // don't add W to left corner
-                    if (s_Rows > i && j == 0)
+                    for (int j = 0; j < i; j++)
                     {
-                        // add W spaces to left edge 
-                        Vector3 newPosW = new Vector3(
-                            newPos.x - s_wOffset.x,
-                            newHeight,
-                            newPos.z - s_wOffset.z);
+                        // default to lowest height level
+                        float newHeight = s_boardLevels[0];
+                        GameObject hSpace;
 
+                        // find B positions relative to starting pos
+                        Vector3 newPos = new Vector3(
+                            s_startingPos.x - s_triHeight * (s_Rows - i),
+                            newHeight,
+                            s_startingPos.z + rowOffset + j * s_triSize);
+
+                        // don't add W to left corner
+                        if (s_Rows > i && j == 0)
+                        {
+                            // add W spaces to left edge 
+                            Vector3 newPosW = new Vector3(
+                                newPos.x - s_wOffset.x,
+                                newHeight,
+                                newPos.z - s_wOffset.z);
+
+                            hSpace = Instantiate(SpacePrefab, _spcParent);
+                            hSpace.transform.localPosition = newPosW;
+                            hSpace.transform.localRotation = Quaternion.identity;
+                            SpaceDict[(s_Rows - i, idx)] = hSpace;
+
+                            idx++;
+                        }
+
+                        // determine height based on position
+                        if (s_Rows - 1 > i && i > 4 && 1 < j && j < i - 2) newHeight = s_boardLevels[2];
+                        else if (s_Rows > i && i > 1 && 0 < j && j < i - 1) newHeight = s_boardLevels[1];
+
+                        // only update y (x/z already defined for left edge W, which can never be elevated)
+                        newPos.y = newHeight;
+
+                        // add B spaces
                         hSpace = Instantiate(SpacePrefab, _spcParent);
-                        hSpace.transform.localPosition = newPosW;
+                        hSpace.transform.localPosition = newPos;
                         hSpace.transform.localRotation = Quaternion.identity;
-                        resDict[(s_Rows - i, idx)] = hSpace;
+                        SpaceDict[(s_Rows - i, idx)] = hSpace;
 
                         idx++;
-                    }
 
-                    // determine height based on position
-                    if (s_Rows - 1 > i && i > 4 && 1 < j && j < i - 2) newHeight = s_boardLevels[2];
-                    else if (s_Rows > i && i > 1 && 0 < j && j < i - 1) newHeight = s_boardLevels[1];
+                        // don't add W to right corner
+                        if (s_Rows > i || j < i - 1)
+                        {
+                            // add W spaces to right of every other B piece
+                            if (s_Rows - 1 > i && i > 3 && 0 < j && j < i - 2) newHeight = s_boardLevels[2];
+                            else if (s_Rows > i && i > 1 && 0 <= j && j < i - 1) newHeight = s_boardLevels[1];
+                            else newHeight = s_boardLevels[0];
 
-                    // only update y (x/z already defined for left edge W, which can never be elevated)
-                    newPos.y = newHeight;
+                            // need to update all three components (right/down of B and also diff height)
+                            Vector3 newPosW = new Vector3(
+                                newPos.x - s_wOffset.x,
+                                newHeight,
+                                newPos.z + s_wOffset.z);
 
-                    // add B spaces
-                    hSpace = Instantiate(SpacePrefab, _spcParent);
-                    hSpace.transform.localPosition = newPos;
-                    hSpace.transform.localRotation = Quaternion.identity;
-                    resDict[(s_Rows - i, idx)] = hSpace;
+                            hSpace = Instantiate(SpacePrefab, _spcParent);
+                            hSpace.transform.localPosition = newPosW;
+                            hSpace.transform.localRotation = Quaternion.identity;
+                            SpaceDict[(s_Rows - i, idx)] = hSpace;
 
-                    idx++;
-
-                    // don't add W to right corner
-                    if (s_Rows > i || j < i - 1)
-                    {
-                        // add W spaces to right of every other B piece
-                        if (s_Rows - 1 > i && i > 3 && 0 < j && j < i - 2) newHeight = s_boardLevels[2];
-                        else if (s_Rows > i && i > 1 && 0 <= j && j < i - 1) newHeight = s_boardLevels[1];
-                        else newHeight = s_boardLevels[0];
-
-                        // need to update all three components (right/down of B and also diff height)
-                        Vector3 newPosW = new Vector3(
-                            newPos.x - s_wOffset.x,
-                            newHeight,
-                            newPos.z + s_wOffset.z);
-
-                        hSpace = Instantiate(SpacePrefab, _spcParent);
-                        hSpace.transform.localPosition = newPosW;
-                        hSpace.transform.localRotation = Quaternion.identity;
-                        resDict[(s_Rows - i, idx)] = hSpace;
-
-                        idx++;
+                            idx++;
+                        }
                     }
                 }
+                // final edits, set to invisible until further notice
+                foreach ((int u, int a) k in SpaceDict.Keys)
+                {
+                    GameObject spc = SpaceDict[k];
+                    SpaceController spcController = spc.AddComponent<SpaceController>();
+                    spcController.SetSpace(k.u, k.a);
+                    spcController.SetMaterials(HighlightMaterials[0]);
+                    if (!IsBlack(k)) spc.transform.localRotation = Quaternion.AngleAxis(-180, Vector3.up);
+                    spc.SetActive(false);
+                    Synchronizer.OnLerpComplete.AddListener(spcController.FlipHighlightLerp);
+                }
             }
-            // final edits, set to invisible until further notice
-            foreach ((int u, int a) k in resDict.Keys)
-            {
-                GameObject spc = resDict[k];
-                SpaceController spcController = spc.AddComponent<SpaceController>();
-                spcController.SetSpace(k.u, k.a);
-                spcController.SetMaterials(HighlightMaterials[0]);
-                if (!IsBlack(k)) spc.transform.localRotation = Quaternion.AngleAxis(-180, Vector3.up);
-                spc.SetActive(false);
-                Synchronizer.OnLerpComplete.AddListener(spcController.FlipHighlightLerp);
-            }
-            return resDict;
         }
 
-        private List<(GameObject, (int, int), PieceType)> SetupBoard()
+        private void SetupBoard(bool newParents = false)
         {
-            var pieces = new List<(GameObject g, (int up, int across) pos, PieceType type)>();
-            // place players
-            if (_pieceParent == null)
+            Pieces = new List<(GameObject g, (int up, int across) pos, PieceType type)>();
+            if (newParents)
             {
                 _pieceParent = new GameObject("BoardGame_Pieces").transform;
                 _pieceParent.SetParent(transform.parent);
                 _pieceParent.localPosition = Vector3.zero;
                 _pieceParent.localRotation = Quaternion.identity;
-            }
-            if (_deadwoodParent == null)
-            {
+
                 _deadwoodParent = new GameObject("BoardGame_Deadwood").transform;
                 _deadwoodParent.SetParent(transform.parent);
                 _deadwoodParent.localPosition = _deadwoodOffset;
                 _deadwoodParent.localRotation = Quaternion.identity;
             }
 
-            pieces.Add(CreateAndPlacePiece(_pieceParent, (0, 0), PieceType.Blocker));
-            pieces.Add(CreateAndPlacePiece(_pieceParent, (0, 1), PieceType.Antler));
-            pieces.Add(CreateAndPlacePiece(_pieceParent, (0, 12), PieceType.Antler));
-            pieces.Add(CreateAndPlacePiece(_pieceParent, (6, 7), PieceType.Eye));
-            return pieces;
+            // place players
+            CreateAndPlacePiece(_pieceParent, (0, 0), PieceType.Blocker);
+            CreateAndPlacePiece(_pieceParent, (0, 1), PieceType.Antler);
+            CreateAndPlacePiece(_pieceParent, (0, 12), PieceType.Antler);
+            CreateAndPlacePiece(_pieceParent, (6, 7), PieceType.Eye);
         }
 
-        public void ResetBoard()
-        {
-            IsInitialized = false;
-            // delete old game pieces before we lose track of them
-            foreach (var p in Pieces)
-            {
-                Destroy(p.g);
-            }
-            foreach (var d in _deadwood)
-            {
-                Destroy(d);
-            }
-            Init();
-        }
-
-        private (GameObject, (int, int), PieceType) CreateAndPlacePiece(Transform parent, (int up, int across) pos, PieceType type)
+        private void CreateAndPlacePiece(Transform parent, (int up, int across) pos, PieceType type)
         {
             GameObject piece = null;
             // instantiate prefab
@@ -242,17 +222,12 @@ namespace InhabitantChess.BoardGame
             // fix rotation from prefab
             ChildRotationFix(piece, type);
 
-            // put in starting position/rotation
-            (GameObject, (int, int)?, PieceType) pieceTemp = (piece, null, type);
-            MoveToSpace(pieceTemp, pos);
-            if (IsBlack(pos))
-            {
-                piece.transform.localRotation = Quaternion.AngleAxis(-30, Vector3.up);
-            }
-            else
-            {
-                piece.transform.localRotation = Quaternion.AngleAxis(-90, Vector3.up);
-            }
+            // create placeholder pos
+            (int, int) tempPos = (99, 99);
+            (GameObject, (int, int), PieceType) pieceTemp = (piece, tempPos, type);
+            Pieces.Add(pieceTemp);
+            // update w starting pos
+            DoMove(Pieces.Count - 1, pos, true);
 
             // set highlight materials - maybe move up near instantiating pieces? or if materials depend on type..
             GameObject highlight = piece.transform.Find("Highlighted").gameObject;
@@ -272,8 +247,6 @@ namespace InhabitantChess.BoardGame
                 else
                     highlightRenderer.materials = new Material[] { HighlightMaterials[(i + 1) % 2] };
             }
-
-            return (piece, pos, type);
         }
 
         private void ChildRotationFix(GameObject g, PieceType type)
@@ -294,23 +267,28 @@ namespace InhabitantChess.BoardGame
             }
         }
 
-        // helper to determine B/W based on coords
-        private bool IsBlack((int up, int across) pos)
+        public void ResetBoard()
         {
-            bool even = (pos.up + pos.across) % 2 == 0;
-            // black is only even on first row
-            return even && pos.up == 0 || !even && pos.up > 0;
+            IsInitialized = false;
+            // delete old game pieces before we lose track of them
+            foreach (var p in Pieces)
+            {
+                Destroy(p.g);
+            }
+            foreach (var d in _deadwood)
+            {
+                Destroy(d);
+            }
+            Init();
         }
 
-        // check if coord pos is in bounds
-        private bool InBounds((int up, int across) pos)
+        public List<(int, int)> LegalMoves((int u, int a) pos, PieceType type)
         {
-            bool firstRow = pos.up == 0 && pos.up <= pos.across && pos.across < 2 * s_Rows - 1;
-            return firstRow || 0 < pos.up && pos.up < s_Rows && pos.up <= pos.across && pos.across <= 2 * s_Rows - pos.up;
+            return GetAdjacent(pos.u, pos.a);
         }
 
         // return list of adjacent positions to (up, across)
-        public List<(int, int)> GetAdjacent(int up, int across)
+        private List<(int, int)> GetAdjacent(int up, int across)
         {
             var adj = new List<(int, int)>();
 
@@ -351,6 +329,21 @@ namespace InhabitantChess.BoardGame
             return adj;
         }
 
+        // helper to determine B/W based on coords
+        private bool IsBlack((int up, int across) pos)
+        {
+            bool even = (pos.up + pos.across) % 2 == 0;
+            // black is only even on first row
+            return even && pos.up == 0 || !even && pos.up > 0;
+        }
+
+        // check if coord pos is in bounds
+        private bool InBounds((int up, int across) pos)
+        {
+            bool firstRow = pos.up == 0 && pos.up <= pos.across && pos.across < 2 * s_Rows - 1;
+            return firstRow || 0 < pos.up && pos.up < s_Rows && pos.up <= pos.across && pos.across <= 2 * s_Rows - pos.up;
+        }
+
         // set highlight visibility
         public void ToggleSpaces(List<(int up, int across)> spaces, bool? setBeam = null)
         {
@@ -375,56 +368,47 @@ namespace InhabitantChess.BoardGame
             highlight.SetActive(!highlight.activeSelf);
         }
 
-        private bool MoveToSpace((GameObject obj, (int up, int across)? oldPos, PieceType type) piece, (int up, int across) newPos)
-        {
-            (int, int) BadPos = (99, 99);
-            (int up, int across) oldPosNN = piece.oldPos ?? BadPos;
-            // nullable arg for oldPos = first-time setup
-            bool settingUp = oldPosNN.Item1 == BadPos.Item1;
-
-            GameObject newSpc = SpaceDict[(newPos.up, newPos.across)];
-            // check for valid position
-            if (newSpc != null)
-            {
-                SpaceController newSpcController = newSpc.GetComponent<SpaceController>();
-                // move/rotate piece, set controller occupants
-                if (!settingUp)
-                {
-                    Moving = true;
-                    _movingPiece = piece.obj;
-
-                    GameObject oldSpc = SpaceDict[(oldPosNN.up, oldPosNN.across)];
-                    SpaceController oldSpcController = oldSpc.GetComponent<SpaceController>();
-                    oldSpcController.SetOccupant(null);
-
-                    _startMovePos = oldSpc.transform.localPosition;
-                    _destMovePos = newSpc.transform.localPosition;
-                    _startLookRot = piece.obj.transform.localRotation;
-                    Vector3 lookPos = newSpc.transform.localPosition - oldSpc.transform.localPosition;
-                    // remove y component - only rotating in X/Z plane
-                    lookPos.y = 0.0f;
-                    _destLookRot = Quaternion.LookRotation(lookPos);
-                    _initMoveTime = Time.time;
-                }
-                else
-                {
-                    piece.obj.transform.localPosition = newSpc.transform.localPosition;
-                }
-                newSpcController.SetOccupant(piece.obj);
-                return true;
-            }
-            Debug.LogWarning($"Tried to move to impossible position {newPos.up}, {newPos.across}!");
-            return false;
-        }
-
         public void TryMove(int pIdx, (int, int) newPos)
         {
             // avoid updating position unless we succeeded
-            bool succeeded = MoveToSpace(Pieces[pIdx], newPos);
-            if (succeeded)
+            DoMove(pIdx, newPos);
+        }
+
+        private void DoMove(int pIdx, (int up, int across) newPos, bool settingUp = false)
+        {
+            var piece = Pieces[pIdx];
+            Pieces[pIdx] = (piece.g, newPos, piece.type);
+            GameObject newSpc = SpaceDict[(newPos.up, newPos.across)];
+            // move/rotate piece
+            if (!settingUp)
             {
-                Pieces[pIdx] = (Pieces[pIdx].g, newPos, Pieces[pIdx].type);
+                Moving = true;
+                _movingPiece = piece.g;
+
+                GameObject oldSpc = SpaceDict[(piece.pos.up, piece.pos.across)];
+
+                // set up values to lerp between in Update()
+                _startMovePos = oldSpc.transform.localPosition;
+                _destMovePos = newSpc.transform.localPosition;
+                _startLookRot = piece.g.transform.localRotation;
+                Vector3 lookPos = newSpc.transform.localPosition - oldSpc.transform.localPosition;
+                // remove y component - only rotating in X/Z plane
+                lookPos.y = 0.0f;
+                _destLookRot = Quaternion.LookRotation(lookPos);
+                _initMoveTime = Time.time;
             }
+            else
+            {
+                piece.g.transform.localPosition = newSpc.transform.localPosition;
+                if (IsBlack(newPos))
+                {
+                    piece.g.transform.localRotation = Quaternion.AngleAxis(-30, Vector3.up);
+                }
+                else
+                {
+                    piece.g.transform.localRotation = Quaternion.AngleAxis(-90, Vector3.up);
+                }
+            }            
         }
 
         public void UpdateBeam(bool clear = false)
@@ -536,10 +520,10 @@ namespace InhabitantChess.BoardGame
             return result;
         }
 
-        public bool IsBlocked((int u, int a) pos, bool wasBlocked)
+        private bool IsBlocked((int u, int a) pos, bool wasBlocked)
         {
-            // basically just OR-ing any past blocks in so that
-            // everything beyond the blocker piece is also shielded
+            // basically just check any pieces past blocker so that
+            // everything behind it is shielded
             bool blocked = wasBlocked;
             foreach (var p in Pieces)
             {
@@ -556,19 +540,20 @@ namespace InhabitantChess.BoardGame
             switch (type)
             {
                 case PieceType.Blocker:
-                    newDeadwood = GameObject.Instantiate(BlockerPrefab, _deadwoodParent);
+                    newDeadwood = Instantiate(BlockerPrefab, _deadwoodParent);
                     break;
                 case PieceType.Antler:
-                    newDeadwood = GameObject.Instantiate(AntlerPrefab, _deadwoodParent);
+                    newDeadwood = Instantiate(AntlerPrefab, _deadwoodParent);
                     break;
                 case PieceType.Eye:
-                    newDeadwood = GameObject.Instantiate(EyePrefab, _deadwoodParent);
+                    newDeadwood = Instantiate(EyePrefab, _deadwoodParent);
                     break;
                 default:
                     Debug.LogWarning($"Invalid piece type {type}!");
                     break;
             }
 
+            // create deadwood, update array
             Vector3 deadwoodPos = new Vector3(s_triHeight, 0, s_triSize / 2) * 0.8f;
             newDeadwood.transform.localPosition -= _deadwoodIdx * deadwoodPos;
             newDeadwood.SetActive(true);

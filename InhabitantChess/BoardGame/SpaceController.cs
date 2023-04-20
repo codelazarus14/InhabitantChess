@@ -10,7 +10,6 @@ namespace InhabitantChess.BoardGame
         public bool InBeam = false;
         public (int up, int across) Space { get; private set; }
 
-        private GameObject _occupant = null;
         private Material _ogMaterial, _beamMaterial;
         private float _min = 0.0f, _max = 0.4f;
 
@@ -43,16 +42,6 @@ namespace InhabitantChess.BoardGame
             float temp = _max;
             _max = _min;
             _min = temp;
-        }
-
-        public void SetOccupant(GameObject g)
-        {
-            _occupant = g;
-        }
-
-        public GameObject GetOccupant()
-        {
-            return _occupant;
         }
 
         public void SetSpace(int up, int across)
