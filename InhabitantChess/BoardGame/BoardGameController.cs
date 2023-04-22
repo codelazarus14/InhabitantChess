@@ -12,8 +12,7 @@ namespace InhabitantChess.BoardGame
          * - replace piece-teleporting with animated slerp or smth
          * - inscryption-style deadwood piece dropping
          * - add screen prompts for controls (interact, enter/exit overhead, lean forward)
-         * - refactor - maybe rename GetAdjacent to GetValid or something, avoid
-         *   hardcoding rules etc. and cleanup/document
+         * - separate rules from board, game state (for supporting AI nodes/different rulesets)
          */
 
         public FirstPersonManipulator PlayerManip;

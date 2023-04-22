@@ -26,6 +26,7 @@ namespace InhabitantChess
         private PlayerCameraController _playerCamController;
         private OverheadCameraController _overheadCamController;
         private ReticleController _reticule;
+        private ScreenPromptHandler _screenPrompts;
         private PlayerAttachPoint _attachPoint;
         private InteractZone _seatInteract;
         private Dictionary<string, GameObject> _prefabDict = new();
@@ -94,6 +95,7 @@ namespace InhabitantChess
                 _overheadCamController.SetEnabled(false);
 
                 _reticule = GameObject.Find("Reticule/Image").GetComponent<ReticleController>();
+                _screenPrompts = BoardGame.AddComponent<ScreenPromptHandler>();
 
                 // camera init, prompt text depend on Locator - have to wait a little longer
                 StartCoroutine(LateInit());
