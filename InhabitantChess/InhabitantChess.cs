@@ -26,7 +26,7 @@ namespace InhabitantChess
         private ICommonCameraAPI _cameraAPI;
         private PlayerCameraController _playerCamController;
         private OverheadCameraController _overheadCamController;
-        private ScreenPromptHandler _screenPrompts;
+        private ScreenPrompts _screenPrompts;
         private PlayerAttachPoint _attachPoint;
         private InteractZone _seatInteract;
         private Dictionary<string, GameObject> _prefabDict = new();
@@ -87,7 +87,7 @@ namespace InhabitantChess
                 gameSeat.transform.localPosition = new Vector3(1, -0.8f, 0);
                 gameSeat.transform.localRotation = Quaternion.Euler(0, 270, 0);
 
-                _screenPrompts = BoardGame.AddComponent<ScreenPromptHandler>();
+                _screenPrompts = BoardGame.AddComponent<ScreenPrompts>();
 
                 TextTranslation.Get().OnLanguageChanged += Translations.UpdateLanguage;
 
@@ -121,9 +121,9 @@ namespace InhabitantChess
             if (PlayerState == ChessPlayerState.None)
             {
                 _seatInteract.DisableInteraction();
-                _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.BoardMove, true);
-                _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.Overhead, true);
-                _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.LeanForward, true);
+                _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, true);
+                _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, true);
+                _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, true);
                 _attachPoint.AttachPlayer();
                 _bgController.EnterGame();
                 PlayerState = ChessPlayerState.Seated;
@@ -133,9 +133,9 @@ namespace InhabitantChess
         private void CompleteStandingUp()
         {
             _attachPoint.DetachPlayer();
-            _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.BoardMove, false);
-            _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.Overhead, false);
-            _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.LeanForward, false);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, false);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, false);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, false);
             _seatInteract.ResetInteraction();
             _seatInteract.EnableInteraction();
             PlayerState = ChessPlayerState.None;
@@ -146,8 +146,8 @@ namespace InhabitantChess
             // my ability to directly lift mobius' code grows stronger with every passing day
             PlayerState = ChessPlayerState.EnteringOverhead;
             _initOverheadTime = Time.time;
-            _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.BoardMove, false);
-            _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.LeanForward, false);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, false);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, false);
 
             _playerCamController.SnapToDegreesOverSeconds(0f, -48.5f, 0.5f, true);
             _playerCamController.SnapToFieldOfView(24f, 0.5f, true);
@@ -158,8 +158,8 @@ namespace InhabitantChess
         {
             PlayerState = ChessPlayerState.ExitingOverhead;
             _exitOverheadTime = Time.time;
-            _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.BoardMove, true);
-            _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.LeanForward, true);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, true);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, true);
 
             _cameraAPI.ExitCamera(_overheadCamController.OverheadCam);
             _overheadCamController.SetEnabled(false);

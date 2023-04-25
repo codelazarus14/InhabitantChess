@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace InhabitantChess
 {
-    public class ScreenPromptHandler : MonoBehaviour
+    public class ScreenPrompts : MonoBehaviour
     {
         private Dictionary<PromptType, ScreenPrompt> _prompts;
         private List<ScreenPrompt> _activePrompts;
