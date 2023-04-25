@@ -23,9 +23,9 @@ namespace InhabitantChess
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
         private float _maxLeanDist = 1f, _leanSpeed = 1.5f;
         private BoardGameController _bgController;
+        private ICommonCameraAPI _cameraAPI;
         private PlayerCameraController _playerCamController;
         private OverheadCameraController _overheadCamController;
-        private ReticleController _reticule;
         private ScreenPromptHandler _screenPrompts;
         private PlayerAttachPoint _attachPoint;
         private InteractZone _seatInteract;
@@ -43,12 +43,13 @@ namespace InhabitantChess
             AssetBundle bundle = ModHelper.Assets.LoadBundle("Assets/triboard");
             LoadPrefabs(bundle, "assets/prefabs/triboard/");
 
+            _cameraAPI = ModHelper.Interaction.TryGetModApi<ICommonCameraAPI>("xen.CommonCameraUtility");
+
             Logger.LogSuccess($"My mod {nameof(InhabitantChess)} is loaded!");
 
             LoadManager.OnCompleteSceneLoad += (scene, loadScene) =>
             {
                 if (loadScene != OWScene.SolarSystem) return;
-                var playerBody = FindObjectOfType<PlayerBody>();
 
                 PlayerState = ChessPlayerState.None;
 
@@ -86,18 +87,11 @@ namespace InhabitantChess
                 gameSeat.transform.localPosition = new Vector3(1, -0.8f, 0);
                 gameSeat.transform.localRotation = Quaternion.Euler(0, 270, 0);
 
-                GameObject overhead = new GameObject("Overhead Camera");
-                overhead.transform.SetParent(BoardGame.transform);
-                overhead.transform.localPosition = new Vector3(0f, 1.5f, 0);
-                overhead.transform.localRotation = Quaternion.Euler(90, 270, 0);
-                _overheadCamController = overhead.AddComponent<OverheadCameraController>();
-                _overheadCamController.OverheadCamera = overhead.AddComponent<OWCamera>();
-                _overheadCamController.SetEnabled(false);
-
-                _reticule = GameObject.Find("Reticule/Image").GetComponent<ReticleController>();
                 _screenPrompts = BoardGame.AddComponent<ScreenPromptHandler>();
 
-                // camera init, prompt text depend on Locator - have to wait a little longer
+                TextTranslation.Get().OnLanguageChanged += Translations.UpdateLanguage;
+
+                // camera init, interact prompt on Locator - have to wait a little longer
                 StartCoroutine(LateInit());
             };
         }
@@ -108,14 +102,15 @@ namespace InhabitantChess
 
             _bgController.PlayerManip = Locator.GetPlayerTransform().GetComponentInChildren<FirstPersonManipulator>();
             _playerCamController = Locator.GetPlayerCameraController();
-            // TODO: fix culling, view lock on player camera (update patches?)
-            _overheadCamController.Setup(Locator.GetPlayerCamera().cullingMask);
+            (OWCamera owCam, Camera cam) customCamera = _cameraAPI.CreateCustomCamera("Overhead Camera");
+            Transform overhead = customCamera.owCam.transform;
+            overhead.SetParent(BoardGame.transform);
+            overhead.localPosition = new Vector3(0f, 2f, 0);
+            overhead.localRotation = Quaternion.Euler(90, 270, 0);
+            _overheadCamController = overhead.gameObject.AddComponent<OverheadCameraController>();
+            _overheadCamController.Setup();
 
-            var flashbackEffect = _overheadCamController.transform.gameObject.AddComponent<FlashbackScreenGrabImageEffect>();
-            var playerFlashEffect = _playerCamController.transform.GetComponent<FlashbackScreenGrabImageEffect>();
-            flashbackEffect._downsampleShader = playerFlashEffect._downsampleShader;
-            flashbackEffect._downsampleMaterial = playerFlashEffect._downsampleMaterial;
-            _seatInteract.SetPromptText(UITextType.ItemUnknownArtifactPrompt);
+            _seatInteract.SetPromptText((UITextType)Translations.GetUITextType(Translations.ICText.Interact));
             _seatInteract.OnPressInteract += OnPressInteract;
 
             Logger.Log("Finished setup");
@@ -126,6 +121,9 @@ namespace InhabitantChess
             if (PlayerState == ChessPlayerState.None)
             {
                 _seatInteract.DisableInteraction();
+                _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.BoardMove, true);
+                _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.Overhead, true);
+                _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.LeanForward, true);
                 _attachPoint.AttachPlayer();
                 _bgController.EnterGame();
                 PlayerState = ChessPlayerState.Seated;
@@ -135,6 +133,9 @@ namespace InhabitantChess
         private void CompleteStandingUp()
         {
             _attachPoint.DetachPlayer();
+            _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.BoardMove, false);
+            _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.Overhead, false);
+            _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.LeanForward, false);
             _seatInteract.ResetInteraction();
             _seatInteract.EnableInteraction();
             PlayerState = ChessPlayerState.None;
@@ -144,8 +145,10 @@ namespace InhabitantChess
         {
             // my ability to directly lift mobius' code grows stronger with every passing day
             PlayerState = ChessPlayerState.EnteringOverhead;
-            _reticule.gameObject.SetActive(false);
             _initOverheadTime = Time.time;
+            _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.BoardMove, false);
+            _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.LeanForward, false);
+
             _playerCamController.SnapToDegreesOverSeconds(0f, -48.5f, 0.5f, true);
             _playerCamController.SnapToFieldOfView(24f, 0.5f, true);
             OWInput.ChangeInputMode(InputMode.Map);
@@ -154,14 +157,15 @@ namespace InhabitantChess
         private void ExitOverheadView()
         {
             PlayerState = ChessPlayerState.ExitingOverhead;
-            _reticule.gameObject.SetActive(true);
             _exitOverheadTime = Time.time;
+            _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.BoardMove, true);
+            _screenPrompts.SetPromptVisibility(ScreenPromptHandler.PromptType.LeanForward, true);
+
+            _cameraAPI.ExitCamera(_overheadCamController.OverheadCam);
             _overheadCamController.SetEnabled(false);
-            _playerCamController._playerCamera.enabled = true;
             _playerCamController.CenterCameraOverSeconds(0.5f, true);
             _playerCamController.SnapToInitFieldOfView(0.5f, true);
             OWInput.ChangeInputMode(InputMode.Character);
-            GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", _playerCamController._playerCamera);
         }
 
         private void UpdateEnterOverheadTransition()
@@ -169,9 +173,8 @@ namespace InhabitantChess
             if (Time.time > _initOverheadTime + 0.45f) 
             {
                 PlayerState = ChessPlayerState.InOverhead;
-                _playerCamController._playerCamera.enabled = false;
+                _cameraAPI.EnterCamera(_overheadCamController.OverheadCam);
                 _overheadCamController.SetEnabled(true);
-                GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", _overheadCamController.OverheadCamera);
             }
         }
 
@@ -226,6 +229,12 @@ namespace InhabitantChess
             {
                 PlayerState = ChessPlayerState.Seated;
             }
+        }
+
+        private void OnDestroy()
+        {
+            TextTranslation.Get().OnLanguageChanged -= Translations.UpdateLanguage;
+            _seatInteract.OnPressInteract -= OnPressInteract;
         }
 
         private void LoadPrefabs(AssetBundle bundle, string bundlePath)

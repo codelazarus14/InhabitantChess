@@ -1,8 +1,10 @@
 {
+  "$schema": "https://raw.githubusercontent.com/ow-mods/owml/master/schemas/manifest_schema.json",
   "filename": "InhabitantChess.dll",
   "author": "codelazarus14",
   "name": "InhabitantChess",
   "uniqueName": "codelazarus14.InhabitantChess",
   "version": "0.1.0",
-  "owmlVersion": "2.9.0"
+  "owmlVersion": "2.9.0",
+  "dependencies": [ "xen.CommonCameraUtility" ]
 }

@@ -2,10 +2,12 @@
 
 namespace InhabitantChess
 {
+    [RequireComponent(typeof(OWCamera))]
     public class OverheadCameraController : MonoBehaviour
     {
-        public OWCamera OverheadCamera;
+        public OWCamera OverheadCam;
 
+        private ReticleController _reticule;
         private Vector2 _position;
         private float _panSpeed = 1.5f;
         private float _maxPanDistance = 1f;
@@ -16,15 +18,13 @@ namespace InhabitantChess
         public void SetEnabled(bool isEnabled)
         {
             _position = Vector3.zero;
-            OverheadCamera.enabled = isEnabled;
-            enabled = isEnabled;
+            _reticule.enabled = isEnabled;
         }
 
-        public void Setup(int cullingMask)
+        public void Setup()
         {
-            // TODO: Fix culling mask (doesn't seem to hide helmet and show player head
-            OverheadCamera.cullingMask = cullingMask;
-            OverheadCamera.aspect = 1.6f;
+            OverheadCam = GetComponent<OWCamera>();
+            _reticule = GameObject.Find("Reticule/Image").GetComponent<ReticleController>();
         }
 
         private void Update()
@@ -40,12 +40,12 @@ namespace InhabitantChess
             //    float posY = Mathf.Lerp(_initSnapDegreesY, _snapTargetY, num);
             //    _position = new Vector2(posX, posY);
             //}
-            transform.localPosition = Vector3.Lerp(transform.localPosition,new Vector3(_position.x, 1.5f, _position.y), 0.1f);
+            transform.localPosition = Vector3.Lerp(transform.localPosition,new Vector3(_position.x, 2f, _position.y), 0.1f);
         }
 
         private void LateUpdate()
         {
-            if (OverheadCamera != null && !OWTime.IsPaused() && !_isSnapping) 
+            if (OverheadCam != null && !OWTime.IsPaused() && !_isSnapping) 
             {
                 if (OWInput.IsPressed(InputLibrary.moveXZ))
                 {

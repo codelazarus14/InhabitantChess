@@ -10,32 +10,37 @@ namespace InhabitantChess.Util
     // borrowed from NH TranslationHandler
     public static class Translations
     {
-        public static TextTranslation.Language Language;
+        private static TextTranslation.Language _language;
 
-        private static Dictionary<TextTranslation.Language, Dictionary<ICText, string>> s_transDict = new Dictionary<TextTranslation.Language, Dictionary<ICText, string>>()
+        private static Dictionary<TextTranslation.Language, Dictionary<ICText, string>> _transDict = new()
         {
+            // idea is to write code to populate from .xml later
             { TextTranslation.Language.ENGLISH, new Dictionary<ICText, string>()
             {
-                { ICText.BoardMove, "Move" },
-                { ICText.Wait, "Wait!" }
+                { ICText.Interact, "Interact" },
+                { ICText.BoardMove, "Select Move" },
+                { ICText.Overhead, "Toggle Overhead" },
+                { ICText.LeanForward, "Lean Forward" }
             } },
         };
         // enum to keep track of new strings to translate
         public enum ICText
         {
-            BoardMove,
-            Wait
+            Interact,
+            BoardMove, 
+            Overhead,
+            LeanForward,
         }
 
         public static string GetTranslation(ICText text)
         {
 
-            if (s_transDict.TryGetValue(Language, out var table))
+            if (_transDict.TryGetValue(_language, out var table))
             {
                 if (table.TryGetValue(text, out var translation))
                     return translation;
             }
-            else if (s_transDict.TryGetValue(TextTranslation.Language.ENGLISH, out var eTable))
+            else if (_transDict.TryGetValue(TextTranslation.Language.ENGLISH, out var eTable))
             {
                 Logger.LogError($"Defaulting to English for {text}");
                 if (eTable.TryGetValue(text, out var translation)) 
@@ -47,26 +52,31 @@ namespace InhabitantChess.Util
 
         }
 
-        public static void UpdateUITable()
+        public static int GetUITextType(ICText text)
         {
             Dictionary<int, string> table = TextTranslation.Get().m_table.theUITable;
+            _language = TextTranslation.Get().m_language;
 
-            for (int i = 0; i < s_transDict[Language].Count; i++)
+            string transText = _transDict[_language][text];
+
+            int key = table.Keys.Max() + 1;
+            try
             {
-                string transText = s_transDict[Language].ElementAt(i).Value;
-
-                int key = table.Keys.Max() + 1;
-                try
-                {
-                    // check to see if value already in table
-                    KeyValuePair<int, string> kvp = table.First(x => x.Value.Equals(transText));
-                    if (kvp.Equals(default(KeyValuePair<int, string>)))
-                        key = kvp.Key;
-                }
-                catch (Exception) { }
-
-                TextTranslation.Get().m_table.Insert_UI(key, transText);
+                // check to see if value already in table
+                KeyValuePair<int, string> kvp = table.First(x => x.Value.Equals(transText));
+                if (kvp.Equals(default(KeyValuePair<int, string>)))
+                    key = kvp.Key;
             }
+            catch (Exception) { }
+
+            TextTranslation.Get().m_table.Insert_UI(key, transText);
+
+            return key;
+        }
+
+        public static void UpdateLanguage()
+        {
+            _language = TextTranslation.Get().m_language;
         }
     }
 }

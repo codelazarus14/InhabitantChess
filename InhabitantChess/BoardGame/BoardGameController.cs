@@ -9,9 +9,7 @@ namespace InhabitantChess.BoardGame
     {
         /**
          * TODO:
-         * - replace piece-teleporting with animated slerp or smth
          * - inscryption-style deadwood piece dropping
-         * - add screen prompts for controls (interact, enter/exit overhead, lean forward)
          * - separate rules from board, game state (for supporting AI nodes/different rulesets)
          */
 
