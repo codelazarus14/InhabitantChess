@@ -1,0 +1,49 @@
+ManifestFileVersion: 0
+CRC: 3702233652
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: d1c874886977907b64e9cb02a3f28fd1
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: fb3869bae001f9e7e6f84d7fcdd905a2
+HashAppended: 0
+ClassTypes:
+- Class: 1
+  Script: {instanceID: 0}
+- Class: 4
+  Script: {instanceID: 0}
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 23
+  Script: {instanceID: 0}
+- Class: 28
+  Script: {instanceID: 0}
+- Class: 33
+  Script: {instanceID: 0}
+- Class: 43
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+- Class: 64
+  Script: {instanceID: 0}
+- Class: 102
+  Script: {instanceID: 0}
+- Class: 114
+  Script: {fileID: 11500000, guid: c4a87e700b145534f8bf4556baf9f8e8, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: b379dc62db232e84cb9b4181592688b8, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: c6affbc34560a884ebcec016a78ea541, type: 3}
+- Class: 115
+  Script: {instanceID: 0}
+- Class: 128
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/Prefabs/Triboard/BoardGame_Antler.prefab
+- Assets/Prefabs/Triboard/BoardGame_Eye.prefab
+- Assets/Prefabs/Triboard/BoardGame.prefab
+- Assets/Prefabs/Triboard/BoardGame_SpaceHighlight.prefab
+- Assets/Prefabs/Triboard/BoardGame_Blocker.prefab
+Dependencies: []
