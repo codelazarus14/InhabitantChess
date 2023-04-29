@@ -6,6 +6,7 @@ using OWML.ModHelper;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
 using UnityEngine;
 using Logger = InhabitantChess.Util.Logger;
@@ -22,6 +23,7 @@ namespace InhabitantChess
 
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
         private float _maxLeanDist = 1f, _leanSpeed = 1.5f;
+        private PrisonerBehavior _prisonerBehavior;
         private BoardGameController _bgController;
         private ICommonCameraAPI _cameraAPI;
         private PlayerCameraController _playerCamController;
@@ -40,10 +42,20 @@ namespace InhabitantChess
 
         private void Start()
         {
-            AssetBundle bundle = ModHelper.Assets.LoadBundle("Assets/triboard");
-            LoadPrefabs(bundle, "assets/prefabs/triboard/");
+            //TODO: determine if first encounter - ModHelper.Storage.Load<ICData>("ic_save.json");
 
             _cameraAPI = ModHelper.Interaction.TryGetModApi<ICommonCameraAPI>("xen.CommonCameraUtility");
+            // hug mod messes with the prisoner's InteractReceiver - disable it for now
+            if (ModHelper.Interaction.ModExists("VioVayo.HugMod"))
+            {
+                Logger.LogError("HugMod detected - disabling mod :(");
+                enabled = false;
+                return;
+            }
+            
+            AssetBundle bundle = ModHelper.Assets.LoadBundle("Assets/triboard");
+            LoadPrefabs(bundle, "assets/prefabs/triboard/");
+            TextAsset prisonerDialogue = LoadText("Assets/PrisonerDialogue.xml");
 
             Logger.LogSuccess($"My mod {nameof(InhabitantChess)} is loaded!");
 
@@ -52,6 +64,13 @@ namespace InhabitantChess
                 if (loadScene != OWScene.SolarSystem) return;
 
                 PlayerState = ChessPlayerState.None;
+
+                GameObject prisonCell = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_Underground/Sector_PrisonCell");
+                // TODO: use for board game, copy original transforms to restore after game
+                GameObject crate = prisonCell.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_Crate_Sealed (1)");
+                GameObject uselessBoard = prisonCell.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_BoardGame");
+                GameObject playerChair = prisonCell.FindChild("Props_PrisonCell/LowerCell/Prefab_IP_DW_Chair");
+                GameObject prisonerChair = prisonCell.FindChild("Interactibles_PrisonCell/PrisonerSequence/Prefab_IP_DW_Chair");
 
                 GameObject slate = GameObject.Find("Sector_TH/Sector_Village/Sector_StartingCamp/Characters_StartingCamp/Villager_HEA_Slate/Villager_HEA_Slate_ANIM_LogSit");
                 BoardGame = Instantiate(_prefabDict["chessPrefab"], slate.transform);
@@ -89,6 +108,9 @@ namespace InhabitantChess
 
                 _screenPrompts = BoardGame.AddComponent<ScreenPrompts>();
 
+                _prisonerBehavior = BoardGame.AddComponent<PrisonerBehavior>();
+                _prisonerBehavior.SetText(prisonerDialogue);
+
                 TextTranslation.Get().OnLanguageChanged += Translations.UpdateLanguage;
 
                 // camera init, interact prompt on Locator - have to wait a little longer
@@ -110,7 +132,7 @@ namespace InhabitantChess
             _overheadCamController = overhead.gameObject.AddComponent<OverheadCameraController>();
             _overheadCamController.Setup();
 
-            _seatInteract.SetPromptText((UITextType)Translations.GetUITextType(Translations.ICText.Interact));
+            _seatInteract.SetPromptText((UITextType)Translations.GetUITextType("IC_INTERACT"));
             _seatInteract.OnPressInteract += OnPressInteract;
 
             Logger.Log("Finished setup");
@@ -280,6 +302,12 @@ namespace InhabitantChess
             }
 
             return prefab;
+        }
+
+        private TextAsset LoadText(string path)
+        {
+            string raw = File.ReadAllText(Path.Combine(ModHelper.Manifest.ModFolderPath, path));
+            return new TextAsset(raw);
         }
     }
 }

@@ -24,10 +24,10 @@ namespace InhabitantChess
             {
                 _prompts = new Dictionary<PromptType, ScreenPrompt>
                 {
-                    { PromptType.BoardMove, MakeScreenPrompt(InputLibrary.interact, Translations.GetTranslation(Translations.ICText.BoardMove) + "<CMD>") },
-                    { PromptType.Overhead, MakeScreenPrompt(InputLibrary.landingCamera, Translations.GetTranslation(Translations.ICText.Overhead) + "<CMD>") },
+                    { PromptType.BoardMove, MakeScreenPrompt(InputLibrary.interact, Translations.GetTranslation("IC_BOARDMOVE") + "<CMD>") },
+                    { PromptType.Overhead, MakeScreenPrompt(InputLibrary.landingCamera, Translations.GetTranslation("IC_OVERHEAD") + "<CMD>") },
                     // TODO: fix to isolate W from the normal WASD command icon
-                    { PromptType.LeanForward, MakeScreenPrompt(InputLibrary.moveXZ, Translations.GetTranslation(Translations.ICText.LeanForward) + "<CMD>") }
+                    { PromptType.LeanForward, MakeScreenPrompt(InputLibrary.moveXZ, Translations.GetTranslation("IC_LEANFORWARD") + "<CMD>") }
                 };
                 _activePrompts = new List<ScreenPrompt>();
             }

@@ -6,5 +6,6 @@
   "uniqueName": "codelazarus14.InhabitantChess",
   "version": "0.1.0",
   "owmlVersion": "2.9.0",
-  "dependencies": [ "xen.CommonCameraUtility" ]
+  "dependencies": [ "xen.CommonCameraUtility" ],
+  "conflicts": [ "VioVayo.HugMod" ]
 }

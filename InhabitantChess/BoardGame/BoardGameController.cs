@@ -10,7 +10,15 @@ namespace InhabitantChess.BoardGame
         /**
          * TODO:
          * - inscryption-style deadwood piece dropping
-         * - separate rules from board, game state (for supporting AI nodes/different rulesets)
+         * - encounter as described in README - record completion the first time in saved data
+         * - sfx for leaning, pieces, prisoner reactions (howl anim after repeated losses?)
+         * - soundtrack ambience - fade in/out, woven between long periods of silence
+         * - custom vision torch for delivering game rules
+         * - separate rules (piece creation, legal moves, game over) from board (for supporting
+         *   AI nodes/searching), maybe expose game rules thru interface? idk
+         * - flickering piece highlight or more subtle effect
+         * - options menu (toggle highlight, screen prompts, AI difficulty)
+         * - localize error messages
          */
 
         public FirstPersonManipulator PlayerManip;

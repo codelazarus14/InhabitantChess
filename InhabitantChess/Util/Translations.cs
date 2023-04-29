@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Logger = InhabitantChess.Util.Logger;
 
 namespace InhabitantChess.Util
 {
@@ -12,38 +9,33 @@ namespace InhabitantChess.Util
     {
         private static TextTranslation.Language _language;
 
-        private static Dictionary<TextTranslation.Language, Dictionary<ICText, string>> _transDict = new()
+        private static Dictionary<TextTranslation.Language, Dictionary<string, string>> _transDict = new()
         {
             // idea is to write code to populate from .xml later
-            { TextTranslation.Language.ENGLISH, new Dictionary<ICText, string>()
+            { TextTranslation.Language.ENGLISH, new Dictionary<string, string>()
             {
-                { ICText.Interact, "Interact" },
-                { ICText.BoardMove, "Select Move" },
-                { ICText.Overhead, "Toggle Overhead" },
-                { ICText.LeanForward, "Lean Forward" }
+                { "IC_INTERACT", "Interact" },
+                { "IC_BOARDMOVE", "Select Move" },
+                { "IC_OVERHEAD", "Toggle Overhead" },
+                { "IC_LEANFORWARD", "Lean Forward" },
+                { "IC_SILENCE", "..." },
+                { "IC_WAIT", "Wait!" },
+                { "IC_DONE", "I think I'm done playing." }
             } },
         };
-        // enum to keep track of new strings to translate
-        public enum ICText
-        {
-            Interact,
-            BoardMove, 
-            Overhead,
-            LeanForward,
-        }
 
-        public static string GetTranslation(ICText text)
+        public static string GetTranslation(string text)
         {
 
             if (_transDict.TryGetValue(_language, out var table))
             {
-                if (table.TryGetValue(text, out var translation))
+                if (table.TryGetValue(text.ToUpper(), out var translation))
                     return translation;
             }
             else if (_transDict.TryGetValue(TextTranslation.Language.ENGLISH, out var eTable))
             {
                 Logger.LogError($"Defaulting to English for {text}");
-                if (eTable.TryGetValue(text, out var translation)) 
+                if (eTable.TryGetValue(text, out var translation))
                     return translation;
             }
 
@@ -52,12 +44,12 @@ namespace InhabitantChess.Util
 
         }
 
-        public static int GetUITextType(ICText text)
+        public static int GetUITextType(string text)
         {
             Dictionary<int, string> table = TextTranslation.Get().m_table.theUITable;
             _language = TextTranslation.Get().m_language;
 
-            string transText = _transDict[_language][text];
+            string transText = _transDict[_language][text.ToUpper()];
 
             int key = table.Keys.Max() + 1;
             try
@@ -77,6 +69,38 @@ namespace InhabitantChess.Util
         public static void UpdateLanguage()
         {
             _language = TextTranslation.Get().m_language;
+        }
+
+        public static void UpdateCharacterDialogue(CharacterDialogueTree dialogue)
+        {
+            TextTranslation.TranslationTable table = TextTranslation.Get().m_table;
+            foreach (DialogueNode dnode in dialogue._mapDialogueNodes.Values)
+            {
+                // update w new page text
+                List<DialogueText.TextBlock> blocks = dnode.DisplayTextData._listTextBlocks;
+                foreach (DialogueText.TextBlock block in blocks)
+                {
+                    foreach (string page in block.listPageText)
+                    {
+                        // ignore if we're not adding a new line
+                        if (table.Get(dnode.Name + page) == null)
+                        {
+                            string value = GetTranslation(page);
+                            table.Insert(dnode.Name + page, value);
+                        }
+                    }
+                }
+                // update w new option text
+                List<DialogueOption> options = dnode.ListDialogueOptions;
+                foreach (DialogueOption option in options)
+                {
+                    if (table.Get(option._textID) == null)
+                    {
+                        string value = GetTranslation(option._text);
+                        table.Insert(option._textID, value);
+                    }
+                }
+            }
         }
     }
 }
