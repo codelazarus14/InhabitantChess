@@ -7,9 +7,7 @@ namespace InhabitantChess
     public class ScreenPrompts : MonoBehaviour
     {
         private Dictionary<PromptType, ScreenPrompt> _prompts;
-        private List<ScreenPrompt> _activePrompts;
-        private PromptManager _promptManager;
-        private bool _updateAfterPause;
+        private Dictionary<PromptType, bool> _activePrompts;
 
         public enum PromptType
         {
@@ -29,7 +27,7 @@ namespace InhabitantChess
                     // TODO: fix to isolate W from the normal WASD command icon
                     { PromptType.LeanForward, MakeScreenPrompt(InputLibrary.moveXZ, Translations.GetTranslation("IC_LEANFORWARD") + "<CMD>") }
                 };
-                _activePrompts = new List<ScreenPrompt>();
+                _activePrompts = new();
             }
 
             PromptManager pm = Locator.GetPromptManager();
@@ -40,15 +38,9 @@ namespace InhabitantChess
 
         private void Update()
         {
-            if (OWTime.IsPaused() && !_updateAfterPause)
+            foreach (PromptType t in _activePrompts.Keys)
             {
-                foreach (var prompt in _activePrompts) prompt.SetVisibility(false);
-                _updateAfterPause = true;
-            }
-            else if (!OWTime.IsPaused() && _updateAfterPause)
-            {
-                foreach (var prompt in _activePrompts) prompt.SetVisibility(true);
-                _updateAfterPause = false;
+                _prompts[t].SetVisibility(_activePrompts[t] && !OWTime.IsPaused());
             }
         }
 
@@ -62,16 +54,12 @@ namespace InhabitantChess
 
         public void SetPromptVisibility(PromptType type, bool visible)
         {
-            _prompts[type].SetVisibility(visible);
-            if (visible && _prompts[type].IsVisible()) _activePrompts.Add(_prompts[type]);
-            else if (!visible && _prompts[type].IsVisible()) _activePrompts.Remove(_prompts[type]);
+            _activePrompts[type] = visible;
         }
 
         private ScreenPrompt MakeScreenPrompt(IInputCommands cmd, string prompt)
         {
             return new ScreenPrompt(cmd, prompt, 0, ScreenPrompt.DisplayState.Normal, false);
         }
-
-
     }
 }

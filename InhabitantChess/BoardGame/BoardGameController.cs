@@ -10,9 +10,10 @@ namespace InhabitantChess.BoardGame
         /**
          * TODO:
          * - inscryption-style deadwood piece dropping
-         * - encounter as described in README - record completion the first time in saved data
+         * - encounter as described in README - record encounter completion the first time in saved data
          * - sfx for leaning, pieces, prisoner reactions (howl anim after repeated losses?)
          * - soundtrack ambience - fade in/out, woven between long periods of silence
+         *   timber hearth, the museum, elegy, dream of home
          * - custom vision torch for delivering game rules
          * - separate rules (piece creation, legal moves, game over) from board (for supporting
          *   AI nodes/searching), maybe expose game rules thru interface? idk
