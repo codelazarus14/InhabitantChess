@@ -1,17 +1,50 @@
 <DialogueTree>
-  <NameField>Prisoner</NameField>
+  <NameField>the Prisoner</NameField>
   <DialogueNode>
-    <Name>Esker1</Name>
+    <Name>Prisoner1</Name>
     <EntryCondition>DEFAULT</EntryCondition>
     <Dialogue>
-      <Page>Oh, hey, it’s you!</Page>
-      <Page>Ground control didn’t tell me you were launching. Long time no see!</Page>
-      <Page>Actually. I guess it’s been a long time since I’ve seen anyone.</Page>
+	  <Page>IC_SILENCE</Page>
+      <Page>IC_SILENCE</Page>
     </Dialogue>
-    <DialogueOptionsList>
-      <DialogueOption>
-        <Text>Talk to you later.</Text>
-      </DialogueOption>
-    </DialogueOptionsList>
+	<DialogueOptionsList>
+	  <DialogueOption>
+		<Text>IC_WAIT</Text>
+		<DialogueTarget>Prisoner2</DialogueTarget>
+	  </DialogueOption>
+	</DialogueOptionsList>
+	<SetCondition>IC_TALKED_TO_PRISONER</SetCondition>
+  </DialogueNode>
+  
+  <DialogueNode>
+	<Name>Prisoner2</Name>
+	<Dialogue>
+	  <Page>IC_SILENCE</Page>
+	</Dialogue>
+  </DialogueNode>
+  
+  <DialogueNode>
+	<Name>Prisoner3</Name>
+	<EntryCondition>IC_TALKED_TO_PRISONER</EntryCondition>
+	<Dialogue>
+	  <Page>IC_SILENCE</Page>
+	</Dialogue>
+	<DialogueOptionsList>
+	  <DialogueOption>
+		<Text>IC_JK</Text>
+	  </DialogueOption>	
+	  <DialogueOption>
+		<Text>IC_DONE</Text>
+		<DialogueTarget>Prisoner4</DialogueTarget>
+	  </DialogueOption>
+	</DialogueOptionsList>
+  </DialogueNode>
+  
+  <DialogueNode>
+	<Name>Prisoner4</Name>
+	<Dialogue>
+	  <Page>IC_SILENCE</Page>
+	</Dialogue>  
+	<SetCondition>IC_READY_TO_LEAVE</SetCondition>
   </DialogueNode>
 </DialogueTree>

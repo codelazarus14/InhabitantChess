@@ -14,24 +14,39 @@ namespace InhabitantChess
         private TextAsset _dialogue;
         private VisionTorchSocket _torchSocket;
         private OWLight _torchSpotlight;
-        private DreamLanternController _prisonerLantern;
+        private DreamLanternController _prisonerLantern, _lanternCopy;
         private Dictionary<string, GameObject> _props;
         private List<(string name, Vector3 pos, Vector3 rot)> _ogTransforms, _movedTransforms;
         private Transform _elevatorPos, _seatPos, _cueMarker;
+        private string _talkToText, _giveTorchText;
         private float _chairCueZ = 5.2f, _elevatorCueZ = -9.2f;
-        private float _initTorchPlaceTime, _initPrisonerWalkTime, _eyesCloseTime;
-        private bool _prisonerReactingToTorch, _prisonerWalkingToMarker, _prisonerSeated, _eyesClosed;
+        private float _initTorchPlaceTime, _initWalkTime, _eyesCloseTime, _initFinalWordsTime;
+        private bool _eyesClosed;
+        private enum PrisonerState
+        {
+            None,
+            ReactingToTorch,
+            WalkingToMarker,
+            BeingSeated,
+            SaidFinalWords,
+            BeingRestored,
+            BackAtElevator
+        }
+        private PrisonerState _state;
 
         private void Start()
         {
             GameObject prisonCell = InhabitantChess.Instance.PrisonCell;
             GameObject prisonerRig = prisonCell.FindChild("Ghosts_PrisonCell/GhostNodeMap_PrisonCell_Lower/Prefab_IP_GhostBird_Prisoner/Ghostbird_IP_ANIM");
-            GameObject lantern = Instantiate(prisonerRig.FindChild("Ghostbird_Skin_01:Ghostbird_Rig_V01:Base/Ghostbird_Skin_01:Ghostbird_Rig_V01:Root/Ghostbird_Skin_01:Ghostbird_Rig_V01:Spine01/Ghostbird_Skin_01:Ghostbird_Rig_V01:Spine02/Ghostbird_Skin_01:Ghostbird_Rig_V01:Spine03/Ghostbird_Skin_01:Ghostbird_Rig_V01:Spine04/Ghostbird_Skin_01:Ghostbird_Rig_V01:ClavicleR/Ghostbird_Skin_01:Ghostbird_Rig_V01:ShoulderR/Ghostbird_Skin_01:Ghostbird_Rig_V01:ElbowR/Ghostbird_Skin_01:Ghostbird_Rig_V01:WristR/LanternCarrySocket/GhostLantern"));
-            lantern.transform.SetParent(prisonCell.transform.Find("Props_PrisonCell/LowerCell"));
-            lantern.transform.localPosition = new Vector3(6.075f, 0.96f, 0.35f);
-            lantern.transform.localRotation = Quaternion.Euler(5, 260, 0);
-            lantern.SetActive(false);
+            // make a copy of the prisoner's lantern so we can fake them setting it up as a light source
+            GameObject lantern = prisonerRig.FindChild("Ghostbird_Skin_01:Ghostbird_Rig_V01:Base/Ghostbird_Skin_01:Ghostbird_Rig_V01:Root/Ghostbird_Skin_01:Ghostbird_Rig_V01:Spine01/Ghostbird_Skin_01:Ghostbird_Rig_V01:Spine02/Ghostbird_Skin_01:Ghostbird_Rig_V01:Spine03/Ghostbird_Skin_01:Ghostbird_Rig_V01:Spine04/Ghostbird_Skin_01:Ghostbird_Rig_V01:ClavicleR/Ghostbird_Skin_01:Ghostbird_Rig_V01:ShoulderR/Ghostbird_Skin_01:Ghostbird_Rig_V01:ElbowR/Ghostbird_Skin_01:Ghostbird_Rig_V01:WristR/LanternCarrySocket/GhostLantern");
+            GameObject lanternClone = Instantiate(lantern);
+            lanternClone.transform.SetParent(prisonCell.transform.Find("Props_PrisonCell/LowerCell"));
+            lanternClone.transform.localPosition = new Vector3(6.075f, 0.96f, 0.35f);
+            lanternClone.transform.localRotation = Quaternion.Euler(5, 260, 0);
+            lanternClone.SetActive(false);
             _prisonerLantern = lantern.GetComponent<DreamLanternController>();
+            _lanternCopy = lanternClone.GetComponent<DreamLanternController>();
 
             _props = new Dictionary<string, GameObject>
             {
@@ -61,11 +76,6 @@ namespace InhabitantChess
             _movedTransforms.Add((_props.ElementAt(3).Key, new Vector3(-0.75f, 0, 3.9f), new Vector3(0, 261.3473f, 0)));
             _movedTransforms.Add((_props.ElementAt(4).Key, new Vector3(-2.5f, 0.9f, 1.5f), new Vector3(350, 250, 0)));
 
-            // testing - delete later
-            GameObject torch = Instantiate(GameObject.Find("Prefab_IP_VisionTorchProjector"), torchSocket.transform);
-            torch.transform.localPosition = Vector3.zero;
-            torch.transform.localRotation = Quaternion.identity;
-
             _prisonerDirector = FindObjectOfType<PrisonerDirector>();
             _prisonerDialogue = _prisonerDirector._characterDialogueTree;
             _cueMarker = _prisonerDirector._torchReturnCueMarker;
@@ -75,6 +85,8 @@ namespace InhabitantChess
 
             _prisonerDirector._prisonerBrain.OnArriveAtElevatorDoor += OnArriveAtElevator;
             _prisonerDirector._prisonerEffects.OnReadyToReceiveTorch += OnReadyForTorch;
+            TextTranslation.Get().OnLanguageChanged += () => Translations.UpdateCharacterDialogue(_prisonerDialogue);
+            TextTranslation.Get().OnLanguageChanged += UpdatePromptText;
             enabled = false;
         }
 
@@ -95,6 +107,14 @@ namespace InhabitantChess
             _torchSpotlight.SetIntensity(0);
         }
 
+        public void UpdatePromptText()
+        {
+            _talkToText = UITextLibrary.GetString(UITextType.TalkToPrompt) + " " + 
+                          TextTranslation.Translate(_prisonerDialogue._characterName);
+            _giveTorchText = UITextLibrary.GetString(UITextType.GivePrompt) + " " +
+                             UITextLibrary.GetString(UITextType.ItemVisionTorchPrompt) + "?";
+        }
+
         private void OnArriveAtElevator()
         {
             // turn off our addition since we'll use MoveToElevatorDoor for moving 'em around later
@@ -105,18 +125,15 @@ namespace InhabitantChess
 
             _prisonerDialogue.SetTextXml(_dialogue);
             Translations.UpdateCharacterDialogue(_prisonerDialogue);
+            UpdatePromptText();
+            _prisonerDialogue._interactVolume._screenPrompt.SetText(_giveTorchText);
 
-            // ItemTool.UpdateState controls the "Give Vision Torch" interact text
-            // so I have to do it myself :(
-            string givePrompt = UITextLibrary.GetString(UITextType.GivePrompt) + " " + 
-                                UITextLibrary.GetString(UITextType.ItemVisionTorchPrompt) + "?";
-            _prisonerDialogue._interactVolume._screenPrompt.SetText(givePrompt);
-
-            _elevatorPos = _prisonerDirector._prisonerBrain.transform;
+            _elevatorPos = Instantiate(_prisonerDirector._prisonerBrain.transform);
         }
 
         private void OnReadyForTorch()
         {
+            _prisonerDirector._prisonerEffects.OnReadyToReceiveTorch -= OnReadyForTorch;
             // stop prisoner from playing torch request animation after arriving at chair later
             _prisonerDirector._prisonerBrain.OnArriveAtElevatorDoor -= _prisonerDirector.OnPrisonerArriveAtElevatorDoor;
 
@@ -127,56 +144,84 @@ namespace InhabitantChess
 
         private void OnFinishElevatorDialogue()
         {
+            _prisonerDialogue.OnEndConversation -= OnFinishElevatorDialogue;
+            _prisonerDialogue.OnEndConversation += OnFinishGameDialogue;
             DisableConversation();
             // only behavior that uses the default animation explicitly - resetting them
             _prisonerDirector._prisonerBrain.BeginBehavior(PrisonerBehavior.WaitForProjection, 1f);
             _torchSocket.EnableInteraction(true);
             _torchSpotlight.SetIntensity(1);
+            //TODO: add light audio source/sfx - click on?
             enabled = true;
         }
 
         private void OnPlayerPlaceTorch(OWItem Item)
         {
+            _torchSocket.OnSocketablePlaced = (OWItemSocket.SocketEvent)Delegate.Remove(_torchSocket.OnSocketablePlaced, new OWItemSocket.SocketEvent(OnPlayerPlaceTorch));
+
             _torchSocket.EnableInteraction(false);
             _torchSpotlight.SetIntensity(0);
             _cueMarker.localPosition = new Vector3(_cueMarker.localPosition.x, _cueMarker.localPosition.y, _chairCueZ);
             _initTorchPlaceTime = Time.time;
-            _prisonerReactingToTorch = true;
+            _state = PrisonerState.ReactingToTorch;
+        }
+
+        private void OnFinishGameDialogue()
+        {
+            bool readyToLeave = DialogueConditionManager.SharedInstance.GetConditionState("IC_READY_TO_LEAVE");
+            if (readyToLeave)
+            {
+                _prisonerDialogue.OnEndConversation -= OnFinishGameDialogue;
+                _torchSocket.EnableInteraction(true);
+                _cueMarker.localPosition = new Vector3(_cueMarker.localPosition.x, _cueMarker.localPosition.y, _elevatorCueZ);
+                _initFinalWordsTime = Time.time;
+                _state = PrisonerState.SaidFinalWords;
+            }
+            else Logger.Log("Talked to prisoner and decided to continue playing");
         }
 
         private void Update()
         {
-            if (_prisonerReactingToTorch && Time.time >= _initTorchPlaceTime + 2f)
+            float t = Time.time;
+            // roughly control flow of sequence through flags + timers
+            if (_state == PrisonerState.ReactingToTorch && t >= _initTorchPlaceTime + 2f)
             {
                 // delay reaction enough for player to turn around
                 _prisonerDirector._prisonerEffects.PlayVoiceAudioNear(AudioType.Ghost_Identify_Curious);
                 _prisonerDirector._prisonerBrain.BeginBehavior(PrisonerBehavior.MoveToElevatorDoor, _cueMarker, 5f);
-                _prisonerReactingToTorch = false;
-                _initPrisonerWalkTime = Time.time;
-                _prisonerWalkingToMarker = true;
+                // TODO: disable movement blocker so player can't grief them?
+                _initWalkTime = t;
+                _state = PrisonerState.WalkingToMarker;
             }
-            if (_prisonerWalkingToMarker && Time.time >= _initPrisonerWalkTime + 10f)
+            if (_state == PrisonerState.WalkingToMarker && t >= _initWalkTime + 10f)
             {
-                Locator.GetPlayerController().LockMovement();
-                Locator.GetPlayerCamera().GetComponent<PlayerCameraEffectController>().CloseEyes(3f);
-                _prisonerWalkingToMarker = false;
-                _eyesCloseTime = Time.time + 3f;
-                _eyesClosed = true;
+                _state = PrisonerState.BeingSeated;
+                SleepPlayer();
+            }
+            if (_state == PrisonerState.SaidFinalWords && t >= _initFinalWordsTime + 2f)
+            {
+                _state = PrisonerState.BeingRestored;
+                SleepPlayer();
             }
             if (_eyesClosed)
             {
-                if (!_prisonerSeated && Time.time >= _eyesCloseTime + 6f)
+                if (_state == PrisonerState.BeingSeated && t >= _eyesCloseTime + 6f)
                 {
                     SeatPrisoner(_seatPos);
                     MoveProps();
-                    _prisonerSeated = true;
+                    _prisonerDialogue._interactVolume._screenPrompt.SetText(_talkToText);
+                    EnableConversation();
                 }
-                if (Time.time >= _eyesCloseTime + 10f)
+                else if (_state == PrisonerState.BeingRestored && t >= _eyesCloseTime + 6f)
                 {
-                    Locator.GetPlayerController().UnlockMovement();
-                    Locator.GetPlayerCamera().GetComponent<PlayerCameraEffectController>().OpenEyes(1f);
-                    _eyesClosed = false;
-
+                    _state = PrisonerState.BackAtElevator;
+                    RestorePrisoner(_elevatorPos);
+                    ResetProps();
+                    DisableConversation();
+                }
+                if (t >= _eyesCloseTime + 10f)
+                {
+                    WakePlayer();
                 }
             }
         }
@@ -188,9 +233,35 @@ namespace InhabitantChess
             // call BeginBehavior(PrisonerBehavior.WaitForTorchReturn, ..)
             int sittingState = 263823602;
             _prisonerDirector._prisonerBrain._controller.StopMoving();
+            _prisonerDirector._prisonerBrain._controller.StopFacing();
             _prisonerDirector._prisonerBrain.transform.localPosition = seatPos.localPosition;
             _prisonerDirector._prisonerBrain.transform.localRotation = seatPos.localRotation;
+            // they sit behind the conversation trigger :(
+            _prisonerDialogue._interactVolume.transform.SetLocalPositionZ(-3);
             _prisonerDirector._prisonerEffects._animator.Play(sittingState);
+        }
+
+        private void RestorePrisoner(Transform elevatorPos)
+        {
+            _prisonerDirector._prisonerBrain.transform.localPosition = elevatorPos.localPosition;
+            _prisonerDirector._prisonerBrain.transform.localRotation = elevatorPos.localRotation;
+            _prisonerDialogue._interactVolume.transform.SetLocalPositionZ(0);
+            _prisonerDirector._prisonerBrain.BeginBehavior(PrisonerBehavior.WaitForTorchReturn, _cueMarker, 0f);
+        }
+
+        private void SleepPlayer()
+        {
+            Locator.GetPlayerController().LockMovement();
+            Locator.GetPlayerCamera().GetComponent<PlayerCameraEffectController>().CloseEyes(3f);
+            _eyesCloseTime = Time.time + 3f;
+            _eyesClosed = true;
+        }
+
+        private void WakePlayer()
+        {
+            Locator.GetPlayerController().UnlockMovement();
+            Locator.GetPlayerCamera().GetComponent<PlayerCameraEffectController>().OpenEyes(1f);
+            _eyesClosed = false;
         }
 
         private void MoveProps()
@@ -201,7 +272,8 @@ namespace InhabitantChess
                 p.Value.transform.localPosition = t.pos;
                 p.Value.transform.localRotation = Quaternion.Euler(t.rot);
             }
-            _prisonerLantern.gameObject.SetActive(true);
+            _prisonerLantern.gameObject.SetActive(false);
+            _lanternCopy.gameObject.SetActive(true);
         }
 
         private void ResetProps()
@@ -212,7 +284,8 @@ namespace InhabitantChess
                 p.Value.transform.localPosition = t.pos;
                 p.Value.transform.localRotation = Quaternion.Euler(t.rot);
             }
-            _prisonerLantern.gameObject.SetActive(false);
+            _prisonerLantern.gameObject.SetActive(true);
+            _lanternCopy.gameObject.SetActive(false);
         }
 
         private void EnableConversation()
@@ -230,7 +303,10 @@ namespace InhabitantChess
             _prisonerDirector._prisonerBrain.OnArriveAtElevatorDoor -= OnArriveAtElevator;
             _prisonerDirector._prisonerEffects.OnReadyToReceiveTorch -= OnReadyForTorch;
             _prisonerDialogue.OnEndConversation -= OnFinishElevatorDialogue;
+            _prisonerDialogue.OnEndConversation -= OnFinishGameDialogue;
             _torchSocket.OnSocketablePlaced = (OWItemSocket.SocketEvent)Delegate.Remove(_torchSocket.OnSocketablePlaced, new OWItemSocket.SocketEvent(OnPlayerPlaceTorch));
+            TextTranslation.Get().OnLanguageChanged -= () => Translations.UpdateCharacterDialogue(_prisonerDialogue);
+            TextTranslation.Get().OnLanguageChanged -= UpdatePromptText;
         }
     }
 }
