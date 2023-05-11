@@ -18,12 +18,13 @@ namespace InhabitantChess
 
         public static InhabitantChess Instance { get; private set; }
         public GameObject BoardGame { get; private set; }
+        public GameObject PrisonCell { get; private set; }
         public ChessPlayerState PlayerState { get; private set; }
         public float LeanDist { get; private set; }
 
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
         private float _maxLeanDist = 1f, _leanSpeed = 1.5f;
-        private PrisonerBehavior _prisonerBehavior;
+        private PrisonerSequence _prisonerSequence;
         private BoardGameController _bgController;
         private ICommonCameraAPI _cameraAPI;
         private PlayerCameraController _playerCamController;
@@ -57,20 +58,13 @@ namespace InhabitantChess
             LoadPrefabs(bundle, "assets/prefabs/triboard/");
             TextAsset prisonerDialogue = LoadText("Assets/PrisonerDialogue.xml");
 
-            Logger.LogSuccess($"My mod {nameof(InhabitantChess)} is loaded!");
-
             LoadManager.OnCompleteSceneLoad += (scene, loadScene) =>
             {
                 if (loadScene != OWScene.SolarSystem) return;
 
                 PlayerState = ChessPlayerState.None;
 
-                GameObject prisonCell = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_Underground/Sector_PrisonCell");
-                // TODO: use for board game, copy original transforms to restore after game
-                GameObject crate = prisonCell.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_Crate_Sealed (1)");
-                GameObject uselessBoard = prisonCell.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_BoardGame");
-                GameObject playerChair = prisonCell.FindChild("Props_PrisonCell/LowerCell/Prefab_IP_DW_Chair");
-                GameObject prisonerChair = prisonCell.FindChild("Interactibles_PrisonCell/PrisonerSequence/Prefab_IP_DW_Chair");
+                PrisonCell = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_Underground/Sector_PrisonCell");
 
                 GameObject slate = GameObject.Find("Sector_TH/Sector_Village/Sector_StartingCamp/Characters_StartingCamp/Villager_HEA_Slate/Villager_HEA_Slate_ANIM_LogSit");
                 BoardGame = Instantiate(_prefabDict["chessPrefab"], slate.transform);
@@ -107,9 +101,8 @@ namespace InhabitantChess
                 gameSeat.transform.localRotation = Quaternion.Euler(0, 270, 0);
 
                 _screenPrompts = BoardGame.AddComponent<ScreenPrompts>();
-
-                _prisonerBehavior = BoardGame.AddComponent<PrisonerBehavior>();
-                _prisonerBehavior.SetText(prisonerDialogue);
+                _prisonerSequence = BoardGame.AddComponent<PrisonerSequence>();
+                _prisonerSequence.SetText(prisonerDialogue);
 
                 TextTranslation.Get().OnLanguageChanged += Translations.UpdateLanguage;
 
@@ -135,7 +128,7 @@ namespace InhabitantChess
             _seatInteract.SetPromptText((UITextType)Translations.GetUITextType("IC_INTERACT"));
             _seatInteract.OnPressInteract += OnPressInteract;
 
-            Logger.Log("Finished setup");
+            Logger.LogSuccess("Finished setup");
         }
 
         private void OnPressInteract()
