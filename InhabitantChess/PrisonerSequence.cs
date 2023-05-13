@@ -127,8 +127,6 @@ namespace InhabitantChess
             Translations.UpdateCharacterDialogue(_prisonerDialogue);
             UpdatePromptText();
             _prisonerDialogue._interactVolume._screenPrompt.SetText(_giveTorchText);
-
-            _elevatorPos = Instantiate(_prisonerDirector._prisonerBrain.transform);
         }
 
         private void OnReadyForTorch()
@@ -140,6 +138,11 @@ namespace InhabitantChess
             EnableConversation();
             _prisonerDirector._waitingForPlayerToReturnTorch = false;
             _prisonerDirector._prisonerTorchSocket.EnableInteraction(false);
+
+            // TODO: fix by creating new transform or using something else to store its data smh
+            _elevatorPos = new GameObject().transform;
+            _elevatorPos.localPosition = _prisonerDirector._prisonerBrain.transform.localPosition;
+            _elevatorPos.localRotation = _prisonerDirector._prisonerBrain.transform.localRotation;
         }
 
         private void OnFinishElevatorDialogue()
