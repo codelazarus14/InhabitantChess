@@ -14,14 +14,15 @@ namespace InhabitantChess
         private TextAsset _dialogue;
         private VisionTorchSocket _torchSocket;
         private OWLight _torchSpotlight;
+        private OWAudioSource _torchAudio;
         private DreamLanternController _prisonerLantern, _lanternCopy;
         private Dictionary<string, GameObject> _props;
         private List<(string name, Vector3 pos, Vector3 rot)> _ogTransforms, _movedTransforms;
         private Transform _elevatorPos, _seatPos, _cueMarker;
         private string _talkToText, _giveTorchText;
         private float _chairCueZ = 5.2f, _elevatorCueZ = -9.2f;
-        private float _initTorchPlaceTime, _initWalkTime, _eyesCloseTime, _initFinalWordsTime;
-        private bool _eyesClosed;
+        private float _initTorchPlaceTime, _torchSpotlightDelay, _initWalkTime, _eyesCloseTime, _initFinalWordsTime;
+        private bool _spotlightingTorch, _eyesClosed;
         private enum PrisonerState
         {
             None,
@@ -51,7 +52,7 @@ namespace InhabitantChess
             _props = new Dictionary<string, GameObject>
             {
                 { "crate", prisonCell.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_Crate_Sealed (1)") },
-                { "uselessBoard", prisonCell.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_BoardGame") },
+                { "emptyBoard", prisonCell.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_BoardGame") },
                 { "playerChair", prisonCell.FindChild("Props_PrisonCell/LowerCell/Prefab_IP_DW_Chair") },
                 { "prisonerChair", prisonCell.FindChild("Interactibles_PrisonCell/PrisonerSequence/Prefab_IP_DW_Chair") }
             };
@@ -71,7 +72,7 @@ namespace InhabitantChess
                 _ogTransforms.Add((p.Key, pos, rot));
             }
             _movedTransforms.Add((_props.ElementAt(0).Key, new Vector3(4, 0.035f, 0), new Vector3(0, 180, 0)));
-            _movedTransforms.Add((_props.ElementAt(1).Key, new Vector3(4, 0.895f, 0), new Vector3(0, 270, 0)));
+            _movedTransforms.Add((_props.ElementAt(1).Key, new Vector3(4, 0.89f, 0.2f), new Vector3(0, 270, 0)));
             _movedTransforms.Add((_props.ElementAt(2).Key, new Vector3(4, 0.035f, 1.75f), new Vector3(0, 180, 0)));
             _movedTransforms.Add((_props.ElementAt(3).Key, new Vector3(-0.75f, 0, 3.9f), new Vector3(0, 261.3473f, 0)));
             _movedTransforms.Add((_props.ElementAt(4).Key, new Vector3(-2.5f, 0.9f, 1.5f), new Vector3(350, 250, 0)));
@@ -105,6 +106,8 @@ namespace InhabitantChess
             _torchSpotlight = _torchSocket.gameObject.AddComponent<OWLight>();
             _torchSpotlight.SetRange(2);
             _torchSpotlight.SetIntensity(0);
+
+            _torchAudio = _torchSocket.gameObject.AddComponent<OWAudioSource>();
         }
 
         public void UpdatePromptText()
@@ -139,7 +142,6 @@ namespace InhabitantChess
             _prisonerDirector._waitingForPlayerToReturnTorch = false;
             _prisonerDirector._prisonerTorchSocket.EnableInteraction(false);
 
-            // TODO: fix by creating new transform or using something else to store its data smh
             _elevatorPos = new GameObject().transform;
             _elevatorPos.localPosition = _prisonerDirector._prisonerBrain.transform.localPosition;
             _elevatorPos.localRotation = _prisonerDirector._prisonerBrain.transform.localRotation;
@@ -153,8 +155,8 @@ namespace InhabitantChess
             // only behavior that uses the default animation explicitly - resetting them
             _prisonerDirector._prisonerBrain.BeginBehavior(PrisonerBehavior.WaitForProjection, 1f);
             _torchSocket.EnableInteraction(true);
-            _torchSpotlight.SetIntensity(1);
-            //TODO: add light audio source/sfx - click on?
+            _torchSpotlightDelay = Time.time + 2f;
+            _spotlightingTorch = true;
             enabled = true;
         }
 
@@ -186,6 +188,18 @@ namespace InhabitantChess
         private void Update()
         {
             float t = Time.time;
+            if (_spotlightingTorch && t >= _torchSpotlightDelay)
+            {
+                _spotlightingTorch = false;
+                _torchSpotlight.SetIntensity(1);
+                _torchAudio.AssignAudioLibraryClip(AudioType.ShipCockpitHeadlightsOn);
+                _torchAudio.PlayOneShot(_torchAudio._audioLibraryClip, 1f);
+            }
+            UpdatePrisonerSequence(t);
+        }
+
+        private void UpdatePrisonerSequence(float t)
+        {
             // roughly control flow of sequence through flags + timers
             if (_state == PrisonerState.ReactingToTorch && t >= _initTorchPlaceTime + 2f)
             {
@@ -214,6 +228,8 @@ namespace InhabitantChess
                     MoveProps();
                     _prisonerDialogue._interactVolume._screenPrompt.SetText(_talkToText);
                     EnableConversation();
+                    SetPlayerChairCollision(false);
+                    InhabitantChess.Instance.BoardGame.SetActive(true);
                 }
                 else if (_state == PrisonerState.BeingRestored && t >= _eyesCloseTime + 6f)
                 {
@@ -221,6 +237,8 @@ namespace InhabitantChess
                     RestorePrisoner(_elevatorPos);
                     ResetProps();
                     DisableConversation();
+                    SetPlayerChairCollision(true);
+                    InhabitantChess.Instance.BoardGame.SetActive(false);
                 }
                 if (t >= _eyesCloseTime + 10f)
                 {
@@ -275,6 +293,9 @@ namespace InhabitantChess
                 p.Value.transform.localPosition = t.pos;
                 p.Value.transform.localRotation = Quaternion.Euler(t.rot);
             }
+            //make board invisible so we can use the collision
+            foreach (MeshRenderer mesh in _props["emptyBoard"].GetComponentsInChildren<MeshRenderer>())
+                mesh.enabled = false;
             _prisonerLantern.gameObject.SetActive(false);
             _lanternCopy.gameObject.SetActive(true);
         }
@@ -287,16 +308,22 @@ namespace InhabitantChess
                 p.Value.transform.localPosition = t.pos;
                 p.Value.transform.localRotation = Quaternion.Euler(t.rot);
             }
+            foreach (MeshRenderer mesh in _props["emptyBoard"].GetComponentsInChildren<MeshRenderer>())
+                mesh.enabled = true;
             _prisonerLantern.gameObject.SetActive(true);
             _lanternCopy.gameObject.SetActive(false);
         }
 
-        private void EnableConversation()
+        private void SetPlayerChairCollision(bool enabled)
+        {
+            _props["playerChair"].GetComponent<MeshCollider>().enabled = enabled;
+        }
+        public void EnableConversation()
         {
             _prisonerDialogue._interactVolume?.EnableInteraction();
         }
 
-        private void DisableConversation()
+        public void DisableConversation()
         {
             _prisonerDialogue._interactVolume?.DisableInteraction();
         }

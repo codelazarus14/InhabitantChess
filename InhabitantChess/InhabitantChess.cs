@@ -20,10 +20,10 @@ namespace InhabitantChess
         public GameObject BoardGame { get; private set; }
         public GameObject PrisonCell { get; private set; }
         public ChessPlayerState PlayerState { get; private set; }
-        public float LeanDist { get; private set; }
 
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
-        private float _maxLeanDist = 1f, _leanSpeed = 1.5f;
+        private float _leanDist, _maxLeanDist = 1f, _leanSpeed = 1.5f;
+        private bool _initialized;
         private PrisonerSequence _prisonerSequence;
         private BoardGameController _bgController;
         private ICommonCameraAPI _cameraAPI;
@@ -49,7 +49,7 @@ namespace InhabitantChess
             // hug mod messes with the prisoner's InteractReceiver - disable it for now
             if (ModHelper.Interaction.ModExists("VioVayo.HugMod"))
             {
-                Logger.LogError("HugMod detected - disabling mod :(");
+                Logger.LogError("HugMod detected - disabling InhabitantChess :(");
                 enabled = false;
                 return;
             }
@@ -66,10 +66,9 @@ namespace InhabitantChess
 
                 PrisonCell = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_Underground/Sector_PrisonCell");
 
-                GameObject slate = GameObject.Find("Sector_TH/Sector_Village/Sector_StartingCamp/Characters_StartingCamp/Villager_HEA_Slate/Villager_HEA_Slate_ANIM_LogSit");
-                BoardGame = Instantiate(_prefabDict["chessPrefab"], slate.transform);
-                BoardGame.transform.localPosition = new Vector3(-5, 0.8f, 1.5f);
-                BoardGame.SetActive(true);
+                BoardGame = Instantiate(_prefabDict["chessPrefab"], PrisonCell.transform);
+                BoardGame.transform.localPosition = new Vector3(4, -35.105f, 0.2f);
+                BoardGame.transform.localRotation = Quaternion.Euler(0, 270, 0);
 
                 Synchronizer synch = BoardGame.AddComponent<Synchronizer>();
                 BoardController bController = BoardGame.transform.Find("BoardGame_Board").gameObject.AddComponent<BoardController>();
@@ -78,7 +77,7 @@ namespace InhabitantChess
                 bController.AntlerPrefab = _prefabDict["antlerPrefab"];
                 bController.EyePrefab = _prefabDict["eyePrefab"];
                 bController.Synchronizer = synch;
-                // TODO: glowy VP is a little too bright - can we tone it down?
+
                 GameObject sampleBoardGame = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_1/Simulation_DreamZone_1/Props_DreamZone_1/Props_GenericHouse_B (1)/Effects_IP_SIM_BoardGame");
                 MeshRenderer sampleMesh = sampleBoardGame.GetComponent<MeshRenderer>();
                 Material dreamGridVP = sampleMesh.materials[0];
@@ -92,8 +91,12 @@ namespace InhabitantChess
                 GameObject gameAttach = Instantiate(cockpitAttach, BoardGame.transform);
                 gameAttach.transform.localPosition = new Vector3(1, 0, 0);
                 gameAttach.transform.localRotation = Quaternion.Euler(0, 270, 0);
+                gameAttach.GetComponent<CapsuleCollider>().radius *= 2;
                 _attachPoint = gameAttach.GetComponent<PlayerAttachPoint>();
                 _seatInteract = gameAttach.GetComponent<InteractZone>();
+                _seatInteract._textID = (UITextType) Translations.GetUITextType("IC_INTERACT");
+                // default screen prompts not initialized yet? so we have to create our own
+                _seatInteract.Awake();
 
                 GameObject gneissSeat = GameObject.Find("TimberHearth_Body/Sector_TH/Sector_Village/Sector_LowerVillage/Characters_LowerVillage/Villager_HEA_Gneiss/Villager_HEA_Gneiss_ANIM_Tuning/Villager_HEA_Gneiss_ANIM_Rocker/Props_HEA_RockingChair:Props_HEA_RockingChair");
                 GameObject gameSeat = Instantiate(gneissSeat, BoardGame.transform);
@@ -101,34 +104,33 @@ namespace InhabitantChess
                 gameSeat.transform.localRotation = Quaternion.Euler(0, 270, 0);
 
                 _screenPrompts = BoardGame.AddComponent<ScreenPrompts>();
-                _prisonerSequence = BoardGame.AddComponent<PrisonerSequence>();
+                _prisonerSequence = PrisonCell.gameObject.AddComponent<PrisonerSequence>();
                 _prisonerSequence.SetText(prisonerDialogue);
 
+                _seatInteract.OnPressInteract += OnPressInteract;
                 TextTranslation.Get().OnLanguageChanged += Translations.UpdateLanguage;
+                // set up camera w util later
+                GlobalMessenger.AddListener("EnterDreamWorld", new Callback(OnEnterDreamworld));
 
-                // camera init, interact prompt on Locator - have to wait a little longer
-                StartCoroutine(LateInit());
+                Logger.LogSuccess("Finished setup");
             };
         }
 
-        private IEnumerator LateInit(float delay = 1)
+        private void OnEnterDreamworld()
         {
-            yield return new WaitForSeconds(delay);
-
-            _bgController.PlayerManip = Locator.GetPlayerTransform().GetComponentInChildren<FirstPersonManipulator>();
-            _playerCamController = Locator.GetPlayerCameraController();
-            (OWCamera owCam, Camera cam) customCamera = _cameraAPI.CreateCustomCamera("Overhead Camera");
-            Transform overhead = customCamera.owCam.transform;
-            overhead.SetParent(BoardGame.transform);
-            overhead.localPosition = new Vector3(0f, 2f, 0);
-            overhead.localRotation = Quaternion.Euler(90, 270, 0);
-            _overheadCamController = overhead.gameObject.AddComponent<OverheadCameraController>();
-            _overheadCamController.Setup();
-
-            _seatInteract.SetPromptText((UITextType)Translations.GetUITextType("IC_INTERACT"));
-            _seatInteract.OnPressInteract += OnPressInteract;
-
-            Logger.LogSuccess("Finished setup");
+            if (!_initialized)
+            {
+                _initialized = true;
+                _bgController.PlayerManip = Locator.GetPlayerTransform().GetComponentInChildren<FirstPersonManipulator>();
+                _playerCamController = Locator.GetPlayerCameraController();
+                (OWCamera owCam, Camera cam) customCamera = _cameraAPI.CreateCustomCamera("Overhead Camera");
+                Transform overhead = customCamera.owCam.transform;
+                overhead.SetParent(BoardGame.transform);
+                overhead.localPosition = new Vector3(0f, 2f, 0);
+                overhead.localRotation = Quaternion.Euler(90, 270, 0);
+                _overheadCamController = overhead.gameObject.AddComponent<OverheadCameraController>();
+                _overheadCamController.Setup();
+            }
         }
 
         private void OnPressInteract()
@@ -136,6 +138,7 @@ namespace InhabitantChess
             if (PlayerState == ChessPlayerState.None)
             {
                 _seatInteract.DisableInteraction();
+                _prisonerSequence.DisableConversation();
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, true);
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, true);
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, true);
@@ -153,6 +156,7 @@ namespace InhabitantChess
             _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, false);
             _seatInteract.ResetInteraction();
             _seatInteract.EnableInteraction();
+            _prisonerSequence.EnableConversation();
             PlayerState = ChessPlayerState.None;
         }
 
@@ -193,6 +197,11 @@ namespace InhabitantChess
             }
         }
 
+        public float GetLean()
+        {
+            return _leanDist;
+        }
+
         private void Update()
         {
             if (_seatInteract == null || PlayerState == ChessPlayerState.None) return;
@@ -202,16 +211,15 @@ namespace InhabitantChess
                 if (OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All))
                 {
                     //_bgController.ExitGame();
-                    LeanDist = 0f;
+                    _leanDist = 0f;
                     _playerCamController.CenterCameraOverSeconds(0.2f, false);
                     PlayerState = ChessPlayerState.StandingUp;
                 } 
                 else if (OWInput.IsPressed(InputLibrary.moveXZ, InputMode.All))
                 {
                     float v = OWInput.GetAxisValue(InputLibrary.moveXZ).y;
-                    LeanDist += v *_leanSpeed * Time.deltaTime;
-                    LeanDist = Mathf.Clamp(LeanDist, 0.0f, _maxLeanDist);
-                    // update position ig?
+                    _leanDist += v *_leanSpeed * Time.deltaTime;
+                    _leanDist = Mathf.Clamp(_leanDist, 0.0f, _maxLeanDist);
                 }
             }
             if (PlayerState != ChessPlayerState.EnteringOverhead)
@@ -248,6 +256,7 @@ namespace InhabitantChess
 
         private void OnDestroy()
         {
+            GlobalMessenger.RemoveListener("EnterDreamWorld", new Callback(OnEnterDreamworld));
             TextTranslation.Get().OnLanguageChanged -= Translations.UpdateLanguage;
             _seatInteract.OnPressInteract -= OnPressInteract;
         }

@@ -87,7 +87,7 @@ namespace InhabitantChess
         {
             if (InhabitantChess.Instance.PlayerState == ChessPlayerState.Seated)
             {
-                float lean = InhabitantChess.Instance.LeanDist;
+                float lean = InhabitantChess.Instance.GetLean();
                 __instance._targetLocalPosition = new Vector3(__instance._targetLocalPosition.x, __instance._targetLocalPosition.y, lean);
                 __instance.transform.localPosition = Vector3.Lerp(__instance.transform.localPosition, __instance._targetLocalPosition, 0.1f);
             }

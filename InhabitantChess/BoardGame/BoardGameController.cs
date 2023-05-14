@@ -11,6 +11,7 @@ namespace InhabitantChess.BoardGame
          * TODO:
          * - inscryption-style deadwood piece dropping
          * - record encounter completion the first time in saved data
+         *   fade to chess setup sfx - DamCrack, Door_Small/Metal, 
          * - sfx for leaning, pieces, prisoner reactions (howl anim after repeated losses?)
          * - soundtrack ambience - fade in/out, woven between long periods of silence
          *   timber hearth, the museum, elegy, dream of home
