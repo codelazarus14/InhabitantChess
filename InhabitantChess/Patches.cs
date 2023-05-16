@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using HarmonyLib;
-using OWML.ModHelper;
+﻿using HarmonyLib;
+using InhabitantChess.Util;
 using UnityEngine;
-using Logger = InhabitantChess.Util.Logger;
+using static ItemTool;
 
 namespace InhabitantChess
 {
@@ -92,5 +87,83 @@ namespace InhabitantChess
                 __instance.transform.localPosition = Vector3.Lerp(__instance.transform.localPosition, __instance._targetLocalPosition, 0.1f);
             }
         }
+
+
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(ItemTool), nameof(ItemTool.UpdateState))]
+        public static void ItemTool_UpdateState_Postfix(ItemTool __instance, PromptState newState, string itemName)
+        {
+            Shortcut shortcut = InhabitantChess.Instance.Shortcut;
+            if (shortcut != null && !shortcut.UsedShortcut && itemName.Equals(shortcut.Lantern.GetDisplayName()))
+            {
+                //TODO: fix? not updating the prompt for some reason
+                __instance._interactButtonPrompt.SetText(UITextLibrary.GetString(UITextType.TakePrompt) + " " +
+                                                         Translations.GetTranslation("IC_SHORTCUT"));
+            }
+        }
+
+        //
+        // Patches from https://github.com/VioVayo/OWDreamWorldModAssist/blob/main/DWModAssist/Patches.cs
+        //
+
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(Campfire), nameof(Campfire.StartRoasting))]
+        public static void Campfire_StartRoasting_Postfix(Campfire __instance)
+        {
+            Shortcut.LastUsedCampfire = __instance;
+        }
+
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(Campfire), nameof(Campfire.StartSleeping))]
+        public static void Campfire_StartSleeping_Postfix(Campfire __instance)
+        {
+            Shortcut.LastUsedCampfire = __instance;
+        }
+
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(NomaiRemoteCameraPlatform), nameof(NomaiRemoteCameraPlatform.OnSocketableDonePlacing))]
+        public static void NomaiRemoteCameraPlatform_SwitchToRemoteCamera_Postfix(NomaiRemoteCameraPlatform __instance)
+        {
+            Shortcut.LastUsedProjectionPool = __instance;
+        }
+
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(SlideProjector), nameof(SlideProjector.OnPressInteract))]
+        public static void SlideProjector_OnPressInteract_Postfix(SlideProjector __instance)
+        {
+            Shortcut.LastUsedSlideProjector = __instance;
+        }
+
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(Peephole), nameof(Peephole.Peep))]
+        public static void Peephole_Peep_Postfix(Peephole __instance)
+        {
+            Shortcut.LastUsedPeephole = __instance;
+        }
+
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(PlayerAttachPoint), nameof(PlayerAttachPoint.AttachPlayer))]
+        public static void PlayerAttachPoint_AttachPlayer_Postfix(PlayerAttachPoint __instance)
+        {
+            Shortcut.LastAttachedPoint = __instance;
+        }
+
+
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(RingWorldController), nameof(RingWorldController.OnExitDreamWorld))]
+        public static void RingWorldController_OnExitDreamWorld_Postfix()
+        {
+            Locator.GetCloakFieldController().OnPlayerEnter.Invoke();
+        }
+
+        [HarmonyPrefix] //Don't add player to AudioVolumes they don't spawn inside of
+        [HarmonyPatch(typeof(DreamCampfire), nameof(DreamCampfire.OnExitDreamWorld))]
+        public static bool DreamCampfire_OnExitDreamWorld_Prefix(DreamCampfire __instance)
+        {
+            var receiver = __instance._interactVolume as InteractReceiver;
+            var distance = Vector3.Distance(Locator.GetPlayerTransform().position, receiver.gameObject.transform.position);
+            return (distance < receiver._interactRange * 2.5f);
+        }
+
     }
 }

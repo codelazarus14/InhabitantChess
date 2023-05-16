@@ -21,7 +21,8 @@ namespace InhabitantChess.Util
                 { "IC_SILENCE", "..." },
                 { "IC_WAIT", "Wait!" },
                 { "IC_JK", "Uhh... nevermind. Might've lost my train of thought there."},
-                { "IC_DONE", "I think I'm done playing." }
+                { "IC_DONE", "I think I'm done playing." },
+                { "IC_SHORTCUT", "the Shortcut" }
             } },
         };
 

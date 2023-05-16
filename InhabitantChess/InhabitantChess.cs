@@ -19,12 +19,12 @@ namespace InhabitantChess
         public static InhabitantChess Instance { get; private set; }
         public GameObject BoardGame { get; private set; }
         public GameObject PrisonCell { get; private set; }
+        public PrisonerSequence PrisonerSequence { get; private set; }
+        public Shortcut Shortcut { get; private set; }
         public ChessPlayerState PlayerState { get; private set; }
 
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
         private float _leanDist, _maxLeanDist = 1f, _leanSpeed = 1.5f;
-        private bool _initialized;
-        private PrisonerSequence _prisonerSequence;
         private BoardGameController _bgController;
         private ICommonCameraAPI _cameraAPI;
         private PlayerCameraController _playerCamController;
@@ -98,15 +98,15 @@ namespace InhabitantChess
                 // default screen prompts not initialized yet? so we have to create our own
                 _seatInteract.Awake();
 
-                GameObject gneissSeat = GameObject.Find("TimberHearth_Body/Sector_TH/Sector_Village/Sector_LowerVillage/Characters_LowerVillage/Villager_HEA_Gneiss/Villager_HEA_Gneiss_ANIM_Tuning/Villager_HEA_Gneiss_ANIM_Rocker/Props_HEA_RockingChair:Props_HEA_RockingChair");
-                GameObject gameSeat = Instantiate(gneissSeat, BoardGame.transform);
-                gameSeat.transform.localPosition = new Vector3(1, -0.8f, 0);
-                gameSeat.transform.localRotation = Quaternion.Euler(0, 270, 0);
-
                 _screenPrompts = BoardGame.AddComponent<ScreenPrompts>();
-                _prisonerSequence = PrisonCell.gameObject.AddComponent<PrisonerSequence>();
-                _prisonerSequence.SetText(prisonerDialogue);
+                PrisonerSequence = PrisonCell.AddComponent<PrisonerSequence>();
+                PrisonerSequence.SetText(prisonerDialogue);
 
+                // TODO: load saved condition
+                if (true)
+                {
+                    Shortcut shortcut = PrisonCell.AddComponent<Shortcut>();
+                }
                 _seatInteract.OnPressInteract += OnPressInteract;
                 TextTranslation.Get().OnLanguageChanged += Translations.UpdateLanguage;
                 // set up camera w util later
@@ -118,9 +118,8 @@ namespace InhabitantChess
 
         private void OnEnterDreamworld()
         {
-            if (!_initialized)
+            if (_bgController.PlayerManip == null)
             {
-                _initialized = true;
                 _bgController.PlayerManip = Locator.GetPlayerTransform().GetComponentInChildren<FirstPersonManipulator>();
                 _playerCamController = Locator.GetPlayerCameraController();
                 (OWCamera owCam, Camera cam) customCamera = _cameraAPI.CreateCustomCamera("Overhead Camera");
@@ -138,7 +137,7 @@ namespace InhabitantChess
             if (PlayerState == ChessPlayerState.None)
             {
                 _seatInteract.DisableInteraction();
-                _prisonerSequence.DisableConversation();
+                PrisonerSequence.DisableConversation();
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, true);
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, true);
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, true);
@@ -156,7 +155,7 @@ namespace InhabitantChess
             _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, false);
             _seatInteract.ResetInteraction();
             _seatInteract.EnableInteraction();
-            _prisonerSequence.EnableConversation();
+            PrisonerSequence.EnableConversation();
             PlayerState = ChessPlayerState.None;
         }
 

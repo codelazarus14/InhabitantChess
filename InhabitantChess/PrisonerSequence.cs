@@ -224,27 +224,37 @@ namespace InhabitantChess
             {
                 if (_state == PrisonerState.BeingSeated && t >= _eyesCloseTime + 6f)
                 {
-                    SeatPrisoner(_seatPos);
-                    MoveProps();
-                    _prisonerDialogue._interactVolume._screenPrompt.SetText(_talkToText);
-                    EnableConversation();
-                    SetPlayerChairCollision(false);
-                    InhabitantChess.Instance.BoardGame.SetActive(true);
+                    SetUpGame();
                 }
                 else if (_state == PrisonerState.BeingRestored && t >= _eyesCloseTime + 6f)
                 {
                     _state = PrisonerState.BackAtElevator;
-                    RestorePrisoner(_elevatorPos);
-                    ResetProps();
-                    DisableConversation();
-                    SetPlayerChairCollision(true);
-                    InhabitantChess.Instance.BoardGame.SetActive(false);
+                    CleanUpGame();
                 }
                 if (t >= _eyesCloseTime + 10f)
                 {
                     WakePlayer();
                 }
             }
+        }
+
+        public void SetUpGame()
+        {
+            SeatPrisoner(_seatPos);
+            MoveProps();
+            _prisonerDialogue._interactVolume._screenPrompt.SetText(_talkToText);
+            EnableConversation();
+            SetPlayerChairCollision(false);
+            InhabitantChess.Instance.BoardGame.SetActive(true);
+        }
+
+        public void CleanUpGame()
+        {
+            RestorePrisoner(_elevatorPos);
+            ResetProps();
+            DisableConversation();
+            SetPlayerChairCollision(true);
+            InhabitantChess.Instance.BoardGame.SetActive(false);
         }
 
         private void SeatPrisoner(Transform seatPos)
@@ -272,7 +282,8 @@ namespace InhabitantChess
 
         private void SleepPlayer()
         {
-            Locator.GetPlayerController().LockMovement();
+            OWInput.ChangeInputMode(InputMode.None);
+            Locator.GetPromptManager().SetPromptsVisible(false);
             Locator.GetPlayerCamera().GetComponent<PlayerCameraEffectController>().CloseEyes(3f);
             _eyesCloseTime = Time.time + 3f;
             _eyesClosed = true;
@@ -280,7 +291,8 @@ namespace InhabitantChess
 
         private void WakePlayer()
         {
-            Locator.GetPlayerController().UnlockMovement();
+            OWInput.ChangeInputMode(InputMode.Character);
+            Locator.GetPromptManager().SetPromptsVisible(true);
             Locator.GetPlayerCamera().GetComponent<PlayerCameraEffectController>().OpenEyes(1f);
             _eyesClosed = false;
         }
