@@ -69,6 +69,7 @@ namespace InhabitantChess.BoardGame
                 RaycastHit hit;
                 if (Physics.Raycast(manipTrans.position, manipTrans.forward, out hit, 75f, OWLayerMask.blockableInteractMask))
                 {
+                    //TODO: something's wrong with the colliders..
                     SpaceController hitSpc = hit.collider.gameObject.GetComponent<SpaceController>();
                     if (hitSpc != null)
                     {
