@@ -96,7 +96,6 @@ namespace InhabitantChess
             Shortcut shortcut = InhabitantChess.Instance.Shortcut;
             if (shortcut != null && !shortcut.UsedShortcut && itemName.Equals(shortcut.Lantern.GetDisplayName()))
             {
-                //TODO: fix? not updating the prompt for some reason
                 __instance._interactButtonPrompt.SetText(UITextLibrary.GetString(UITextType.TakePrompt) + " " +
                                                          Translations.GetTranslation("IC_SHORTCUT"));
             }

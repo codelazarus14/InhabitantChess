@@ -13,7 +13,7 @@ namespace InhabitantChess
         private float _maxPanDistance = 1f;
         //private float _initSnapTime, _snapDuration, _snapTargetX, 
         //    _snapTargetY, _initSnapDegreesX, _initSnapDegreesY;
-        private bool _isSnapping;
+        //private bool _isSnapping;
 
         public void SetEnabled(bool isEnabled)
         {
@@ -45,7 +45,7 @@ namespace InhabitantChess
 
         private void LateUpdate()
         {
-            if (OverheadCam != null && !OWTime.IsPaused() && !_isSnapping) 
+            if (OverheadCam != null && !OWTime.IsPaused() /*&& !_isSnapping*/) 
             {
                 if (OWInput.IsPressed(InputLibrary.moveXZ))
                 {

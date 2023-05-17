@@ -105,7 +105,7 @@ namespace InhabitantChess
                 // TODO: load saved condition
                 if (true)
                 {
-                    Shortcut shortcut = PrisonCell.AddComponent<Shortcut>();
+                    Shortcut = PrisonCell.AddComponent<Shortcut>();
                 }
                 _seatInteract.OnPressInteract += OnPressInteract;
                 TextTranslation.Get().OnLanguageChanged += Translations.UpdateLanguage;
@@ -213,6 +213,7 @@ namespace InhabitantChess
                     _leanDist = 0f;
                     _playerCamController.CenterCameraOverSeconds(0.2f, false);
                     PlayerState = ChessPlayerState.StandingUp;
+                    _exitSeatTime = Time.time;
                 } 
                 else if (OWInput.IsPressed(InputLibrary.moveXZ, InputMode.All))
                 {
