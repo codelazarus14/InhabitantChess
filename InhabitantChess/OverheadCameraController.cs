@@ -24,7 +24,7 @@ namespace InhabitantChess
         public void Setup()
         {
             OverheadCam = GetComponent<OWCamera>();
-            _reticule = GameObject.Find("Reticule/Image").GetComponent<ReticleController>();
+            _reticule = FindObjectOfType<ReticleController>();
         }
 
         private void Update()

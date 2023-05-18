@@ -29,12 +29,17 @@ namespace InhabitantChess
         private static DreamObjectProjector _lock1Projector, _lock2Projector, _lock3Projector;
         private static PrisonerSequence _sequence;
         private static MeshCollider _chairCollider;
+        private static SingularityController _singularityController;
 
         private void Start()
         {
             FindReferences();
             _prisonLocationData = new(new Vector3(-77, -377.1f, 0), new Quaternion(0, 0.7f, 0, 0.7f), Vector3.zero); //PrisonerCell
             _campfireLocationData = new(new Vector3(0, 10.6f, 0), new Quaternion(0, 0, 0, 1), Vector3.zero); //DreamFireHouse
+
+            _singularityController.transform.SetParent(Locator.GetPlayerBody().transform);
+            _singularityController.transform.localPosition = new Vector3(0, 0.5f, 0.5f);
+            _singularityController.enabled = true;
 
             GameObject slate = GameObject.Find("Characters_StartingCamp/Villager_HEA_Slate");
             Lantern.transform.SetParent(slate.transform);
@@ -54,6 +59,8 @@ namespace InhabitantChess
             _vaultController = FindObjectOfType<SarcophagusController>();
             _sequence = ic.PrisonerSequence;
             _chairCollider = ic.PrisonCell.FindChild("Props_PrisonCell/LowerCell/Prefab_IP_DW_Chair").GetComponent<MeshCollider>();
+            GameObject hole = GameObject.Find("Sector_TH/Sector_NomaiCrater/Interactables_NomaiCrater/Prefab_NOM_WarpReceiver/BlackHole");
+            _singularityController = Instantiate(hole).GetComponentInChildren<SingularityController>();
 
             var volumes = FindObjectsOfType<OWTriggerVolume>();
             foreach (var v in volumes)
@@ -116,6 +123,8 @@ namespace InhabitantChess
             _sequence.TorchSocket.PlaceIntoSocket(director._visionTorchItem);
             _sequence.TorchSocket.EnableInteraction(false);
             _sequence.enabled = true;
+            // disable input to stop player from putting down lantern
+            OWInput.ChangeInputMode(InputMode.None);
         }
 
         private IEnumerator WaitForFinalSetup()
@@ -169,6 +178,9 @@ namespace InhabitantChess
 
         private IEnumerator WarpToPrison(float delay = 0)
         {
+            // toggle black hole on player, make prompts disappear before actual warp
+            yield return new WaitForSecondsRealtime(delay - 1);
+            _singularityController.Create();
             yield return new WaitForSecondsRealtime(delay);
 
             // use safe fire so player doesn't get woken up
@@ -202,6 +214,9 @@ namespace InhabitantChess
                 volume.AddObjectToVolume(Locator.GetPlayerCameraDetector().gameObject);
                 volume.AddObjectToVolume(Lantern.GetFluidDetector().gameObject);
             }
+            // turn off black hole
+            yield return new WaitForSecondsRealtime(delay);
+            _singularityController.Collapse();
         }
 
         private void OpenVault()
