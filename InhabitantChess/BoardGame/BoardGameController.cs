@@ -151,7 +151,7 @@ namespace InhabitantChess.BoardGame
                 yield return new WaitUntil(() => _boardState == BoardState.InputReceived);
             }
             // we're ready to move
-            _board.TryMove(pIdx, _selectedSpace.Space);
+            _board.DoMove(pIdx, _selectedSpace.Space);
             yield return new WaitUntil(() => !_board.Moving);
             _boardState = BoardState.DoneMoving;
             // reset highlighting/visibility and finish
@@ -179,7 +179,7 @@ namespace InhabitantChess.BoardGame
             (int, int) randPos = adj[Random.Range(0, adj.Count)];
             _selectedSpace = _board.SpaceDict[randPos].GetComponent<SpaceController>();
             // move to space
-            _board.TryMove(pIdx, _selectedSpace.Space);
+            _board.DoMove(pIdx, _selectedSpace.Space);
             yield return new WaitUntil(() => !_board.Moving);
             _boardState = BoardState.DoneMoving;
             _board.UpdateBeam();

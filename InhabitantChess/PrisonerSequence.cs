@@ -15,7 +15,6 @@ namespace InhabitantChess
         public VisionTorchSocket TorchSocket { get; private set; }
 
         private OWLight _torchSpotlight;
-        private OWAudioSource _torchAudio;
         private DreamLanternController _prisonerLantern, _lanternCopy;
         private Dictionary<string, GameObject> _props;
         private List<(string name, Vector3 pos, Quaternion rot)> _ogTransforms, _movedTransforms;
@@ -111,8 +110,6 @@ namespace InhabitantChess
             _torchSpotlight = TorchSocket.gameObject.AddComponent<OWLight>();
             _torchSpotlight.SetRange(2);
             _torchSpotlight.SetIntensity(0);
-
-            _torchAudio = TorchSocket.gameObject.AddComponent<OWAudioSource>();
         }
 
         public void UpdatePromptText()
@@ -193,8 +190,7 @@ namespace InhabitantChess
             {
                 _spotlightingTorch = false;
                 _torchSpotlight.SetIntensity(1);
-                _torchAudio.AssignAudioLibraryClip(AudioType.ShipCockpitHeadlightsOn);
-                _torchAudio.PlayOneShot(_torchAudio._audioLibraryClip, 1f);
+                InhabitantChess.Instance.AudioEffects.PlayTorchSpotlight();
             }
             UpdatePrisonerSequence(t);
         }

@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using System.EnterpriseServices;
 using System.Linq;
 using UnityEngine;
 
@@ -368,13 +367,7 @@ namespace InhabitantChess.BoardGame
             highlight.SetActive(!highlight.activeSelf);
         }
 
-        public void TryMove(int pIdx, (int, int) newPos)
-        {
-            // avoid updating position unless we succeeded
-            DoMove(pIdx, newPos);
-        }
-
-        private void DoMove(int pIdx, (int up, int across) newPos, bool settingUp = false)
+        public void DoMove(int pIdx, (int up, int across) newPos, bool settingUp = false)
         {
             var piece = Pieces[pIdx];
             Pieces[pIdx] = (piece.g, newPos, piece.type);

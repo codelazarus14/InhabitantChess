@@ -20,6 +20,7 @@ namespace InhabitantChess
         public GameObject BoardGame { get; private set; }
         public GameObject PrisonCell { get; private set; }
         public PrisonerSequence PrisonerSequence { get; private set; }
+        public AudioEffects AudioEffects { get; private set; }
         public Shortcut Shortcut { get; private set; }
         public ChessPlayerState PlayerState { get; private set; }
 
@@ -107,6 +108,8 @@ namespace InhabitantChess
                 {
                     Shortcut = PrisonCell.AddComponent<Shortcut>();
                 }
+                AudioEffects = PrisonCell.AddComponent<AudioEffects>();
+
                 _seatInteract.OnPressInteract += OnPressInteract;
                 TextTranslation.Get().OnLanguageChanged += Translations.UpdateLanguage;
                 // set up camera w util later
