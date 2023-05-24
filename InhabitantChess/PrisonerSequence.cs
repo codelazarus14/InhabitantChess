@@ -1,5 +1,6 @@
 ﻿using InhabitantChess.Util;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -9,7 +10,7 @@ namespace InhabitantChess
 {
     public class PrisonerSequence : MonoBehaviour
     {
-        public  PrisonerDirector PrisonerDirector { get; private set; }
+        public PrisonerDirector PrisonerDirector { get; private set; }
         public CharacterDialogueTree PrisonerDialogue { get; private set; }
         public TextAsset DialogueText { get; private set; }
         public VisionTorchSocket TorchSocket { get; private set; }
@@ -50,6 +51,9 @@ namespace InhabitantChess
             lanternClone.SetActive(false);
             _prisonerLantern = lantern.GetComponent<DreamLanternController>();
             _lanternCopy = lanternClone.GetComponent<DreamLanternController>();
+            _lanternCopy._light.transform.localPosition = new Vector3(0, 1, 0);
+            _lanternCopy.SetLit(true);
+            _lanternCopy.SetFocus(1);
 
             _props = new Dictionary<string, GameObject>
             {
@@ -70,8 +74,8 @@ namespace InhabitantChess
             {
                 GameObject prop = p.Value;
                 Transform pTrans = prop.transform;
-                Vector3 pos = new Vector3(pTrans.localPosition.x , pTrans.localPosition.y , pTrans.localPosition.z );
-                Quaternion rot = new Quaternion(pTrans.localRotation.x, pTrans.localRotation.y, pTrans.localRotation.z , pTrans.localRotation.w);
+                Vector3 pos = new Vector3(pTrans.localPosition.x, pTrans.localPosition.y, pTrans.localPosition.z);
+                Quaternion rot = new Quaternion(pTrans.localRotation.x, pTrans.localRotation.y, pTrans.localRotation.z, pTrans.localRotation.w);
                 _ogTransforms.Add((p.Key, pos, rot));
             }
             _movedTransforms.Add((_props.ElementAt(0).Key, new Vector3(4, 0.035f, 0), Quaternion.Euler(0, 180, 0)));
@@ -114,7 +118,7 @@ namespace InhabitantChess
 
         public void UpdatePromptText()
         {
-            _talkToText = UITextLibrary.GetString(UITextType.TalkToPrompt) + " " + 
+            _talkToText = UITextLibrary.GetString(UITextType.TalkToPrompt) + " " +
                           TextTranslation.Translate(PrisonerDialogue._characterName);
             _giveTorchText = UITextLibrary.GetString(UITextType.GivePrompt) + " " +
                              UITextLibrary.GetString(UITextType.ItemVisionTorchPrompt) + "?";
@@ -235,7 +239,7 @@ namespace InhabitantChess
             }
         }
 
-        public void SetUpGame()
+        public void SetUpGame(bool withAudio = true)
         {
             SeatPrisoner(_seatPos);
             MoveProps();
@@ -243,6 +247,8 @@ namespace InhabitantChess
             EnableConversation();
             SetPlayerChairCollision(false);
             InhabitantChess.Instance.BoardGame.SetActive(true);
+            if (withAudio)
+                InhabitantChess.Instance.AudioEffects.PlaySetup();
         }
 
         public void CleanUpGame()
@@ -307,6 +313,16 @@ namespace InhabitantChess
                 mesh.enabled = false;
             _prisonerLantern.gameObject.SetActive(false);
             _lanternCopy.gameObject.SetActive(true);
+            _lanternCopy.enabled = true;
+            StartCoroutine(LanternLightHack());
+        }
+
+        private IEnumerator LanternLightHack()
+        {
+            yield return new WaitForSecondsRealtime(1);
+            _lanternCopy._light.range = 4;
+            _lanternCopy._light.GetLight().spotAngle = 130;
+            _lanternCopy._light.SetIntensityScale(1.5f);
         }
 
         private void ResetProps()
@@ -321,6 +337,7 @@ namespace InhabitantChess
                 mesh.enabled = true;
             _prisonerLantern.gameObject.SetActive(true);
             _lanternCopy.gameObject.SetActive(false);
+            _lanternCopy.enabled = false;
         }
 
         public void SetPlayerChairCollision(bool enabled)

@@ -130,7 +130,7 @@ namespace InhabitantChess
         private IEnumerator WaitForFinalSetup()
         {
             while (!_chairCollider.enabled) yield return null;
-            _sequence.SetUpGame();
+            _sequence.SetUpGame(false);
         }
 
         private void GiveLantern(Vector3 worldDestinationPosition)

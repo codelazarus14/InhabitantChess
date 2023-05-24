@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using InhabitantChess.Util;
+using System.Collections.Generic;
 using UnityEngine;
 using Logger = InhabitantChess.Util.Logger;
 
@@ -12,9 +13,11 @@ namespace InhabitantChess
         {
             InhabitantChess instance = InhabitantChess.Instance;
             OWAudioSource torchAudio = instance.PrisonerSequence.TorchSocket.gameObject.AddComponent<OWAudioSource>();
+            OWAudioSource lanternAudio = instance.PrisonCell.FindChild("Props_PrisonCell/LowerCell/GhostLantern(Clone)/AudioSource_GhostLantern").GetComponent<OWAudioSource>();
             _audioSources = new()
             {
-                { nameof(torchAudio), torchAudio }
+                { nameof(torchAudio), torchAudio },
+                { nameof(lanternAudio), lanternAudio }
             };
         }
         private void PlayOneshot(string sourceName, AudioType audio)
@@ -35,6 +38,11 @@ namespace InhabitantChess
         public void PlayTorchSpotlight()
         {
             PlayOneshot("torchAudio", AudioType.ShipCockpitHeadlightsOn);
+        }
+
+        public void PlaySetup()
+        {
+            PlayOneshot("lanternAudio", AudioType.Artifact_Unconceal);
         }
     }
 }

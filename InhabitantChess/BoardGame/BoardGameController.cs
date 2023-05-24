@@ -24,7 +24,6 @@ namespace InhabitantChess.BoardGame
          */
 
         public FirstPersonManipulator PlayerManip;
-        public GameObject StartText;
         public bool Playing { get; private set; }
 
         private float _CPUTurnTime = 1.0f;
@@ -69,7 +68,6 @@ namespace InhabitantChess.BoardGame
                 RaycastHit hit;
                 if (Physics.Raycast(manipTrans.position, manipTrans.forward, out hit, 75f, OWLayerMask.blockableInteractMask))
                 {
-                    //TODO: something's wrong with the colliders..
                     SpaceController hitSpc = hit.collider.gameObject.GetComponent<SpaceController>();
                     if (hitSpc != null)
                     {
@@ -85,7 +83,6 @@ namespace InhabitantChess.BoardGame
         {
             if (Playing) return;
 
-            StartText.SetActive(false);
             _board.ResetBoard();
             Playing = true;
             StartCoroutine(Play());
@@ -101,7 +98,6 @@ namespace InhabitantChess.BoardGame
                 _board.ToggleSpaces(_board.LegalMoves(currPlayer.pos, currPlayer.type));
                 _board.UpdateBeam(true);
             }
-            StartText.SetActive(true);
         }
 
         // loop controlling turns, game state
