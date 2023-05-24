@@ -75,7 +75,7 @@ namespace InhabitantChess
                 _ogTransforms.Add((p.Key, pos, rot));
             }
             _movedTransforms.Add((_props.ElementAt(0).Key, new Vector3(4, 0.035f, 0), Quaternion.Euler(0, 180, 0)));
-            _movedTransforms.Add((_props.ElementAt(1).Key, new Vector3(4, 0.88f, 0.2f), Quaternion.Euler(0, 270, 0)));
+            _movedTransforms.Add((_props.ElementAt(1).Key, new Vector3(4, 0.85f, 0.2f), Quaternion.Euler(0, 270, 0)));
             _movedTransforms.Add((_props.ElementAt(2).Key, new Vector3(4, 0.035f, 1.75f), Quaternion.Euler(0, 180, 0)));
             _movedTransforms.Add((_props.ElementAt(3).Key, new Vector3(-0.75f, 0, 3.9f), Quaternion.Euler(0, 261.3473f, 0)));
             _movedTransforms.Add((_props.ElementAt(4).Key, new Vector3(-2.5f, 0.9f, 1.5f), Quaternion.Euler(350, 250, 0)));
