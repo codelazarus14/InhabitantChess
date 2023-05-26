@@ -15,6 +15,13 @@ namespace InhabitantChess
         public TextAsset DialogueText { get; private set; }
         public VisionTorchSocket TorchSocket { get; private set; }
 
+        public bool WaitingForLanternFix;
+
+        public delegate void PrisonerSeqAudioEvent();
+        public PrisonerSeqAudioEvent OnSpotlightTorch;
+        public PrisonerSeqAudioEvent OnPrisonerCurious;
+        public PrisonerSeqAudioEvent OnSetupGame;
+
         private OWLight _torchSpotlight;
         private DreamLanternController _prisonerLantern, _lanternCopy;
         private Dictionary<string, GameObject> _props;
@@ -194,7 +201,7 @@ namespace InhabitantChess
             {
                 _spotlightingTorch = false;
                 _torchSpotlight.SetIntensity(1);
-                InhabitantChess.Instance.AudioEffects.PlayTorchSpotlight();
+                OnSpotlightTorch?.Invoke();
             }
             UpdatePrisonerSequence(t);
         }
@@ -205,7 +212,7 @@ namespace InhabitantChess
             if (_state == PrisonerState.ReactingToTorch && t >= _initTorchPlaceTime + 2f)
             {
                 // delay reaction enough for player to turn around
-                PrisonerDirector._prisonerEffects.PlayVoiceAudioNear(AudioType.Ghost_Identify_Curious);
+                OnPrisonerCurious?.Invoke();
                 PrisonerDirector._prisonerBrain.BeginBehavior(PrisonerBehavior.MoveToElevatorDoor, _cueMarker, 5f);
                 // TODO: disable movement blocker so player can't grief them?
                 _initWalkTime = t;
@@ -248,7 +255,7 @@ namespace InhabitantChess
             SetPlayerChairCollision(false);
             InhabitantChess.Instance.BoardGame.SetActive(true);
             if (withAudio)
-                InhabitantChess.Instance.AudioEffects.PlaySetup();
+                OnSetupGame?.Invoke();
         }
 
         public void CleanUpGame()
@@ -317,12 +324,13 @@ namespace InhabitantChess
             StartCoroutine(LanternLightHack());
         }
 
-        private IEnumerator LanternLightHack()
+        // need "open" state of lantern with unfocused beam - both controlled by DreamLantern's UpdateVisuals
+        public IEnumerator LanternLightHack()
         {
-            yield return new WaitForSecondsRealtime(1);
+            yield return new WaitUntil(() => _lanternCopy.GetLight().range == 30);
+            _lanternCopy._light.SetIntensityScale(1.5f);
             _lanternCopy._light.range = 4;
             _lanternCopy._light.GetLight().spotAngle = 130;
-            _lanternCopy._light.SetIntensityScale(1.5f);
         }
 
         private void ResetProps()
@@ -358,11 +366,11 @@ namespace InhabitantChess
         {
             PrisonerDirector._prisonerBrain.OnArriveAtElevatorDoor -= OnArriveAtElevator;
             PrisonerDirector._prisonerEffects.OnReadyToReceiveTorch -= OnReadyForTorch;
+            TextTranslation.Get().OnLanguageChanged -= () => Translations.UpdateCharacterDialogue(PrisonerDialogue);
+            TextTranslation.Get().OnLanguageChanged -= UpdatePromptText;
             PrisonerDialogue.OnEndConversation -= OnFinishElevatorDialogue;
             PrisonerDialogue.OnEndConversation -= OnFinishGameDialogue;
             TorchSocket.OnSocketablePlaced = (OWItemSocket.SocketEvent)Delegate.Remove(TorchSocket.OnSocketablePlaced, new OWItemSocket.SocketEvent(OnPlayerPlaceTorch));
-            TextTranslation.Get().OnLanguageChanged -= () => Translations.UpdateCharacterDialogue(PrisonerDialogue);
-            TextTranslation.Get().OnLanguageChanged -= UpdatePromptText;
         }
     }
 }

@@ -9,8 +9,7 @@ namespace InhabitantChess
 
         private ReticleController _reticule;
         private Vector2 _position;
-        private float _panSpeed = 1.5f;
-        private float _maxPanDistance = 1f;
+        private static float _height = 3f, _panSpeed = 1.5f, _maxPanDistance = 0.5f;
         //private float _initSnapTime, _snapDuration, _snapTargetX, 
         //    _snapTargetY, _initSnapDegreesX, _initSnapDegreesY;
         //private bool _isSnapping;
@@ -40,7 +39,7 @@ namespace InhabitantChess
             //    float posY = Mathf.Lerp(_initSnapDegreesY, _snapTargetY, num);
             //    _position = new Vector2(posX, posY);
             //}
-            transform.localPosition = Vector3.Lerp(transform.localPosition,new Vector3(_position.x, 2f, _position.y), 0.1f);
+            transform.localPosition = Vector3.Lerp(transform.localPosition,new Vector3(_position.x, _height, _position.y), 0.1f);
         }
 
         private void LateUpdate()

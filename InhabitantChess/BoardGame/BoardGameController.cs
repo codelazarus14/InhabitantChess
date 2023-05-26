@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace InhabitantChess.BoardGame
 {
@@ -25,9 +24,13 @@ namespace InhabitantChess.BoardGame
 
         public FirstPersonManipulator PlayerManip;
         public bool Playing { get; private set; }
+        public delegate void BoardGameAudioEvent(int idx);
+        public BoardGameAudioEvent OnPieceRemoved;
 
-        private float _CPUTurnTime = 1.0f;
+        private static float s_CPUTurnTime = 1.0f, s_DestroyDelay = 2.0f;
+        private float _destroyTime;
         private int _currPlyrIdx;
+        private List<GameObject> _toDestroy;
         private BoardController _board;
         private BoardState _boardState = BoardState.Idle;
         private SpaceController _selectedSpace;
@@ -46,11 +49,19 @@ namespace InhabitantChess.BoardGame
             _board = transform.Find("BoardGame_Board").gameObject.GetComponent<BoardController>();
             _board.Init();
             _currPlyrIdx = -1;
+            _toDestroy = new();
         }
 
         private void Update()
         {
             if (!_board.IsInitialized) return;
+
+            // delay destruction to let AudioSources finish playing
+            if (_toDestroy.Count > 0 && Time.time >= _destroyTime + s_DestroyDelay)
+            {
+                foreach (var obj in _toDestroy) Destroy(obj);
+                _toDestroy.Clear();
+            }
 
             // check for user input - should probably add a prompt to show space under cursor
             if (_boardState == BoardState.WaitingForInput && OWInput.IsNewlyPressed(InputLibrary.interact, InputMode.All))
@@ -59,7 +70,7 @@ namespace InhabitantChess.BoardGame
             }
             else if (_boardState == BoardState.GameOver)
             {
-                // resume if player selects prompt to start new game
+                // TODO: resume if player selects prompt to start new game
             }
 
             void CastRay()
@@ -168,7 +179,7 @@ namespace InhabitantChess.BoardGame
             _board.ToggleHighlight(player.g);
             // add artificial wait
             _boardState = BoardState.WaitingForInput;
-            yield return new WaitForSecondsRealtime(_CPUTurnTime);
+            yield return new WaitForSecondsRealtime(s_CPUTurnTime);
             _boardState = BoardState.InputReceived;
             // randomly choose an adjacent space
             // in future - could replace this w a call to a function that uses AI rules
@@ -193,12 +204,14 @@ namespace InhabitantChess.BoardGame
                 var plyr = _board.Pieces[r];
                 _board.Pieces.RemoveAt(r);
                 _board.AddDeadwood(plyr.type);
-                Destroy(plyr.g);
                 // dec currTurn if removed piece would shift piece list index up 1
                 // so we don't skip the next one in Play() loop
                 if (r <= i) i--;
+                _toDestroy.Add(plyr.g); // TODO - sometimes removes the wrong piece/audio source?
+                OnPieceRemoved?.Invoke(r);
                 Debug.Log($"Removed {plyr.g.name}, i = {i}, list length {_board.Pieces.Count}");
             }
+            _destroyTime = Time.time;
             return i;
         }
     }

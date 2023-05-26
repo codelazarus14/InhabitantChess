@@ -22,6 +22,11 @@ namespace InhabitantChess.BoardGame
         public bool IsInitialized { get; private set; }
         public bool Moving { get; private set; }
 
+        public delegate void BoardAudioEvent(int idx);
+        public BoardAudioEvent OnPieceFinishedMoving;
+        public delegate void BoardEvent();
+        public BoardEvent OnBoardInitialized;
+
         private static float s_triSize = 0.19346f;
         private static float s_triHeight = Mathf.Sqrt(3) / 2 * s_triSize;
         private static float[] s_boardLevels = { 0.051f, 0.083f, 0.115f };
@@ -34,7 +39,7 @@ namespace InhabitantChess.BoardGame
         private Vector3 _startMovePos, _destMovePos;
         private Quaternion _startLookRot, _destLookRot;
 
-        private int _deadwoodIdx;
+        private int _deadwoodIdx, _movingPieceIdx;
         private Vector3 _deadwoodOffset = new Vector3(s_startingPos.x, 0, -s_startingPos.z + 0.25f);
         private GameObject[] _deadwood;
         private List<(int, int)> _beamSpaces;
@@ -50,11 +55,15 @@ namespace InhabitantChess.BoardGame
             if (Moving)
             {
                 float progress = (Time.time - _initMoveTime) / _travelTime;
-                if (progress > 1) Moving = false;
+                if (progress > 1)
+                {
+                    Moving = false;
+                    OnPieceFinishedMoving?.Invoke(_movingPieceIdx);
+                }
                 else
                 {
                     // https://gamedev.stackexchange.com/questions/157642/moving-a-2d-object-along-circular-arc-between-two-points
-                    Vector3 c = _startMovePos + (_destMovePos - _startMovePos) / 2 + Vector3.up * _curveHeight; 
+                    Vector3 c = _startMovePos + (_destMovePos - _startMovePos) / 2 + Vector3.up * _curveHeight;
 
                     Vector3 m1 = Vector3.Lerp(_startMovePos, c, progress);
                     Vector3 m2 = Vector3.Lerp(c, _destMovePos, progress);
@@ -73,6 +82,7 @@ namespace InhabitantChess.BoardGame
             _deadwood = new GameObject[Pieces.Count];
             _deadwoodIdx = 0;
             IsInitialized = true;
+            OnBoardInitialized?.Invoke();
         }
 
         private void GenerateBoard()
@@ -377,6 +387,7 @@ namespace InhabitantChess.BoardGame
             {
                 Moving = true;
                 _movingPiece = piece.g;
+                _movingPieceIdx = pIdx;
 
                 GameObject oldSpc = SpaceDict[(piece.pos.up, piece.pos.across)];
 
@@ -505,7 +516,7 @@ namespace InhabitantChess.BoardGame
                 {
                     if (Pieces[i].pos == spc && Pieces[i].type != PieceType.Blocker)
                     {
-                        Debug.Log($"player {Pieces[i].g.name} hit at {Pieces[i].pos}");
+                        Debug.Log($"Piece {Pieces[i].g.name} hit at {Pieces[i].pos}");
                         result.Add(i);
                     }
                 }
