@@ -21,6 +21,7 @@ namespace InhabitantChess
         public PrisonerSeqAudioEvent OnSpotlightTorch;
         public PrisonerSeqAudioEvent OnPrisonerCurious;
         public PrisonerSeqAudioEvent OnSetupGame;
+        public PrisonerSeqAudioEvent OnCleanupGame;
 
         private OWLight _torchSpotlight;
         private DreamLanternController _prisonerLantern, _lanternCopy;
@@ -239,7 +240,7 @@ namespace InhabitantChess
                     _state = PrisonerState.BackAtElevator;
                     CleanUpGame();
                 }
-                if (t >= _eyesCloseTime + 8f)
+                if (t >= _eyesCloseTime + 10f)
                 {
                     WakePlayer();
                 }
@@ -265,6 +266,7 @@ namespace InhabitantChess
             DisableConversation();
             SetPlayerChairCollision(true);
             InhabitantChess.Instance.BoardGame.SetActive(false);
+            OnCleanupGame?.Invoke();
         }
 
         private void SeatPrisoner(Transform seatPos)

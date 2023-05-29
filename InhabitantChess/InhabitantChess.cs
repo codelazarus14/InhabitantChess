@@ -1,10 +1,8 @@
 ﻿using HarmonyLib;
 using InhabitantChess.BoardGame;
 using InhabitantChess.Util;
-using OWML.Common;
 using OWML.ModHelper;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -24,8 +22,12 @@ namespace InhabitantChess
         public Shortcut Shortcut { get; private set; }
         public ChessPlayerState PlayerState { get; private set; }
 
+        public delegate void ChessPlayerAudioEvent();
+        public ChessPlayerAudioEvent OnLeanForward;
+        public ChessPlayerAudioEvent OnLeanBackward;
+
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
-        private float _leanDist, _maxLeanDist = 1f, _leanSpeed = 1.5f;
+        private float _oldLeanAmt, _leanAmt, _lastLeanSoundTime, _maxLeanAmt = 1f, _leanSpeed = 1.5f, _leanSoundCooldown = 1f;
         private BoardGameController _bgController;
         private ICommonCameraAPI _cameraAPI;
         private PlayerCameraController _playerCamController;
@@ -54,7 +56,7 @@ namespace InhabitantChess
                 enabled = false;
                 return;
             }
-            
+
             AssetBundle bundle = ModHelper.Assets.LoadBundle("Assets/triboard");
             LoadPrefabs(bundle, "assets/prefabs/triboard/");
             TextAsset prisonerDialogue = LoadText("Assets/PrisonerDialogue.xml");
@@ -96,7 +98,7 @@ namespace InhabitantChess
                 gameAttach.GetComponent<CapsuleCollider>().radius *= 2;
                 _attachPoint = gameAttach.GetComponent<PlayerAttachPoint>();
                 _seatInteract = gameAttach.GetComponent<InteractZone>();
-                _seatInteract._textID = (UITextType) Translations.GetUITextType("IC_INTERACT");
+                _seatInteract._textID = (UITextType)Translations.GetUITextType("IC_INTERACT");
                 // default screen prompts not initialized yet? so we have to create our own
                 _seatInteract.Awake();
 
@@ -192,7 +194,7 @@ namespace InhabitantChess
 
         private void UpdateEnterOverheadTransition()
         {
-            if (Time.time > _initOverheadTime + 0.45f) 
+            if (Time.time > _initOverheadTime + 0.45f)
             {
                 PlayerState = ChessPlayerState.InOverhead;
                 _cameraAPI.EnterCamera(_overheadCamController.OverheadCam);
@@ -202,7 +204,30 @@ namespace InhabitantChess
 
         public float GetLean()
         {
-            return _leanDist;
+            return _leanAmt;
+        }
+
+        private void CheckAndFireLeanSFX()
+        {
+            float leanThreshold = _maxLeanAmt / 3;
+            bool playedSound = false;
+
+            if (Time.time > _lastLeanSoundTime + _leanSoundCooldown)
+            {
+                // leaning forward
+                if (_oldLeanAmt <= leanThreshold && leanThreshold < _leanAmt)
+                {
+                    playedSound = true;
+                    OnLeanForward?.Invoke();
+                }
+                // leaning backward
+                else if (_leanAmt <= leanThreshold && leanThreshold < _oldLeanAmt)
+                {
+                    playedSound = true;
+                    OnLeanBackward?.Invoke();
+                }
+            }
+            if (playedSound) _lastLeanSoundTime = Time.time;
         }
 
         private void Update()
@@ -214,16 +239,19 @@ namespace InhabitantChess
                 if (OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All))
                 {
                     //_bgController.ExitGame();
-                    _leanDist = 0f;
+                    _leanAmt = 0f;
+                    _oldLeanAmt = 0f;
                     _playerCamController.CenterCameraOverSeconds(0.2f, false);
                     PlayerState = ChessPlayerState.StandingUp;
                     _exitSeatTime = Time.time;
-                } 
+                }
                 else if (OWInput.IsPressed(InputLibrary.moveXZ, InputMode.All))
                 {
                     float v = OWInput.GetAxisValue(InputLibrary.moveXZ).y;
-                    _leanDist += v *_leanSpeed * Time.deltaTime;
-                    _leanDist = Mathf.Clamp(_leanDist, 0.0f, _maxLeanDist);
+                    _oldLeanAmt = _leanAmt;
+                    _leanAmt += v * _leanSpeed * Time.deltaTime;
+                    _leanAmt = Mathf.Clamp(_leanAmt, 0.0f, _maxLeanAmt);
+                    CheckAndFireLeanSFX();
                 }
             }
             if (PlayerState != ChessPlayerState.EnteringOverhead)

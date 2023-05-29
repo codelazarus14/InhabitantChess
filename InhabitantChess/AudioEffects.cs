@@ -1,5 +1,6 @@
 ﻿using InhabitantChess.BoardGame;
 using InhabitantChess.Util;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Logger = InhabitantChess.Util.Logger;
@@ -13,6 +14,8 @@ namespace InhabitantChess
         private PrisonerEffects _prisonerFX;
         private Dictionary<string, OWAudioSource> _audioSources;
         private List<OWAudioSource> _pieceSources;
+        private List<AudioType> _furnitureNoises;
+        private List<AudioType> _prisonerNoises;
 
         private void Start()
         {
@@ -33,25 +36,48 @@ namespace InhabitantChess
                 { nameof(playerMusic), playerMusic }
             };
 
-            _board.OnBoardInitialized += AddPieceSources;
+            _furnitureNoises = new()
+            {
+                AudioType.ModelShipImpact,
+                AudioType.GearRotate_Heavy,
+                AudioType.Door_SensorSliding_Loop,
+                AudioType.Ghost_Footstep_Wood,
+                AudioType.Prisoner_PickUpTorch,
+                AudioType.NomaiDoorSlideBig_LP,
+                AudioType.Sarcophagus_OpenFail,
+            };
+
+            _prisonerNoises = new()
+            {
+                AudioType.Ghost_Identify_Irritated,
+                AudioType.Ghost_HuntFail
+            };
+
+            _instance.OnLeanForward += PlayLeanForward;
+            _instance.OnLeanBackward += PlayLeanBack;
+            _board.OnBoardInitialized += GetPieceSources;
             _board.OnPieceFinishedMoving += PlayPieceMoved;
             _instance.BoardGame.GetComponent<BoardGameController>().OnPieceRemoved += PlayPieceRemoved;
             _instance.PrisonerSequence.OnSpotlightTorch += PlayTorchSpotlight;
             _instance.PrisonerSequence.OnPrisonerCurious += PlayPrisonerCurious;
-            _instance.PrisonerSequence.OnSetupGame += PlaySetup;
+            _instance.PrisonerSequence.OnSetupGame += () => PlayFurnitureSounds(true);
+            _instance.PrisonerSequence.OnCleanupGame += () => PlayFurnitureSounds(false);
         }
 
         private void OnDestroy()
         {
-            _board.OnBoardInitialized -= AddPieceSources;
+            _instance.OnLeanForward -= PlayLeanForward;
+            _instance.OnLeanBackward -= PlayLeanBack;
+            _board.OnBoardInitialized -= GetPieceSources;
             _board.OnPieceFinishedMoving -= PlayPieceMoved;
             _instance.BoardGame.GetComponent<BoardGameController>().OnPieceRemoved -= PlayPieceRemoved;
             _instance.PrisonerSequence.OnSpotlightTorch -= PlayTorchSpotlight;
             _instance.PrisonerSequence.OnPrisonerCurious -= PlayPrisonerCurious;
-            _instance.PrisonerSequence.OnSetupGame -= PlaySetup;
+            _instance.PrisonerSequence.OnSetupGame -= () => PlayFurnitureSounds(true);
+            _instance.PrisonerSequence.OnCleanupGame -= () => PlayFurnitureSounds(false);
         }
 
-        private void AddPieceSources()
+        private void GetPieceSources()
         {
             _pieceSources = new();
             foreach (var piece in _board.Pieces)
@@ -60,47 +86,69 @@ namespace InhabitantChess
             }
         }
 
-        // for props, music etc.
-        private void PlayOneshot(string sourceName, AudioType audio)
+        private void Play(OWAudioSource source, AudioType audio, float volume, float duration)
         {
-            var source = _audioSources[sourceName];
+            if (source != null)
+            {
+                if (source.isPlaying) source.Stop();
+                source.AssignAudioLibraryClip(audio);
+                source.SetLocalVolume(volume);
+                source.Play();
+                source.RandomizePlayhead();
+                source.FadeOut(duration);
+                Logger.Log($"Played audio {source._audioLibraryClip}");
+            }
+            else
+            {
+                Logger.LogError($"Couldn't find audio source {source}!");
+            }
+        }
+
+        private void PlayOneShot(OWAudioSource source, AudioType audio)
+        {
             if (source != null)
             {
                 source.AssignAudioLibraryClip(audio);
+                source.SetLocalVolume(1f);
                 source.PlayOneShot(source._audioLibraryClip, 1f);
                 Logger.Log($"Played oneshot {source._audioLibraryClip}");
             }
             else
             {
-                Logger.LogError($"Couldn't find audio source {sourceName}!");
-            }
-        }
-
-        // for board pieces
-        private void PlayOneShot(int idx, AudioType audio)
-        {
-            var source = _pieceSources[idx];
-            if (source != null)
-            {
-                source.AssignAudioLibraryClip(audio);
-                source.PlayOneShot(source._audioLibraryClip, 1f);
-                Logger.Log($"Played piece oneshot {source._audioLibraryClip}");
-            }
-            else
-            {
-                Logger.LogError($"Couldn't find audio source for piece {idx}!");
+                Logger.LogError($"Couldn't find audio source {source}!");
             }
         }
 
         private void PlayTorchSpotlight()
         {
-            PlayOneshot("torchAudio", AudioType.ShipCockpitHeadlightsOn);
+            PlayOneShot(_audioSources["torchAudio"], AudioType.ShipCockpitHeadlightsOn);
         }
 
-        private void PlaySetup()
+        private void PlayFurnitureSounds(bool setup)
         {
-            // TODO all kindsa timed audio events or w/e crashing and banging around
-            PlayOneshot("lanternAudio", AudioType.Artifact_Unconceal);
+            StartCoroutine(FurnitureChaosAudio(setup));
+        }
+
+        private IEnumerator FurnitureChaosAudio(bool setup)
+        {
+            List<AudioType> noises = new(_furnitureNoises);
+            if (!setup) noises.Reverse();
+            bool playedPrisonerNoise = false;
+
+            foreach (AudioType type in noises)
+            {
+                PlayOneShot(_audioSources["playerAudio"], type);
+                float randInterval = Random.Range(0.5f, 0.8f);
+                yield return new WaitForSecondsRealtime(randInterval);
+
+                if (!playedPrisonerNoise)
+                {
+                    playedPrisonerNoise = true;
+                    int rIdx = (int)(randInterval * 10 % _prisonerNoises.Count);
+                    PlayOneShot(_audioSources["playerAudio"], _prisonerNoises[rIdx]);
+                }
+            }
+            PlayOneShot(_audioSources["lanternAudio"], AudioType.Artifact_Unconceal);
         }
 
         private void PlayPrisonerCurious()
@@ -110,12 +158,23 @@ namespace InhabitantChess
 
         private void PlayPieceMoved(int idx)
         {
-            PlayOneShot(idx, AudioType.Artifact_Drop);
+            PlayOneShot(_pieceSources[idx], AudioType.MovementMetalFootstep);
         }
 
         private void PlayPieceRemoved(int idx)
         {
-            PlayOneShot(idx, AudioType.Artifact_Extinguish);
+            PlayOneShot(_pieceSources[idx], AudioType.Artifact_Extinguish);
+            GetPieceSources();
+        }
+
+        private void PlayLeanForward()
+        {
+            Play(_audioSources["playerAudio"], AudioType.TH_BridgeCreaking_LP, 0.8f, 2);
+        }
+
+        private void PlayLeanBack()
+        {
+            Play(_audioSources["playerAudio"], AudioType.TH_BridgeCreaking_LP, 0.8f, 2);
         }
     }
 }

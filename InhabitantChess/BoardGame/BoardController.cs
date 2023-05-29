@@ -34,7 +34,7 @@ namespace InhabitantChess.BoardGame
         private static Vector3 s_startingPos = new Vector3(0.3350971f, s_boardLevels[0], -0.58038f);
         private static int s_Rows = 7;
 
-        private float _travelTime = 0.8f, _initMoveTime, _curveHeight = 0.4f;
+        private float _travelTime = 0.75f, _initMoveTime, _curveHeight = 0.33f;
         private GameObject _movingPiece;
         private Vector3 _startMovePos, _destMovePos;
         private Quaternion _startLookRot, _destLookRot;

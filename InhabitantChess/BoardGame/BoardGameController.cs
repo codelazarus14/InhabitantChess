@@ -10,8 +10,7 @@ namespace InhabitantChess.BoardGame
          * TODO:
          * - inscryption-style deadwood piece dropping
          * - record encounter completion the first time in saved data
-         *   fade to chess setup sfx - DamCrack, Door_Small/Metal, 
-         * - sfx for leaning, pieces, prisoner reactions (howl anim after repeated losses?)
+         * - sfx for prisoner reactions (howl anim after repeated losses?)
          * - soundtrack ambience - fade in/out, woven between long periods of silence
          *   timber hearth, the museum, elegy, dream of home
          * - custom vision torch for delivering game rules
@@ -207,7 +206,8 @@ namespace InhabitantChess.BoardGame
                 // dec currTurn if removed piece would shift piece list index up 1
                 // so we don't skip the next one in Play() loop
                 if (r <= i) i--;
-                _toDestroy.Add(plyr.g); // TODO - sometimes removes the wrong piece/audio source?
+                plyr.g.transform.DestroyAllChildren();
+                _toDestroy.Add(plyr.g); 
                 OnPieceRemoved?.Invoke(r);
                 Debug.Log($"Removed {plyr.g.name}, i = {i}, list length {_board.Pieces.Count}");
             }
