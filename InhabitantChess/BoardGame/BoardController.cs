@@ -1,7 +1,7 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Logger = InhabitantChess.Util.Logger;
 
 namespace InhabitantChess.BoardGame
 {
@@ -76,7 +76,7 @@ namespace InhabitantChess.BoardGame
         public void Init()
         {
             GenerateBoard();
-            SetupBoard(_pieceParent == null);
+            SetupPieces(_pieceParent == null);
 
             _beamSpaces = new List<(int, int)>();
             _deadwood = new GameObject[Pieces.Count];
@@ -184,7 +184,7 @@ namespace InhabitantChess.BoardGame
             }
         }
 
-        private void SetupBoard(bool newParents = false)
+        private void SetupPieces(bool newParents = false)
         {
             Pieces = new List<(GameObject g, (int up, int across) pos, PieceType type)>();
             if (newParents)
@@ -207,39 +207,37 @@ namespace InhabitantChess.BoardGame
             CreateAndPlacePiece(_pieceParent, (6, 7), PieceType.Eye);
         }
 
+        private GameObject InstantiatePiece(PieceType type, Transform parent)
+        {
+            return type switch
+            {
+                PieceType.Blocker =>
+                    Instantiate(BlockerPrefab, parent),
+                PieceType.Antler =>
+                    Instantiate(AntlerPrefab, parent),
+                PieceType.Eye =>
+                    Instantiate(EyePrefab, parent),
+                _ => throw new System.ArgumentOutOfRangeException(nameof(type), "invalid PieceType")
+            };
+        }
+
         private void CreateAndPlacePiece(Transform parent, (int up, int across) pos, PieceType type)
         {
-            GameObject piece = null;
-            // instantiate prefab
-            switch (type)
-            {
-                case PieceType.Blocker:
-                    piece = Instantiate(BlockerPrefab, parent);
-                    break;
-                case PieceType.Antler:
-                    piece = Instantiate(AntlerPrefab, parent);
-                    break;
-                case PieceType.Eye:
-                    piece = Instantiate(EyePrefab, parent);
-                    break;
-                default:
-                    Debug.LogWarning($"Invalid piece type {type}!");
-                    break;
-            }
-            piece.SetActive(true);
+            GameObject pieceObj = InstantiatePiece(type, parent);
+            pieceObj.SetActive(true);
 
             // fix rotation from prefab
-            ChildRotationFix(piece, type);
+            ChildRotationFix(pieceObj, type);
 
             // create placeholder pos
             (int, int) tempPos = (99, 99);
-            (GameObject, (int, int), PieceType) pieceTemp = (piece, tempPos, type);
+            (GameObject, (int, int), PieceType) pieceTemp = (pieceObj, tempPos, type);
             Pieces.Add(pieceTemp);
             // update w starting pos
             DoMove(Pieces.Count - 1, pos, true);
 
             // set highlight materials - maybe move up near instantiating pieces? or if materials depend on type..
-            GameObject highlight = piece.transform.Find("Highlighted").gameObject;
+            GameObject highlight = pieceObj.transform.Find("Highlighted").gameObject;
             for (int i = 0; i < highlight.transform.childCount; i++)
             {
                 MeshRenderer highlightRenderer = highlight.transform.GetChild(i).GetComponent<MeshRenderer>();
@@ -279,6 +277,7 @@ namespace InhabitantChess.BoardGame
         public void ResetBoard()
         {
             IsInitialized = false;
+            UpdateBeam(true);
             // delete old game pieces before we lose track of them
             foreach (var p in Pieces)
             {
@@ -412,7 +411,7 @@ namespace InhabitantChess.BoardGame
                 {
                     piece.g.transform.localRotation = Quaternion.AngleAxis(-90, Vector3.up);
                 }
-            }            
+            }
         }
 
         public void UpdateBeam(bool clear = false)
@@ -516,7 +515,7 @@ namespace InhabitantChess.BoardGame
                 {
                     if (Pieces[i].pos == spc && Pieces[i].type != PieceType.Blocker)
                     {
-                        Debug.Log($"Piece {Pieces[i].g.name} hit at {Pieces[i].pos}");
+                        Logger.Log($"Piece {Pieces[i].g.name} hit at {Pieces[i].pos}");
                         result.Add(i);
                     }
                 }
@@ -540,22 +539,7 @@ namespace InhabitantChess.BoardGame
 
         public void AddDeadwood(PieceType type)
         {
-            GameObject newDeadwood = null;
-            switch (type)
-            {
-                case PieceType.Blocker:
-                    newDeadwood = Instantiate(BlockerPrefab, _deadwoodParent);
-                    break;
-                case PieceType.Antler:
-                    newDeadwood = Instantiate(AntlerPrefab, _deadwoodParent);
-                    break;
-                case PieceType.Eye:
-                    newDeadwood = Instantiate(EyePrefab, _deadwoodParent);
-                    break;
-                default:
-                    Debug.LogWarning($"Invalid piece type {type}!");
-                    break;
-            }
+            GameObject newDeadwood = InstantiatePiece(type, _deadwoodParent);
 
             // create deadwood, update array
             Vector3 deadwoodPos = new Vector3(s_triHeight, 0, s_triSize / 2) * 0.8f;

@@ -138,30 +138,37 @@ namespace InhabitantChess
             }
         }
 
+        private void UpdateInteractUI(string text)
+        {
+            _seatInteract._textID = (UITextType)Translations.GetUITextType(text);
+            _seatInteract.Awake();
+        }
+
         private void OnPressInteract()
         {
+            _seatInteract.DisableInteraction();
+            _bgController.OnInteract();
+            // only update if not seated
             if (PlayerState == ChessPlayerState.None)
             {
-                _seatInteract.DisableInteraction();
                 PrisonerSequence.DisableConversation();
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, true);
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, true);
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, true);
                 _attachPoint.AttachPlayer();
-                _bgController.EnterGame();
                 PlayerState = ChessPlayerState.Seated;
             }
         }
 
         private void CompleteStandingUp()
         {
-            _attachPoint.DetachPlayer();
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, false);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, false);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, false);
             _seatInteract.ResetInteraction();
             _seatInteract.EnableInteraction();
             PrisonerSequence.EnableConversation();
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, false);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, false);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, false);
+            _attachPoint.DetachPlayer();
             PlayerState = ChessPlayerState.None;
         }
 
@@ -252,6 +259,10 @@ namespace InhabitantChess
                     _leanAmt += v * _leanSpeed * Time.deltaTime;
                     _leanAmt = Mathf.Clamp(_leanAmt, 0.0f, _maxLeanAmt);
                     CheckAndFireLeanSFX();
+                }
+                if (!_bgController.Playing)
+                {
+                    _seatInteract.ChangePrompt((UITextType)Translations.GetUITextType("IC_PLAYAGAIN"));
                 }
             }
             if (PlayerState != ChessPlayerState.EnteringOverhead)

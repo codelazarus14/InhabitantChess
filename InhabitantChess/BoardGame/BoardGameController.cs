@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+using Logger = InhabitantChess.Util.Logger;
 
 namespace InhabitantChess.BoardGame
 {
@@ -28,7 +30,7 @@ namespace InhabitantChess.BoardGame
 
         private static float s_CPUTurnTime = 1.0f, s_DestroyDelay = 2.0f;
         private float _destroyTime;
-        private int _currPlyrIdx;
+        private int _currPlyrIdx, _antlerCount, _gamesWon, _totalGames;
         private List<GameObject> _toDestroy;
         private BoardController _board;
         private BoardState _boardState = BoardState.Idle;
@@ -40,7 +42,6 @@ namespace InhabitantChess.BoardGame
             InputReceived,
             DoneMoving,
             Idle,
-            GameOver
         }
 
         private void Start()
@@ -67,10 +68,6 @@ namespace InhabitantChess.BoardGame
             {
                 CastRay();
             }
-            else if (_boardState == BoardState.GameOver)
-            {
-                // TODO: resume if player selects prompt to start new game
-            }
 
             void CastRay()
             {
@@ -89,25 +86,15 @@ namespace InhabitantChess.BoardGame
             }
         }
 
-        public void EnterGame()
+        public void OnInteract()
         {
+            // does nothing if mid-game
             if (Playing) return;
 
             _board.ResetBoard();
+            _antlerCount = _board.Pieces.Where(piece => piece.type == PieceType.Antler).Count();
             Playing = true;
             StartCoroutine(Play());
-        }
-
-        public void ExitGame()
-        {
-            Playing = false;
-            if (_currPlyrIdx != -1)
-            {
-                var currPlayer = _board.Pieces[_currPlyrIdx];
-                _board.ToggleHighlight(currPlayer.g);
-                _board.ToggleSpaces(_board.LegalMoves(currPlayer.pos, currPlayer.type));
-                _board.UpdateBeam(true);
-            }
         }
 
         // loop controlling turns, game state
@@ -134,13 +121,15 @@ namespace InhabitantChess.BoardGame
                     yield return new WaitUntil(() => _boardState == BoardState.Idle);
                     // deleted flagged pieces
                     var removed = _board.CheckBeam();
-                    i = RemovePieces(removed, i);
-                    Playing = _board.Pieces.Count > 1;
+                    _currPlyrIdx = i = RemovePieces(removed, i);
+                    Playing = IsGameOver();
                 }
-                Debug.Log($"Turn {turnCount++} complete");
+                Logger.Log($"Turn {++turnCount} complete");
             }
-            Debug.Log("Game Over!");
-            _boardState = BoardState.GameOver;
+            Logger.Log("Game Over!");
+            _totalGames++;
+            if (_antlerCount > 0) _gamesWon++;
+            Logger.Log($"Game finished, win ratio: {_gamesWon} / {_totalGames - _gamesWon}");
         }
 
         private IEnumerator PlayerTurn(int pIdx)
@@ -194,6 +183,13 @@ namespace InhabitantChess.BoardGame
             _boardState = BoardState.Idle;
         }
 
+        private bool IsGameOver()
+        {
+            // TODO - add condition for cpu loss
+            // no more antler pieces left
+            return _antlerCount > 0;
+        }
+
         private int RemovePieces(List<int> Pieces, int currTurn)
         {
             int i = currTurn;
@@ -202,12 +198,13 @@ namespace InhabitantChess.BoardGame
                 // replace piece w new deadwood
                 var plyr = _board.Pieces[r];
                 _board.Pieces.RemoveAt(r);
+                if (plyr.type == PieceType.Antler) _antlerCount--;
                 _board.AddDeadwood(plyr.type);
                 // dec currTurn if removed piece would shift piece list index up 1
                 // so we don't skip the next one in Play() loop
                 if (r <= i) i--;
                 plyr.g.transform.DestroyAllChildren();
-                _toDestroy.Add(plyr.g); 
+                _toDestroy.Add(plyr.g);
                 OnPieceRemoved?.Invoke(r);
                 Debug.Log($"Removed {plyr.g.name}, i = {i}, list length {_board.Pieces.Count}");
             }
