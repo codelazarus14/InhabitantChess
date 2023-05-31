@@ -13,7 +13,7 @@ namespace InhabitantChess
         {
             BoardMove,
             Overhead,
-            LeanForward
+            Lean
         }
 
         private void Start()
@@ -25,7 +25,7 @@ namespace InhabitantChess
                     { PromptType.BoardMove, MakeScreenPrompt(InputLibrary.interact, Translations.GetTranslation("IC_BOARDMOVE") + "<CMD>") },
                     { PromptType.Overhead, MakeScreenPrompt(InputLibrary.landingCamera, Translations.GetTranslation("IC_OVERHEAD") + "<CMD>") },
                     // TODO: fix to isolate W from the normal WASD command icon
-                    { PromptType.LeanForward, MakeScreenPrompt(InputLibrary.moveXZ, Translations.GetTranslation("IC_LEANFORWARD") + "<CMD>") }
+                    { PromptType.Lean, MakeScreenPrompt(InputLibrary.moveXZ, Translations.GetTranslation("IC_LEANFORWARD") + "<CMD>") }
                 };
                 _activePrompts = new();
             }
@@ -33,7 +33,7 @@ namespace InhabitantChess
             PromptManager pm = Locator.GetPromptManager();
             pm.AddScreenPrompt(_prompts[PromptType.BoardMove], PromptPosition.UpperRight);
             pm.AddScreenPrompt(_prompts[PromptType.Overhead], PromptPosition.UpperRight);
-            pm.AddScreenPrompt(_prompts[PromptType.LeanForward], PromptPosition.UpperRight);
+            pm.AddScreenPrompt(_prompts[PromptType.Lean], PromptPosition.UpperRight);
         }
 
         private void Update()

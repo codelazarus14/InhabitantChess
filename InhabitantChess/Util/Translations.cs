@@ -17,7 +17,7 @@ namespace InhabitantChess.Util
                 { "IC_INTERACT", "Interact" },
                 { "IC_BOARDMOVE", "Select Move" },
                 { "IC_OVERHEAD", "Toggle Overhead" },
-                { "IC_LEANFORWARD", "Lean Forward" },
+                { "IC_LEAN", "Lean Forward/Back" },
                 { "IC_SILENCE", "..." },
                 { "IC_WAIT", "Wait!" },
                 { "IC_JK", "Uhh... nevermind. Might've lost my train of thought there."},

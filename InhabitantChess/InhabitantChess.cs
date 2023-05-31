@@ -154,7 +154,7 @@ namespace InhabitantChess
                 PrisonerSequence.DisableConversation();
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, true);
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, true);
-                _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, true);
+                _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, true);
                 _attachPoint.AttachPlayer();
                 PlayerState = ChessPlayerState.Seated;
             }
@@ -167,7 +167,7 @@ namespace InhabitantChess
             PrisonerSequence.EnableConversation();
             _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, false);
             _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, false);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, false);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, false);
             _attachPoint.DetachPlayer();
             PlayerState = ChessPlayerState.None;
         }
@@ -178,7 +178,7 @@ namespace InhabitantChess
             PlayerState = ChessPlayerState.EnteringOverhead;
             _initOverheadTime = Time.time;
             _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, false);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, false);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, false);
 
             _playerCamController.SnapToDegreesOverSeconds(0f, -48.5f, 0.5f, true);
             _playerCamController.SnapToFieldOfView(24f, 0.5f, true);
@@ -190,7 +190,7 @@ namespace InhabitantChess
             PlayerState = ChessPlayerState.ExitingOverhead;
             _exitOverheadTime = Time.time;
             _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, true);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.LeanForward, true);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, true);
 
             _cameraAPI.ExitCamera(_overheadCamController.OverheadCam);
             _overheadCamController.SetEnabled(false);
