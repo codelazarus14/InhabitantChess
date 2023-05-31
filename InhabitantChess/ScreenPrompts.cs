@@ -24,8 +24,7 @@ namespace InhabitantChess
                 {
                     { PromptType.BoardMove, MakeScreenPrompt(InputLibrary.interact, Translations.GetTranslation("IC_BOARDMOVE") + "<CMD>") },
                     { PromptType.Overhead, MakeScreenPrompt(InputLibrary.landingCamera, Translations.GetTranslation("IC_OVERHEAD") + "<CMD>") },
-                    // TODO: fix to isolate W from the normal WASD command icon
-                    { PromptType.Lean, MakeScreenPrompt(InputLibrary.moveXZ, Translations.GetTranslation("IC_LEANFORWARD") + "<CMD>") }
+                    { PromptType.Lean, MakeScreenPrompt(InputLibrary.moveXZ, Translations.GetTranslation("IC_LEAN") + "<CMD>") }
                 };
                 _activePrompts = new();
             }

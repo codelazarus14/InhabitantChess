@@ -87,6 +87,7 @@ namespace InhabitantChess
             Lantern.onPickedUp -= EngageWarp;
 
             UsedShortcut = true;
+            FindObjectOfType<KeyInfoPromptController>().OnLaunchCodesEntered();
             _sequence.PrisonerDirector.InitializeSequence();
             GetPrisonerUpToSpeed();
             StartCoroutine(WarpToPrison(2));

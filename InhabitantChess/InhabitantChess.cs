@@ -25,6 +25,8 @@ namespace InhabitantChess
         public delegate void ChessPlayerAudioEvent();
         public ChessPlayerAudioEvent OnLeanForward;
         public ChessPlayerAudioEvent OnLeanBackward;
+        public ChessPlayerAudioEvent OnSitDown;
+        public ChessPlayerAudioEvent OnStandUp;
 
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
         private float _oldLeanAmt, _leanAmt, _lastLeanSoundTime, _maxLeanAmt = 1f, _leanSpeed = 1.5f, _leanSoundCooldown = 1f;
@@ -157,6 +159,7 @@ namespace InhabitantChess
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, true);
                 _attachPoint.AttachPlayer();
                 PlayerState = ChessPlayerState.Seated;
+                OnSitDown?.Invoke();
             }
         }
 
@@ -170,6 +173,7 @@ namespace InhabitantChess
             _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, false);
             _attachPoint.DetachPlayer();
             PlayerState = ChessPlayerState.None;
+            OnStandUp?.Invoke();
         }
 
         private void EnterOverheadView()
@@ -193,7 +197,7 @@ namespace InhabitantChess
             _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, true);
 
             _cameraAPI.ExitCamera(_overheadCamController.OverheadCam);
-            _overheadCamController.SetEnabled(false);
+            _overheadCamController.ResetPosition();
             _playerCamController.CenterCameraOverSeconds(0.5f, true);
             _playerCamController.SnapToInitFieldOfView(0.5f, true);
             OWInput.ChangeInputMode(InputMode.Character);
@@ -205,7 +209,7 @@ namespace InhabitantChess
             {
                 PlayerState = ChessPlayerState.InOverhead;
                 _cameraAPI.EnterCamera(_overheadCamController.OverheadCam);
-                _overheadCamController.SetEnabled(true);
+                _overheadCamController.ResetPosition();
             }
         }
 

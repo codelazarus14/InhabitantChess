@@ -20,7 +20,7 @@ namespace InhabitantChess.Util
                 { "IC_LEAN", "Lean Forward/Back" },
                 { "IC_SILENCE", "..." },
                 { "IC_WAIT", "Wait!" },
-                { "IC_JK", "Uhh... nevermind. Might've lost my train of thought there."},
+                { "IC_JK", "Uhh... nevermind."},
                 { "IC_DONE", "I think I'm done playing." },
                 { "IC_SHORTCUT", "a Shortcut" },
                 { "IC_PLAYAGAIN", "Play Again" }

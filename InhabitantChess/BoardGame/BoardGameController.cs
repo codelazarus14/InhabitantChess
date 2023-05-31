@@ -25,8 +25,11 @@ namespace InhabitantChess.BoardGame
 
         public FirstPersonManipulator PlayerManip;
         public bool Playing { get; private set; }
-        public delegate void BoardGameAudioEvent(int idx);
-        public BoardGameAudioEvent OnPieceRemoved;
+        public delegate void PieceAudioEvent(int idx);
+        public PieceAudioEvent OnPieceRemoved;
+        public delegate void BoardGameAudioEvent();
+        public BoardGameAudioEvent OnStartGame;
+        public BoardGameAudioEvent OnStopGame;
 
         private static float s_CPUTurnTime = 1.0f, s_DestroyDelay = 2.0f;
         private float _destroyTime;
@@ -103,6 +106,7 @@ namespace InhabitantChess.BoardGame
             int turnCount = 0;
             // turn on beam at start
             _board.UpdateBeam();
+            OnStartGame?.Invoke();
 
             while (Playing)
             {
@@ -126,6 +130,8 @@ namespace InhabitantChess.BoardGame
                 }
                 Logger.Log($"Turn {++turnCount} complete");
             }
+
+            OnStopGame?.Invoke();
             Logger.Log("Game Over!");
             _totalGames++;
             if (_antlerCount > 0) _gamesWon++;
@@ -169,9 +175,7 @@ namespace InhabitantChess.BoardGame
             _boardState = BoardState.WaitingForInput;
             yield return new WaitForSecondsRealtime(s_CPUTurnTime);
             _boardState = BoardState.InputReceived;
-            // randomly choose an adjacent space
-            // in future - could replace this w a call to a function that uses AI rules
-            (int, int) randPos = adj[Random.Range(0, adj.Count)];
+            (int, int) randPos = ChooseCPUMove(adj);
             _selectedSpace = _board.SpaceDict[randPos].GetComponent<SpaceController>();
             // move to space
             _board.DoMove(pIdx, _selectedSpace.Space);
@@ -181,6 +185,13 @@ namespace InhabitantChess.BoardGame
             // reset
             _board.ToggleHighlight(player.g);
             _boardState = BoardState.Idle;
+        }
+
+        private (int, int) ChooseCPUMove(List<(int, int)> adj)
+        {
+            // randomly choose an adjacent space
+            // in future - could replace this w a call to a function that uses AI rules
+            return adj[Random.Range(0, adj.Count)];
         }
 
         private bool IsGameOver()

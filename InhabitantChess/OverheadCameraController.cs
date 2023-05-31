@@ -7,23 +7,20 @@ namespace InhabitantChess
     {
         public OWCamera OverheadCam;
 
-        private ReticleController _reticule;
         private Vector2 _position;
         private static float _height = 3f, _panSpeed = 1.5f, _maxPanDistance = 0.5f;
         //private float _initSnapTime, _snapDuration, _snapTargetX, 
         //    _snapTargetY, _initSnapDegreesX, _initSnapDegreesY;
         //private bool _isSnapping;
 
-        public void SetEnabled(bool isEnabled)
+        public void ResetPosition()
         {
             _position = Vector3.zero;
-            _reticule.enabled = isEnabled;
         }
 
         public void Setup()
         {
             OverheadCam = GetComponent<OWCamera>();
-            _reticule = FindObjectOfType<ReticleController>();
         }
 
         private void Update()
