@@ -34,6 +34,7 @@ namespace InhabitantChess.BoardGame
         private static float s_CPUTurnTime = 1.0f, s_DestroyDelay = 2.0f;
         private float _destroyTime;
         private int _currPlyrIdx, _antlerCount, _gamesWon, _totalGames;
+        private bool _noLegalMoves;
         private List<GameObject> _toDestroy;
         private BoardController _board;
         private BoardState _boardState = BoardState.Idle;
@@ -96,6 +97,7 @@ namespace InhabitantChess.BoardGame
 
             _board.ResetBoard();
             _antlerCount = _board.Pieces.Where(piece => piece.type == PieceType.Antler).Count();
+            _noLegalMoves = false;
             Playing = true;
             StartCoroutine(Play());
         }
@@ -126,7 +128,7 @@ namespace InhabitantChess.BoardGame
                     // deleted flagged pieces
                     var removed = _board.CheckBeam();
                     _currPlyrIdx = i = RemovePieces(removed, i);
-                    Playing = IsGameOver();
+                    Playing = !IsGameOver();
                 }
                 Logger.Log($"Turn {++turnCount} complete");
             }
@@ -142,6 +144,12 @@ namespace InhabitantChess.BoardGame
         {
             (GameObject g, (int up, int across) pos, PieceType type) player = _board.Pieces[pIdx];
             List<(int, int)> adj = _board.LegalMoves(player.pos, player.type);
+            if (adj.Count == 0)
+            {
+                _noLegalMoves = true;
+                _boardState = BoardState.Idle;
+                yield break;
+            }
 
             _board.ToggleSpaces(adj);
             _board.ToggleHighlight(player.g);
@@ -170,6 +178,12 @@ namespace InhabitantChess.BoardGame
         {
             (GameObject g, (int up, int across) pos, PieceType type) player = _board.Pieces[pIdx];
             List<(int, int)> adj = _board.LegalMoves(player.pos, player.type);
+            if (adj.Count == 0)
+            {
+                _noLegalMoves = true;
+                _boardState = BoardState.Idle;
+                yield break;
+            }
             _board.ToggleHighlight(player.g);
             // add artificial wait
             _boardState = BoardState.WaitingForInput;
@@ -196,9 +210,7 @@ namespace InhabitantChess.BoardGame
 
         private bool IsGameOver()
         {
-            // TODO - add condition for cpu loss
-            // no more antler pieces left
-            return _antlerCount > 0;
+            return _noLegalMoves || _antlerCount < 1;
         }
 
         private int RemovePieces(List<int> Pieces, int currTurn)

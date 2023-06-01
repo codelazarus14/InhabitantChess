@@ -173,6 +173,7 @@ namespace InhabitantChess
         public void OnPlayerPlaceTorch(OWItem Item)
         {
             TorchSocket.OnSocketablePlaced = (OWItemSocket.SocketEvent)Delegate.Remove(TorchSocket.OnSocketablePlaced, new OWItemSocket.SocketEvent(OnPlayerPlaceTorch));
+            TorchSocket.OnSocketableRemoved = (OWItemSocket.SocketEvent)Delegate.Combine(TorchSocket.OnSocketableRemoved, new OWItemSocket.SocketEvent(OnPlayerPickupTorch));
 
             TorchSocket.EnableInteraction(false);
             _torchSpotlight.SetIntensity(0);
@@ -187,12 +188,18 @@ namespace InhabitantChess
             if (readyToLeave)
             {
                 PrisonerDialogue.OnEndConversation -= OnFinishGameDialogue;
-                TorchSocket.EnableInteraction(true);
                 _cueMarker.localPosition = new Vector3(_cueMarker.localPosition.x, _cueMarker.localPosition.y, _elevatorCueZ);
                 _initFinalWordsTime = Time.time;
                 _state = PrisonerState.SaidFinalWords;
             }
             else Logger.Log("Talked to prisoner and decided to continue playing");
+        }
+
+        public void OnPlayerPickupTorch(OWItem Item)
+        {
+            // TODO: why is this not disabling the torch socket after giving it back at the end
+            TorchSocket.OnSocketableRemoved = (OWItemSocket.SocketEvent)Delegate.Remove(TorchSocket.OnSocketableRemoved, new OWItemSocket.SocketEvent(OnPlayerPickupTorch));
+            TorchSocket.EnableInteraction(false);
         }
 
         private void Update()
@@ -265,6 +272,7 @@ namespace InhabitantChess
             ResetProps();
             DisableConversation();
             SetPlayerChairCollision(true);
+            TorchSocket.EnableInteraction(true);
             InhabitantChess.Instance.BoardGame.SetActive(false);
             OnCleanupGame?.Invoke();
         }
@@ -373,6 +381,7 @@ namespace InhabitantChess
             PrisonerDialogue.OnEndConversation -= OnFinishElevatorDialogue;
             PrisonerDialogue.OnEndConversation -= OnFinishGameDialogue;
             TorchSocket.OnSocketablePlaced = (OWItemSocket.SocketEvent)Delegate.Remove(TorchSocket.OnSocketablePlaced, new OWItemSocket.SocketEvent(OnPlayerPlaceTorch));
+            TorchSocket.OnSocketableRemoved = (OWItemSocket.SocketEvent)Delegate.Remove(TorchSocket.OnSocketableRemoved, new OWItemSocket.SocketEvent(OnPlayerPickupTorch));
         }
     }
 }

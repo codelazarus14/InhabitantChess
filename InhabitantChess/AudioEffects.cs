@@ -19,14 +19,14 @@ namespace InhabitantChess
         private List<AudioType> _prisonerNoises;
         private List<AudioType> _ambiences;
         private AudioType _currentAmbience;
-        private float _initFadeOutTime, _ambienceInterval, _ambienceFade, _ambienceVolume = 0.025f, _creakVolume = 0.5f;
+        private float _initFadeOutTime, _initAmbienceTime, _ambienceInterval, _fadeDuration, _ambienceVolume = 0.05f, _creakVolume = 0.25f;
         private bool _playingAmbience;
 
         private void Start()
         {
             _instance = InhabitantChess.Instance;
             _board = _instance.BoardGame.GetComponentInChildren<BoardController>();
-            _gameController = _instance.BoardGame.GetComponentInChildren<BoardGameController>();
+            _gameController = _instance.BoardGame.GetComponent<BoardGameController>();
 
             OWAudioSource torchAudio = _instance.PrisonerSequence.TorchSocket.gameObject.AddComponent<OWAudioSource>();
             OWAudioSource lanternAudio = _instance.PrisonCell.FindChild("Props_PrisonCell/LowerCell/GhostLantern(Clone)/AudioSource_GhostLantern").GetComponent<OWAudioSource>();
@@ -72,9 +72,9 @@ namespace InhabitantChess
 
             _instance.OnLeanForward += PlayLeanCreaking;
             _instance.OnLeanBackward += PlayLeanCreaking;
-            _instance.OnSitDown += StartAmbience;
-            _instance.OnStandUp += () => StopAmbience(true);
-            _gameController.OnStartGame += StartAmbience;
+            _instance.OnSitDown += InitAmbience;
+            _instance.OnStandUp += () => StopAmbience();
+            _gameController.OnStartGame += InitAmbience;
             _gameController.OnStopGame += () => StopAmbience();
             _gameController.OnPieceRemoved += PlayPieceRemoved;
             _board.OnBoardInitialized += GetPieceSources;
@@ -91,9 +91,9 @@ namespace InhabitantChess
         {
             _instance.OnLeanForward -= PlayLeanCreaking;
             _instance.OnLeanBackward -= PlayLeanCreaking;
-            _instance.OnSitDown -= StartAmbience;
-            _instance.OnStandUp -= () => StopAmbience(true);
-            _gameController.OnStartGame -= StartAmbience;
+            _instance.OnSitDown -= InitAmbience;
+            _instance.OnStandUp -= () => StopAmbience();
+            _gameController.OnStartGame -= InitAmbience;
             _gameController.OnStopGame -= () => StopAmbience();
             _gameController.OnPieceRemoved -= PlayPieceRemoved;
             _board.OnBoardInitialized -= GetPieceSources;
@@ -202,54 +202,61 @@ namespace InhabitantChess
 
         private void Update()
         {
-            // fade current track and trigger next one
-            if (_playingAmbience && Time.time >= _initFadeOutTime)
+            if (!_playingAmbience && Time.time >= _initAmbienceTime)
             {
-                _playingAmbience = false;
-                StopAmbience();
-                StartAmbience();
+                StartNextAmbience();
+            }
+            else if (_playingAmbience && Time.time >= _initFadeOutTime)
+            {
+                StopAmbience(false);
             }
         }
 
-        private void StartAmbience()
+        private void InitAmbience()
+        {
+            enabled = true;
+            _ambienceInterval = 90;
+            _initAmbienceTime = Time.time + _ambienceInterval;
+        }
+
+        private void StartNextAmbience()
         {
             OWAudioSource musicSource = _audioSources["playerMusic"];
-            if (_playingAmbience) return;
             // avoid picking same track twice in a row
             int rIdx = Random.Range(0, _ambiences.Count - 1);
             _currentAmbience = _ambiences[rIdx];
             _ambiences[rIdx] = _ambiences[_ambiences.Count - 1];
             _ambiences[_ambiences.Count - 1] = _currentAmbience;
+
+            _fadeDuration = Mathf.Min(20f, musicSource.clip.length / 4);
             musicSource.AssignAudioLibraryClip(_currentAmbience);
-
-            _ambienceFade = Mathf.Min(20f, musicSource.clip.length / 3);
-            _ambienceInterval = 5 * _ambienceFade + 5 * Random.Range(0, _ambienceFade);
-            StartCoroutine(DelayFadeIn(musicSource, _ambienceInterval));
-        }
-
-        // TODO - stop coroutine from preparing to start after player has gotten up/stopped ambience
-        // (ie: before StopAmbience and after Start but with no audio playing yet)
-        private IEnumerator DelayFadeIn(OWAudioSource source, float delay)
-        {
-            yield return new WaitForSecondsRealtime(delay);
-            source.FadeIn(_ambienceFade, true, targetVolume: _ambienceVolume);
-            _initFadeOutTime = Time.time + source.clip.length - _ambienceFade;
+            musicSource.FadeIn(_fadeDuration, true, targetVolume: _ambienceVolume);
+            // prepare for the next clip
+            _ambienceInterval = 5 * _fadeDuration + 5 * Random.Range(0, _fadeDuration);
+            float endTime = Time.time + musicSource.clip.length - musicSource.time;
+            _initFadeOutTime =  endTime - _fadeDuration;
+            _initAmbienceTime = endTime + _ambienceInterval;
+            
             _playingAmbience = true;
-            enabled = true;
         }
 
-        private void StopAmbience(bool quickFade = false)
+        private void StopAmbience(bool endLoop = true)
         {
             OWAudioSource musicSource = _audioSources["playerMusic"];
-            float fadeTime = quickFade ? 5 : _ambienceFade;
-            // clear other fades, replace w new fade out
+            float fadeTime = endLoop ? 5 : _fadeDuration;
+            // replace other fades with new fade out
             if (musicSource._isLocalFading)
             {
                 musicSource.Pause();
                 musicSource.Play();
             }
-            musicSource.FadeOut(fadeTime);
-            enabled = false;
+            if (musicSource.isPlaying) 
+            {
+                musicSource.FadeOut(fadeTime);
+            }
+
+            _playingAmbience = false;
+            enabled = !endLoop;
         }
     }
 }
