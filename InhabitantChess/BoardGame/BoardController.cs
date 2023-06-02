@@ -277,7 +277,7 @@ namespace InhabitantChess.BoardGame
         public void ResetBoard()
         {
             IsInitialized = false;
-            UpdateBeam(true);
+            UpdateBeam(true, true);
             // delete old game pieces before we lose track of them
             foreach (var p in Pieces)
             {
@@ -352,28 +352,39 @@ namespace InhabitantChess.BoardGame
             return firstRow || 0 < pos.up && pos.up < s_Rows && pos.up <= pos.across && pos.across <= 2 * s_Rows - pos.up;
         }
 
-        // set highlight visibility
-        public void ToggleSpaces(List<(int up, int across)> spaces, bool? setBeam = null)
+        // set space clickability/highlight visibility
+        public void ToggleSpaces(List<(int up, int across)> spaces, bool visible, bool? setBeam = null)
         {
             foreach (var s in spaces)
             {
                 SpaceController spc = SpaceDict[(s.up, s.across)].GetComponent<SpaceController>();
                 // don't toggle beam spaces if we're not updating the beam!
                 if (!spc.InBeam || setBeam != null)
+                {
+                    spc.SetVisible(visible);
                     spc.gameObject.SetActive(!spc.gameObject.activeSelf);
+                }
                 // allow beam spaces to be toggled when parameter supplied
                 if (setBeam != null)
                     spc.SetBeam((bool)setBeam);
             }
         }
 
-        public void ToggleHighlight(GameObject piece)
+        public void ToggleHighlight(GameObject piece, bool highlightEnabled)
         {
             // toggle parent transforms of normal/highlighted piece
             GameObject normal = piece.transform.Find("Normal").gameObject;
             GameObject highlight = piece.transform.Find("Highlighted").gameObject;
-            normal.SetActive(!normal.activeSelf);
-            highlight.SetActive(!highlight.activeSelf);
+            if (highlightEnabled)
+            {
+                normal.SetActive(!normal.activeSelf);
+                highlight.SetActive(!highlight.activeSelf);
+            }
+            else
+            {
+                normal.SetActive(true);
+                highlight.SetActive(false);
+            }
         }
 
         public void DoMove(int pIdx, (int up, int across) newPos, bool settingUp = false)
@@ -414,13 +425,12 @@ namespace InhabitantChess.BoardGame
             }
         }
 
-        public void UpdateBeam(bool clear = false)
+        public void UpdateBeam(bool visible, bool clear = false)
         {
-            if (clear)
-            {
-                ToggleSpaces(_beamSpaces, false);
-            }
-            else
+            // reset (turn off) old spaces
+            ToggleSpaces(_beamSpaces, visible, false);
+
+            if (!clear)
             {
                 // see who's been hit and remove
                 var newBeamSpaces = new List<(int, int)>();
@@ -497,11 +507,10 @@ namespace InhabitantChess.BoardGame
                     var currInBounds = from cSpc in currDepthSpaces where InBounds(cSpc) select cSpc;
                     newBeamSpaces.AddRange(currInBounds.ToList());
                 }
-                // reset (turn off) old spaces
-                ToggleSpaces(_beamSpaces, false);
+
                 // show new ones
                 _beamSpaces = newBeamSpaces;
-                ToggleSpaces(_beamSpaces, true);
+                ToggleSpaces(_beamSpaces, visible, true);
             }
         }
 

@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using InhabitantChess.BoardGame;
 using InhabitantChess.Util;
+using OWML.Common;
 using OWML.ModHelper;
 using System;
 using System.Collections.Generic;
@@ -13,7 +14,6 @@ namespace InhabitantChess
 {
     public class InhabitantChess : ModBehaviour
     {
-
         public static InhabitantChess Instance { get; private set; }
         public GameObject BoardGame { get; private set; }
         public GameObject PrisonCell { get; private set; }
@@ -21,6 +21,7 @@ namespace InhabitantChess
         public AudioEffects AudioEffects { get; private set; }
         public Shortcut Shortcut { get; private set; }
         public ChessPlayerState PlayerState { get; private set; }
+        public (bool moves, bool pieces, bool beam) Highlighting { get; private set; }
 
         public delegate void ChessPlayerAudioEvent();
         public ChessPlayerAudioEvent OnLeanForward;
@@ -28,8 +29,12 @@ namespace InhabitantChess
         public ChessPlayerAudioEvent OnSitDown;
         public ChessPlayerAudioEvent OnStandUp;
 
+        private delegate void HighlightConfigureEvent((bool moves, bool piece, bool beam) highlights);
+        private HighlightConfigureEvent OnConfigure;
+
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
         private float _oldLeanAmt, _leanAmt, _lastLeanSoundTime, _maxLeanAmt = 1f, _leanSpeed = 1.5f, _leanSoundCooldown = 1f;
+        private bool _unlockedShortcut, _enableShortcut;
         private BoardGameController _bgController;
         private ICommonCameraAPI _cameraAPI;
         private PlayerCameraController _playerCamController;
@@ -49,15 +54,13 @@ namespace InhabitantChess
         private void Start()
         {
             //TODO: determine if first encounter - ModHelper.Storage.Load<ICData>("ic_save.json");
-
-            _cameraAPI = ModHelper.Interaction.TryGetModApi<ICommonCameraAPI>("xen.CommonCameraUtility");
-            // hug mod messes with the prisoner's InteractReceiver - disable it for now
-            if (ModHelper.Interaction.ModExists("VioVayo.HugMod"))
+            if (EntitlementsManager.IsDlcOwned() != EntitlementsManager.AsyncOwnershipStatus.Owned)
             {
-                Logger.LogError("HugMod detected - disabling InhabitantChess :(");
+                Logger.LogError("EOTE not detected - disabling InhabitantChess :(");
                 enabled = false;
                 return;
             }
+            _cameraAPI = ModHelper.Interaction.TryGetModApi<ICommonCameraAPI>("xen.CommonCameraUtility");
 
             AssetBundle bundle = ModHelper.Assets.LoadBundle("Assets/triboard");
             LoadPrefabs(bundle, "assets/prefabs/triboard/");
@@ -106,13 +109,13 @@ namespace InhabitantChess
                 PrisonerSequence = PrisonCell.AddComponent<PrisonerSequence>();
                 PrisonerSequence.SetText(prisonerDialogue);
 
-                // TODO: load saved condition
-                if (true)
+                if (_enableShortcut)
                 {
                     Shortcut = PrisonCell.AddComponent<Shortcut>();
                 }
                 AudioEffects = PrisonCell.AddComponent<AudioEffects>();
 
+                OnConfigure += _bgController.OnHighlightConfigure;
                 _seatInteract.OnPressInteract += OnPressInteract;
                 TextTranslation.Get().OnLanguageChanged += Translations.UpdateLanguage;
                 // set up camera w util later
@@ -120,6 +123,15 @@ namespace InhabitantChess
 
                 Logger.LogSuccess("Finished setup");
             };
+        }
+
+        public override void Configure(IModConfig config)
+        {
+            _enableShortcut = /* _unlockedShortcut && */ config.GetSettingsValue<bool>("Enable Shortcut (If Unlocked)");
+            Highlighting = new(config.GetSettingsValue<bool>("Moves Highlighting"),
+                                config.GetSettingsValue<bool>("Piece Highlighting"),
+                                config.GetSettingsValue<bool>("Beam Highlighting"));
+            OnConfigure?.Invoke(Highlighting);
         }
 
         private void OnEnterDreamworld()
@@ -304,6 +316,7 @@ namespace InhabitantChess
             GlobalMessenger.RemoveListener("EnterDreamWorld", new Callback(OnEnterDreamworld));
             TextTranslation.Get().OnLanguageChanged -= Translations.UpdateLanguage;
             _seatInteract.OnPressInteract -= OnPressInteract;
+            OnConfigure -= _bgController.OnHighlightConfigure;
         }
 
         private void LoadPrefabs(AssetBundle bundle, string bundlePath)

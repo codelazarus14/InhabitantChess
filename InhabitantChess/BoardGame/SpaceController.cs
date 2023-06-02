@@ -1,13 +1,11 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 
 namespace InhabitantChess.BoardGame
 {
     public class SpaceController : MonoBehaviour
     {
-        public bool InBeam = false;
+        public bool InBeam { get; private set; }
         public (int up, int across) Space { get; private set; }
 
         private Material _ogMaterial, _beamMaterial;
@@ -35,6 +33,11 @@ namespace InhabitantChess.BoardGame
             if (inBeam) mesh.material = _beamMaterial;
             else mesh.material = _ogMaterial;
             InBeam = inBeam;
+        }
+
+        public void SetVisible(bool visible)
+        {
+            GetComponent<MeshRenderer>().enabled = visible;
         }
 
         public void FlipHighlightLerp()

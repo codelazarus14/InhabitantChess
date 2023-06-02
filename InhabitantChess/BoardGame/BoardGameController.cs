@@ -13,13 +13,10 @@ namespace InhabitantChess.BoardGame
          * - inscryption-style deadwood piece dropping
          * - record encounter completion the first time in saved data
          * - sfx for prisoner reactions (howl anim after repeated losses?)
-         * - soundtrack ambience - fade in/out, woven between long periods of silence
-         *   timber hearth, the museum, elegy, dream of home
          * - custom vision torch for delivering game rules
          * - separate rules (piece creation, legal moves, game over) from board (for supporting
          *   AI nodes/searching), maybe expose game rules thru interface? idk
          * - flickering piece highlight or more subtle effect
-         * - options menu (toggle highlight, screen prompts, AI difficulty)
          * - localize error messages
          */
 
@@ -34,8 +31,10 @@ namespace InhabitantChess.BoardGame
         private static float s_CPUTurnTime = 1.0f, s_DestroyDelay = 2.0f;
         private float _destroyTime;
         private int _currPlyrIdx, _antlerCount, _gamesWon, _totalGames;
-        private bool _noLegalMoves;
+        private bool _noLegalMoves, _movesHighlightEnabled, _pieceHighlightEnabled, _beamHighlightEnabled;
+        private (GameObject g, (int up, int across) pos, PieceType type) _currentPlayer;
         private List<GameObject> _toDestroy;
+        private List<(int, int)> _legalMoves;
         private BoardController _board;
         private BoardState _boardState = BoardState.Idle;
         private SpaceController _selectedSpace;
@@ -54,6 +53,27 @@ namespace InhabitantChess.BoardGame
             _board.Init();
             _currPlyrIdx = -1;
             _toDestroy = new();
+            OnHighlightConfigure(InhabitantChess.Instance.Highlighting);
+        }
+
+        public void OnHighlightConfigure((bool moves, bool pieces, bool beam) hConfig)
+        {
+            _movesHighlightEnabled = hConfig.moves;
+            _pieceHighlightEnabled = hConfig.pieces;
+            _beamHighlightEnabled = hConfig.beam;
+
+            if (_board != null && _board.IsInitialized) RefreshHighlighting();
+        }
+
+        private void RefreshHighlighting()
+        {
+            // refresh highlighting
+            if (_boardState == BoardState.WaitingForInput)
+            {
+                _board.ToggleSpaces(_legalMoves, _movesHighlightEnabled);
+                _board.ToggleHighlight(_currentPlayer.g, _pieceHighlightEnabled);
+            }
+            _board.UpdateBeam(_beamHighlightEnabled);
         }
 
         private void Update()
@@ -107,7 +127,7 @@ namespace InhabitantChess.BoardGame
         {
             int turnCount = 0;
             // turn on beam at start
-            _board.UpdateBeam();
+            _board.UpdateBeam(_beamHighlightEnabled);
             OnStartGame?.Invoke();
 
             while (Playing)
@@ -142,19 +162,19 @@ namespace InhabitantChess.BoardGame
 
         private IEnumerator PlayerTurn(int pIdx)
         {
-            (GameObject g, (int up, int across) pos, PieceType type) player = _board.Pieces[pIdx];
-            List<(int, int)> adj = _board.LegalMoves(player.pos, player.type);
-            if (adj.Count == 0)
+            _currentPlayer = _board.Pieces[pIdx];
+            _legalMoves = _board.LegalMoves(_currentPlayer.pos, _currentPlayer.type);
+            if (_legalMoves.Count == 0)
             {
                 _noLegalMoves = true;
                 _boardState = BoardState.Idle;
                 yield break;
             }
 
-            _board.ToggleSpaces(adj);
-            _board.ToggleHighlight(player.g);
+            _board.ToggleSpaces(_legalMoves, _movesHighlightEnabled);
+            _board.ToggleHighlight(_currentPlayer.g, _pieceHighlightEnabled);
             // wait for input, then move
-            while (_selectedSpace == null || !adj.Contains(_selectedSpace.Space))
+            while (_selectedSpace == null || !_legalMoves.Contains(_selectedSpace.Space))
             {
                 _boardState = BoardState.WaitingForInput;
                 yield return new WaitUntil(() => _boardState == BoardState.InputReceived);
@@ -164,48 +184,48 @@ namespace InhabitantChess.BoardGame
             yield return new WaitUntil(() => !_board.Moving);
             _boardState = BoardState.DoneMoving;
             // reset highlighting/visibility and finish
-            _board.ToggleHighlight(player.g);
-            _board.ToggleSpaces(adj);
+            _board.ToggleHighlight(_currentPlayer.g, false);
+            _board.ToggleSpaces(_legalMoves, _movesHighlightEnabled);
             // blocker piece should update beam on move
-            if (player.type == PieceType.Blocker)
+            if (_currentPlayer.type == PieceType.Blocker)
             {
-                _board.UpdateBeam();
+                _board.UpdateBeam(_beamHighlightEnabled);
             }
             _boardState = BoardState.Idle;
         }
 
         private IEnumerator CPUTurn(int pIdx)
         {
-            (GameObject g, (int up, int across) pos, PieceType type) player = _board.Pieces[pIdx];
-            List<(int, int)> adj = _board.LegalMoves(player.pos, player.type);
-            if (adj.Count == 0)
+            _currentPlayer = _board.Pieces[pIdx];
+            _legalMoves = _board.LegalMoves(_currentPlayer.pos, _currentPlayer.type);
+            if (_legalMoves.Count == 0)
             {
                 _noLegalMoves = true;
                 _boardState = BoardState.Idle;
                 yield break;
             }
-            _board.ToggleHighlight(player.g);
+            _board.ToggleHighlight(_currentPlayer.g, _pieceHighlightEnabled);
             // add artificial wait
             _boardState = BoardState.WaitingForInput;
             yield return new WaitForSecondsRealtime(s_CPUTurnTime);
             _boardState = BoardState.InputReceived;
-            (int, int) randPos = ChooseCPUMove(adj);
+            (int, int) randPos = ChooseCPUMove(_legalMoves);
             _selectedSpace = _board.SpaceDict[randPos].GetComponent<SpaceController>();
             // move to space
             _board.DoMove(pIdx, _selectedSpace.Space);
             yield return new WaitUntil(() => !_board.Moving);
             _boardState = BoardState.DoneMoving;
-            _board.UpdateBeam();
+            _board.UpdateBeam(_beamHighlightEnabled);
             // reset
-            _board.ToggleHighlight(player.g);
+            _board.ToggleHighlight(_currentPlayer.g, false);
             _boardState = BoardState.Idle;
         }
 
-        private (int, int) ChooseCPUMove(List<(int, int)> adj)
+        private (int, int) ChooseCPUMove(List<(int, int)> legalMoves)
         {
-            // randomly choose an adjacent space
+            // randomly choose a space
             // in future - could replace this w a call to a function that uses AI rules
-            return adj[Random.Range(0, adj.Count)];
+            return legalMoves[Random.Range(0, legalMoves.Count)];
         }
 
         private bool IsGameOver()
