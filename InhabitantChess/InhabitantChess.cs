@@ -90,8 +90,6 @@ namespace InhabitantChess
                 bController.HighlightShader = sampleMesh.material.shader;
                 bController.HighlightMaterials = new Material[] { dreamGridVP, dreamGrid };
                 _bgController = BoardGame.AddComponent<BoardGameController>();
-                // TODO: remove from prefab later
-                Destroy(BoardGame.transform.Find("StartText").gameObject);
 
                 GameObject cockpitAttach = GameObject.Find("Ship_Body/Module_Cockpit/Systems_Cockpit/CockpitAttachPoint");
                 GameObject gameAttach = Instantiate(cockpitAttach, BoardGame.transform);
