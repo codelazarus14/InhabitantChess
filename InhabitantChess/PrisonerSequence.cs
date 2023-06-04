@@ -15,7 +15,7 @@ namespace InhabitantChess
         public TextAsset DialogueText { get; private set; }
         public VisionTorchSocket TorchSocket { get; private set; }
 
-        public bool WaitingForLanternFix;
+        public bool CanTriggerSequence;
 
         public delegate void PrisonerSeqAudioEvent();
         public PrisonerSeqAudioEvent OnSpotlightTorch;
@@ -38,6 +38,7 @@ namespace InhabitantChess
             ReactingToTorch,
             WalkingToMarker,
             BeingSeated,
+            Seated,
             SaidFinalWords,
             BeingRestored,
             BackAtElevator
@@ -134,6 +135,8 @@ namespace InhabitantChess
 
         public void OnArriveAtElevator()
         {
+            if (!CanTriggerSequence) return;
+
             // turn off our addition since we'll use MoveToElevatorDoor for moving 'em around later
             PrisonerDirector._prisonerBrain.OnArriveAtElevatorDoor -= OnArriveAtElevator;
             // original sequence assumes only dialogue is after emerge, just swap the two listeners here
@@ -148,6 +151,8 @@ namespace InhabitantChess
 
         public void OnReadyForTorch()
         {
+            if (!CanTriggerSequence) return;
+
             PrisonerDirector._prisonerEffects.OnReadyToReceiveTorch -= OnReadyForTorch;
             // stop prisoner from playing torch request animation after arriving at chair later
             PrisonerDirector._prisonerBrain.OnArriveAtElevatorDoor -= PrisonerDirector.OnPrisonerArriveAtElevatorDoor;
@@ -240,6 +245,7 @@ namespace InhabitantChess
             {
                 if (_state == PrisonerState.BeingSeated && t >= _eyesCloseTime + 4f)
                 {
+                    _state = PrisonerState.Seated;
                     SetUpGame();
                 }
                 else if (_state == PrisonerState.BeingRestored && t >= _eyesCloseTime + 4f)

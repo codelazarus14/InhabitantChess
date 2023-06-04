@@ -22,6 +22,7 @@ namespace InhabitantChess
         public Shortcut Shortcut { get; private set; }
         public ChessPlayerState PlayerState { get; private set; }
         public (bool moves, bool pieces, bool beam) Highlighting { get; private set; }
+        public bool ShortcutEnabled { get; private set; }
 
         public delegate void ChessPlayerAudioEvent();
         public ChessPlayerAudioEvent OnLeanForward;
@@ -29,12 +30,12 @@ namespace InhabitantChess
         public ChessPlayerAudioEvent OnSitDown;
         public ChessPlayerAudioEvent OnStandUp;
 
-        private delegate void HighlightConfigureEvent((bool moves, bool piece, bool beam) highlights);
-        private HighlightConfigureEvent OnConfigure;
+        private delegate void ConfigureEvent();
+        private ConfigureEvent OnConfigure;
 
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
         private float _oldLeanAmt, _leanAmt, _lastLeanSoundTime, _maxLeanAmt = 1f, _leanSpeed = 1.5f, _leanSoundCooldown = 1f;
-        private bool _unlockedShortcut, _enableShortcut;
+        private bool _unlockedShortcut;
         private BoardGameController _bgController;
         private ICommonCameraAPI _cameraAPI;
         private PlayerCameraController _playerCamController;
@@ -108,14 +109,11 @@ namespace InhabitantChess
                 _screenPrompts = BoardGame.AddComponent<ScreenPrompts>();
                 PrisonerSequence = PrisonCell.AddComponent<PrisonerSequence>();
                 PrisonerSequence.SetText(prisonerDialogue);
-
-                if (_enableShortcut)
-                {
-                    Shortcut = PrisonCell.AddComponent<Shortcut>();
-                }
+                Shortcut = PrisonCell.AddComponent<Shortcut>();
                 AudioEffects = PrisonCell.AddComponent<AudioEffects>();
 
-                OnConfigure += _bgController.OnHighlightConfigure;
+                OnConfigure += () => _bgController.OnHighlightConfigure(Highlighting);
+                OnConfigure += () => Shortcut.EnableShortcut(ShortcutEnabled);
                 _seatInteract.OnPressInteract += OnPressInteract;
                 TextTranslation.Get().OnLanguageChanged += Translations.UpdateLanguage;
                 // set up camera w util later
@@ -127,11 +125,11 @@ namespace InhabitantChess
 
         public override void Configure(IModConfig config)
         {
-            _enableShortcut = /* _unlockedShortcut && */ config.GetSettingsValue<bool>("Enable Shortcut (If Unlocked)");
+            ShortcutEnabled = /* _unlockedShortcut && */ config.GetSettingsValue<bool>("Enable Shortcut (If Unlocked)");
             Highlighting = new(config.GetSettingsValue<bool>("Moves Highlighting"),
                                 config.GetSettingsValue<bool>("Piece Highlighting"),
                                 config.GetSettingsValue<bool>("Beam Highlighting"));
-            OnConfigure?.Invoke(Highlighting);
+            OnConfigure?.Invoke();
         }
 
         private void OnEnterDreamworld()
@@ -150,14 +148,10 @@ namespace InhabitantChess
             }
         }
 
-        private void UpdateInteractUI(string text)
-        {
-            _seatInteract._textID = (UITextType)Translations.GetUITextType(text);
-            _seatInteract.Awake();
-        }
-
         private void OnPressInteract()
         {
+            if (_overheadCamController == null || _playerCamController == null) return;
+
             _seatInteract.DisableInteraction();
             _bgController.OnInteract();
             // only update if not seated
@@ -316,7 +310,8 @@ namespace InhabitantChess
             GlobalMessenger.RemoveListener("EnterDreamWorld", new Callback(OnEnterDreamworld));
             TextTranslation.Get().OnLanguageChanged -= Translations.UpdateLanguage;
             _seatInteract.OnPressInteract -= OnPressInteract;
-            OnConfigure -= _bgController.OnHighlightConfigure;
+            OnConfigure -= () => Shortcut.EnableShortcut(ShortcutEnabled);
+            OnConfigure -= () => _bgController.OnHighlightConfigure(Highlighting);
         }
 
         private void LoadPrefabs(AssetBundle bundle, string bundlePath)

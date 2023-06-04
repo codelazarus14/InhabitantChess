@@ -88,16 +88,44 @@ namespace InhabitantChess
             }
         }
 
-
+        // show shortcut prompt text
         [HarmonyPostfix]
         [HarmonyPatch(typeof(ItemTool), nameof(ItemTool.UpdateState))]
         public static void ItemTool_UpdateState_Postfix(ItemTool __instance, PromptState newState, string itemName)
         {
-            Shortcut shortcut = InhabitantChess.Instance.Shortcut;
-            if (shortcut != null && !shortcut.UsedShortcut && itemName.Equals(shortcut.Lantern.GetDisplayName()))
+            if (Locator.GetPlayerBody().GetComponentInChildren<PlayerSectorDetector>().IsWithinSector(Sector.Name.TimberHearth))
             {
-                __instance._interactButtonPrompt.SetText(UITextLibrary.GetString(UITextType.TakePrompt) + " " +
-                                                         Translations.GetTranslation("IC_SHORTCUT"));
+                Shortcut shortcut = InhabitantChess.Instance.Shortcut;
+                if (shortcut != null && !shortcut.UsedShortcut && itemName.Equals(shortcut.Lantern.GetDisplayName()))
+                {
+                    __instance._interactButtonPrompt.SetText(UITextLibrary.GetString(UITextType.TakePrompt) + " " +
+                                                                Translations.GetTranslation("IC_SHORTCUT"));
+                }
+            }
+        }
+
+        // override Dreamworld ending
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(DeathManager), nameof(DeathManager.BeginEscapedTimeLoopSequence))]
+        public static bool DeathManager_BeginEscapedTimeLoopSequence_Prefix(TimeloopEscapeType escapeType)
+        {
+            if (escapeType == TimeloopEscapeType.Dreamworld)
+            {
+                InhabitantChess.Instance.PrisonerSequence.CanTriggerSequence = true;
+                return false;
+            }
+            return true;
+        }
+
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(GlobalMusicController), nameof(GlobalMusicController.OnEnterDreamWorld))]
+        public static void GlobalMusicController_OnEnterDreamWorld_Postfix(GlobalMusicController __instance)
+        {
+            if (PlayerState.IsResurrected() && __instance._playingFinalEndTimes)
+            {
+                __instance._playingFinalEndTimes = false;
+                __instance._finalEndTimesDarkBrambleSource.FadeOut(1f);
+                Locator.GetAudioMixer().UnmixEndTimes(5f);
             }
         }
 

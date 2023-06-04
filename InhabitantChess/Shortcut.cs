@@ -47,6 +47,7 @@ namespace InhabitantChess
             Lantern.transform.localRotation = Quaternion.Euler(0, 300, 0);
             Lantern.SetSector(Lantern.GetComponentInParent<Sector>());
             Lantern.onPickedUp += EngageWarp;
+            EnableShortcut(InhabitantChess.Instance.ShortcutEnabled);
         }
 
         private void FindReferences()
@@ -82,8 +83,16 @@ namespace InhabitantChess
             _cockpitController = FindObjectOfType<ShipCockpitController>();
         }
 
+        public void EnableShortcut(bool enabled)
+        {
+            Lantern.gameObject.SetActive(enabled);
+            UsedShortcut = !enabled;
+        }
+
         private void EngageWarp(OWItem item)
         {
+            // this is really only for avoiding a conflict w DWAssist rn, remove later?
+            if (UsedShortcut) return;
             Lantern.onPickedUp -= EngageWarp;
 
             UsedShortcut = true;
@@ -105,7 +114,7 @@ namespace InhabitantChess
             director._prisonerBrain.OnArriveAtElevatorDoor -= director.OnPrisonerArriveAtElevatorDoor;
             director._prisonerBrain.OnArriveAtElevatorDoor -= _sequence.OnArriveAtElevator;
             director._prisonerEffects.OnReadyToReceiveTorch -= _sequence.OnReadyForTorch;
-            _sequence.TorchSocket.OnSocketablePlaced = (OWItemSocket.SocketEvent)Delegate.Remove(_sequence.TorchSocket.OnSocketablePlaced, 
+            _sequence.TorchSocket.OnSocketablePlaced = (OWItemSocket.SocketEvent)Delegate.Remove(_sequence.TorchSocket.OnSocketablePlaced,
                                                                     new OWItemSocket.SocketEvent(_sequence.OnPlayerPlaceTorch));
             // remove darkness plane, give lantern, turn on lights
             director._darknessAwoken = true;
