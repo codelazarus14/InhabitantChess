@@ -35,7 +35,6 @@ namespace InhabitantChess
 
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
         private float _oldLeanAmt, _leanAmt, _lastLeanSoundTime, _maxLeanAmt = 1f, _leanSpeed = 1.5f, _leanSoundCooldown = 1f;
-        private bool _unlockedShortcut;
         private BoardGameController _bgController;
         private ICommonCameraAPI _cameraAPI;
         private PlayerCameraController _playerCamController;
@@ -44,7 +43,13 @@ namespace InhabitantChess
         private PlayerAttachPoint _attachPoint;
         private InteractZone _seatInteract;
         private Dictionary<string, GameObject> _prefabDict = new();
+        private const string SaveFileName = "ic_save.json";
         private static Shader s_standardShader = Shader.Find("Standard");
+        private class ICData
+        {
+            public bool unlockedShortcut;
+        }
+        private ICData _saveData;
 
         private void Awake()
         {
@@ -54,7 +59,6 @@ namespace InhabitantChess
 
         private void Start()
         {
-            //TODO: determine if first encounter - ModHelper.Storage.Load<ICData>("ic_save.json");
             if (EntitlementsManager.IsDlcOwned() != EntitlementsManager.AsyncOwnershipStatus.Owned)
             {
                 Logger.LogError("EOTE not detected - disabling InhabitantChess :(");
@@ -125,11 +129,24 @@ namespace InhabitantChess
 
         public override void Configure(IModConfig config)
         {
-            ShortcutEnabled = /* _unlockedShortcut && */ config.GetSettingsValue<bool>("Enable Shortcut (If Unlocked)");
+            if (_saveData == null)
+                _saveData = ModHelper.Storage.Load<ICData>(SaveFileName) ?? new();
+            Logger.Log($"Shortcut unlocked? {_saveData.unlockedShortcut}");
+
+            ShortcutEnabled = _saveData.unlockedShortcut && config.GetSettingsValue<bool>("Enable Shortcut (If Unlocked)");
             Highlighting = new(config.GetSettingsValue<bool>("Moves Highlighting"),
                                 config.GetSettingsValue<bool>("Piece Highlighting"),
                                 config.GetSettingsValue<bool>("Beam Highlighting"));
             OnConfigure?.Invoke();
+        }
+
+        public void ShortcutUnlocked()
+        {
+            Logger.Log("Player unlocked shortcut!");
+            if (!_saveData.unlockedShortcut) _saveData.unlockedShortcut = true;
+            ModHelper.Storage.Save(_saveData, SaveFileName);
+
+            ShortcutEnabled = _saveData.unlockedShortcut && ModHelper.Config.GetSettingsValue<bool>("Enable Shortcut (If Unlocked)");
         }
 
         private void OnEnterDreamworld()
@@ -309,7 +326,7 @@ namespace InhabitantChess
         {
             GlobalMessenger.RemoveListener("EnterDreamWorld", new Callback(OnEnterDreamworld));
             TextTranslation.Get().OnLanguageChanged -= Translations.UpdateLanguage;
-            _seatInteract.OnPressInteract -= OnPressInteract;
+            if (_seatInteract != null) _seatInteract.OnPressInteract -= OnPressInteract;
             OnConfigure -= () => Shortcut.EnableShortcut(ShortcutEnabled);
             OnConfigure -= () => _bgController.OnHighlightConfigure(Highlighting);
         }

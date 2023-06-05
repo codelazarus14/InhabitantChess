@@ -85,7 +85,7 @@ namespace InhabitantChess
 
         public void EnableShortcut(bool enabled)
         {
-            Lantern.gameObject.SetActive(enabled);
+            Lantern.gameObject?.SetActive(enabled); // TODO: why does this give nullref after quit to title
             UsedShortcut = !enabled;
         }
 

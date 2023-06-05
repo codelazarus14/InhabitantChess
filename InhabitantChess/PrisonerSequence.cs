@@ -280,6 +280,7 @@ namespace InhabitantChess
             SetPlayerChairCollision(true);
             TorchSocket.EnableInteraction(true);
             InhabitantChess.Instance.BoardGame.SetActive(false);
+            InhabitantChess.Instance.ShortcutUnlocked();
             OnCleanupGame?.Invoke();
         }
 

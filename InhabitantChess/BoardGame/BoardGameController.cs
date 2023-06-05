@@ -11,7 +11,6 @@ namespace InhabitantChess.BoardGame
         /**
          * TODO:
          * - inscryption-style deadwood piece dropping
-         * - record encounter completion the first time in saved data
          * - sfx for prisoner reactions (howl anim after repeated losses?)
          * - custom vision torch for delivering game rules
          * - separate rules (piece creation, legal moves, game over) from board (for supporting

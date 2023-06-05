@@ -234,9 +234,9 @@ namespace InhabitantChess
             // prepare for the next clip
             _ambienceInterval = 5 * _fadeDuration + 5 * Random.Range(0, _fadeDuration);
             float endTime = Time.time + musicSource.clip.length - musicSource.time;
-            _initFadeOutTime =  endTime - _fadeDuration;
+            _initFadeOutTime = endTime - _fadeDuration;
             _initAmbienceTime = endTime + _ambienceInterval;
-            
+
             _playingAmbience = true;
         }
 
@@ -250,7 +250,7 @@ namespace InhabitantChess
                 musicSource.Pause();
                 musicSource.Play();
             }
-            if (musicSource.isPlaying) 
+            if (musicSource.isPlaying) // TODO: nullref if called before StartNextAmbience ever called once
             {
                 musicSource.FadeOut(fadeTime);
             }
