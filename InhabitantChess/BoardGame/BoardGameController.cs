@@ -16,6 +16,7 @@ namespace InhabitantChess.BoardGame
          * - separate rules (piece creation, legal moves, game over) from board (for supporting
          *   AI nodes/searching), maybe expose game rules thru interface? idk
          * - flickering piece highlight or more subtle effect
+         * - log entries related to discovering the game, high scores?
          * - localize error messages
          */
 
@@ -29,11 +30,12 @@ namespace InhabitantChess.BoardGame
 
         private static float s_CPUTurnTime = 1.0f, s_DestroyDelay = 2.0f;
         private float _destroyTime;
-        private int _currPlyrIdx, _antlerCount, _gamesWon, _totalGames;
-        private bool _noLegalMoves, _movesHighlightEnabled, _pieceHighlightEnabled, _beamHighlightEnabled;
+        private int _antlerCount, _gamesWon, _totalGames;
+        private bool _reachedEye, _noLegalMoves, _movesHighlightEnabled, _pieceHighlightEnabled, _beamHighlightEnabled;
         private (GameObject g, (int up, int across) pos, PieceType type) _currentPlayer;
         private List<GameObject> _toDestroy;
         private List<(int, int)> _legalMoves;
+        private (int u, int a) _currCPUPos;
         private BoardController _board;
         private BoardState _boardState = BoardState.Idle;
         private SpaceController _selectedSpace;
@@ -50,7 +52,6 @@ namespace InhabitantChess.BoardGame
         {
             _board = transform.Find("BoardGame_Board").gameObject.GetComponent<BoardController>();
             _board.Init();
-            _currPlyrIdx = -1;
             _toDestroy = new();
             OnHighlightConfigure(InhabitantChess.Instance.Highlighting);
         }
@@ -116,7 +117,8 @@ namespace InhabitantChess.BoardGame
 
             _board.ResetBoard();
             _antlerCount = _board.Pieces.Where(piece => piece.type == PieceType.Antler).Count();
-            _noLegalMoves = false;
+            _noLegalMoves = _reachedEye = false;
+            _currCPUPos = (99, 99);
             Playing = true;
             StartCoroutine(Play());
         }
@@ -133,7 +135,6 @@ namespace InhabitantChess.BoardGame
             {
                 for (int i = 0; i < _board.Pieces.Count && Playing; i++)
                 {
-                    _currPlyrIdx = i;
                     if (_board.Pieces[i].type == PieceType.Eye)
                     {
                         StartCoroutine(CPUTurn(i));
@@ -146,7 +147,7 @@ namespace InhabitantChess.BoardGame
                     yield return new WaitUntil(() => _boardState == BoardState.Idle);
                     // deleted flagged pieces
                     var removed = _board.CheckBeam();
-                    _currPlyrIdx = i = RemovePieces(removed, i);
+                    i = RemovePieces(removed, i);
                     Playing = !IsGameOver();
                 }
                 Logger.Log($"Turn {++turnCount} complete");
@@ -155,8 +156,8 @@ namespace InhabitantChess.BoardGame
             OnStopGame?.Invoke();
             Logger.Log("Game Over!");
             _totalGames++;
-            if (_antlerCount > 0) _gamesWon++;
-            Logger.Log($"Game finished, win ratio: {_gamesWon} / {_totalGames - _gamesWon}");
+            if (PlayerWon()) _gamesWon++;
+            Logger.Log($"Game finished, win ratio {_gamesWon} : {_totalGames - _gamesWon}");
         }
 
         private IEnumerator PlayerTurn(int pIdx)
@@ -223,13 +224,30 @@ namespace InhabitantChess.BoardGame
         private (int, int) ChooseCPUMove(List<(int, int)> legalMoves)
         {
             // randomly choose a space
-            // in future - could replace this w a call to a function that uses AI rules
-            return legalMoves[Random.Range(0, legalMoves.Count)];
+            (int, int) newPos = legalMoves[Random.Range(0, legalMoves.Count)];
+            // roll twice if we get a repeated position
+            if (_currCPUPos == newPos) newPos = legalMoves[Random.Range(0, legalMoves.Count)];
+            _currCPUPos = newPos;
+            return newPos;
         }
 
         private bool IsGameOver()
         {
-            return _noLegalMoves || _antlerCount < 1;
+            var cpuAdjPositions = _board.LegalMoves(_currCPUPos, PieceType.Eye, true);
+            bool antlerAtEye = false;
+            foreach (var pos in cpuAdjPositions)
+            {
+                antlerAtEye |= _board.Pieces.Any(piece => piece.pos == pos && piece.type == PieceType.Antler);
+            }
+            // completely blocked including at least one antler
+            _reachedEye = _board.LegalMoves(_currCPUPos, PieceType.Eye).Count == 0 && antlerAtEye;
+
+            return _reachedEye || _noLegalMoves || _antlerCount < 1;
+        }
+
+        private bool PlayerWon()
+        {
+            return _reachedEye;
         }
 
         private int RemovePieces(List<int> Pieces, int currTurn)

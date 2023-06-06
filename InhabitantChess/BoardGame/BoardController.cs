@@ -33,6 +33,7 @@ namespace InhabitantChess.BoardGame
         private static Vector3 s_wOffset = new Vector3(-0.05584711f, 0, 0.09673002f);
         private static Vector3 s_startingPos = new Vector3(0.3350971f, s_boardLevels[0], -0.58038f);
         private static int s_Rows = 7;
+        private static ((int, int) pos, PieceType type)[] _startingPieces;
 
         private float _travelTime = 0.75f, _initMoveTime, _curveHeight = 0.33f;
         private GameObject _movingPiece;
@@ -75,6 +76,15 @@ namespace InhabitantChess.BoardGame
 
         public void Init()
         {
+            _startingPieces = new[]
+            {
+                ((0, 0), PieceType.Blocker),
+                ((0, 12), PieceType.Blocker),
+                ((2, 4), PieceType.Antler),
+                ((2, 8), PieceType.Antler),
+                ((6, 7), PieceType.Eye)
+            };
+
             GenerateBoard();
             SetupPieces(_pieceParent == null);
 
@@ -200,11 +210,10 @@ namespace InhabitantChess.BoardGame
                 _deadwoodParent.localRotation = Quaternion.identity;
             }
 
-            // place players
-            CreateAndPlacePiece(_pieceParent, (0, 0), PieceType.Blocker);
-            CreateAndPlacePiece(_pieceParent, (0, 1), PieceType.Antler);
-            CreateAndPlacePiece(_pieceParent, (0, 12), PieceType.Antler);
-            CreateAndPlacePiece(_pieceParent, (6, 7), PieceType.Eye);
+            foreach (var (pos, type) in _startingPieces)
+            {
+                CreateAndPlacePiece(_pieceParent, pos, type);
+            }
         }
 
         private GameObject InstantiatePiece(PieceType type, Transform parent)
@@ -290,13 +299,13 @@ namespace InhabitantChess.BoardGame
             Init();
         }
 
-        public List<(int, int)> LegalMoves((int u, int a) pos, PieceType type)
+        public List<(int, int)> LegalMoves((int u, int a) pos, PieceType type, bool ignoreOccupied = false)
         {
-            return GetAdjacent(pos.u, pos.a);
+            return GetAdjacent(pos.u, pos.a, ignoreOccupied);
         }
 
         // return list of adjacent positions to (up, across)
-        private List<(int, int)> GetAdjacent(int up, int across)
+        private List<(int, int)> GetAdjacent(int up, int across, bool ignoreOccupied)
         {
             var adj = new List<(int, int)>();
 
@@ -320,17 +329,20 @@ namespace InhabitantChess.BoardGame
             }
             if (InBounds(up_down)) adj.Add(up_down);
 
-            // filter out occupied spaces - would use a mask if i understood them
-            for (int i = 0; i < adj.Count; i++)
+            // filter out occupied spaces
+            if (!ignoreOccupied)
             {
-                bool foundOccupied = false;
-                for (int j = 0; j < Pieces.Count && !foundOccupied; j++)
+                for (int i = 0; i < adj.Count; i++)
                 {
-                    if (Pieces[j].pos == adj[i])
+                    bool foundOccupied = false;
+                    for (int j = 0; j < Pieces.Count && !foundOccupied; j++)
                     {
-                        adj.RemoveAt(i);
-                        i--;
-                        foundOccupied = true;
+                        if (Pieces[j].pos == adj[i])
+                        {
+                            adj.RemoveAt(i);
+                            i--;
+                            foundOccupied = true;
+                        }
                     }
                 }
             }
@@ -504,7 +516,7 @@ namespace InhabitantChess.BoardGame
                         }
                     }
                     // filter out-of-bounds
-                    var currInBounds = from cSpc in currDepthSpaces where InBounds(cSpc) select cSpc;
+                    var currInBounds = currDepthSpaces.Where(InBounds);
                     newBeamSpaces.AddRange(currInBounds.ToList());
                 }
 

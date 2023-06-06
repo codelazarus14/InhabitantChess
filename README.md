@@ -1,35 +1,25 @@
 ## How to Encounter
-on their first try, player has to collect warp core from ATP and make it to the stranger
+Trigger the "Dreamworld" ending (time loop disabled + trapped in simulation), then head to the Prisoner's vault.
 
-arrive, proceed to open vault or wtv (ill allow cheating to get in anyway) and proceed as normal
+The player can choose to end the game by getting up from the table and talking to the Prisoner directly.
 
-after completing vision exchange, prisoner howls and then moves toward elevator, turns and
-asks you for the vision staff - interrupted by our code which replaces it with a dialogue prompt
+After the game ends and the player has said farewell, a shortcut will unlock at the starting camp.
 
-then move to place the vision staff against the table, fade to black and then 
-setup environment (screeching noises etc. and then prisoner is seated across from
-the table)
-
-player can choose to end the game by getting up from the table and interacting with
-the prisoner separately, resets to where we left off (prisoner bows and leaves, game ends as normal)
-
-in subsequent loops - just hit a button near spawn or something. like a floating artifact
-
-log entries record meeting them, maybe update with high score? A Tired Ghost
 ## Rules (i think)
 (?) - unimplemented but possible rule
 
 three piece types: **Eye**, **Antler**, **Blocker**
-- **Eye**: goal of the antler player, also their greatest threat
+- **Eye**: goal of the antler player, their greatest (and only) threat
     - beam - removes all antlers hit by it from the board
     - infinite range across all tiles (3 lines, like how queen moves/poses a threat in chess)
+    - can be "contained" when all legal moves are blocked by the player's pieces
 - **Antler**: basically just a pawn for now
+    - used to reach the eye - once eye is contained by at least one antler piece
     - (?) can enter blocker for protection
-    - (?) goal is to reach/contain the eye w the help of blockers
-- **Blocker**: 
-    - can block eye's beam from entering any spaces behind it
+- **Blocker**:
     - used to protect antler pieces
+    - can block eye's beam from entering any spaces behind it
 
 2 players: one controls the Eye, other controls Antler/Blockers
 
-(?) game ends when eye removes all antlers or the eye is reached/contained
+The game ends when the player runs out of Antler pieces or reaches the Eye.
