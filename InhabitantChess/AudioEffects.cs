@@ -216,6 +216,7 @@ namespace InhabitantChess
         {
             enabled = true;
             _ambienceInterval = 90;
+            _fadeDuration = _ambienceInterval / 5;
             _initAmbienceTime = Time.time + _ambienceInterval;
         }
 
@@ -250,7 +251,7 @@ namespace InhabitantChess
                 musicSource.Pause();
                 musicSource.Play();
             }
-            if (musicSource.isPlaying) // TODO: nullref if called before StartNextAmbience ever called once
+            if (_playingAmbience)
             {
                 musicSource.FadeOut(fadeTime);
             }
