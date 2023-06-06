@@ -1,5 +1,5 @@
-﻿using UnityEngine.Events;
-using UnityEngine;
+﻿using UnityEngine;
+using UnityEngine.Events;
 
 
 namespace InhabitantChess.Util

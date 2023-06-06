@@ -36,12 +36,12 @@ namespace InhabitantChess
             //    float posY = Mathf.Lerp(_initSnapDegreesY, _snapTargetY, num);
             //    _position = new Vector2(posX, posY);
             //}
-            transform.localPosition = Vector3.Lerp(transform.localPosition,new Vector3(_position.x, _height, _position.y), 0.1f);
+            transform.localPosition = Vector3.Lerp(transform.localPosition, new Vector3(_position.x, _height, _position.y), 0.1f);
         }
 
         private void LateUpdate()
         {
-            if (OverheadCam != null && !OWTime.IsPaused() /*&& !_isSnapping*/) 
+            if (OverheadCam != null && !OWTime.IsPaused() /*&& !_isSnapping*/)
             {
                 if (OWInput.IsPressed(InputLibrary.moveXZ))
                 {
@@ -50,7 +50,7 @@ namespace InhabitantChess
                     _position.x -= vector.y * _panSpeed * Time.deltaTime;
                     _position.y += vector.x * _panSpeed * Time.deltaTime;
                     if (_position.sqrMagnitude > _maxPanDistance * _maxPanDistance)
-                    {   
+                    {
                         _position = _position.normalized * _maxPanDistance;
                     }
                 }
