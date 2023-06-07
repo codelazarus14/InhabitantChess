@@ -1,3 +1,6 @@
+![The inhabitant's board game found in the Prisoner's vault.](repoassets/banner.png)
+At last, you can play ~~chess~~ their extremely fun and engaging board game.
+
 ## How to Encounter
 Trigger the "Dreamworld" ending (time loop disabled + trapped in simulation), then head to the Prisoner's vault.
 
@@ -5,8 +8,8 @@ The player can choose to end the game by getting up from the table and talking t
 
 After the game ends and the player has said farewell, a shortcut will unlock at the starting camp.
 
-## Rules (i think)
-(?) - unimplemented but possible rule
+## Rules (at least for now)
+(?) - unimplemented but possible
 
 three piece types: **Eye**, **Antler**, **Blocker**
 - **Eye**: goal of the antler player, their greatest (and only) threat
