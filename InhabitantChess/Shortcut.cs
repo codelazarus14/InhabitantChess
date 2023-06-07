@@ -10,16 +10,10 @@ namespace InhabitantChess
     {
         // modified version of https://github.com/VioVayo/OWDreamWorldModAssist/blob/main/DWModAssist/DWModAssist.cs
 
-        public static Campfire LastUsedCampfire;
-        public static NomaiRemoteCameraPlatform LastUsedProjectionPool;
-        public static SlideProjector LastUsedSlideProjector;
-        public static Peephole LastUsedPeephole;
-        public static PlayerAttachPoint LastAttachedPoint;
         public DreamLanternItem Lantern;
         public bool UsedShortcut;
 
         private static RelativeLocationData _prisonLocationData, _campfireLocationData;
-        private static ShipCockpitController _cockpitController;
         private static GameObject _itemDropSocket;
         private static DreamCampfire _campfire;
         private static DreamArrivalPoint _arrivalPoint;
@@ -79,8 +73,6 @@ namespace InhabitantChess
                 else if (name == "Prefab_IP_DreamObjectProjector (3)") _lock2Projector = p;
                 else if (name == "Prefab_IP_DreamObjectProjector (2)") _lock3Projector = p;
             }
-
-            _cockpitController = FindObjectOfType<ShipCockpitController>();
         }
 
         public void EnableShortcut(bool enabled)
@@ -121,7 +113,7 @@ namespace InhabitantChess
             director._prisonerController._lantern.SetConcealed(true);
             director._prisonerController.MoveLanternToCarrySocket(true, 0.5f);
             director.OnPrisonerLitLights();
-            // this is true by default
+            // override default: true
             director._waitingForPlayerToTakeTorch = false;
             // OnArriveAtElevator dialogue setup
             dialogue.SetTextXml(_sequence.DialogueText);
@@ -164,20 +156,6 @@ namespace InhabitantChess
 
         private IEnumerator ResetPlayerState()
         {
-            if (LastUsedProjectionPool != null && LastUsedProjectionPool.IsPlatformActive())
-            {
-                LastUsedProjectionPool.OnLeaveBounds();
-                while (PlayerState.UsingNomaiRemoteCamera()) yield return null;
-            }
-            if (LastUsedCampfire != null)
-            {
-                LastUsedCampfire.StopRoasting();
-                LastUsedCampfire.StopSleeping();
-            }
-            if (PlayerState.AtFlightConsole()) _cockpitController.ExitFlightConsole();
-            if (PlayerState.IsViewingProjector()) LastUsedSlideProjector.CancelInteraction();
-            if (PlayerState.IsPeeping()) LastUsedPeephole.Unpeep();
-            if (PlayerState.IsAttached()) LastAttachedPoint.DetachPlayer();
             Locator.GetPlayerTransform().GetRequiredComponent<PlayerLockOnTargeting>().BreakLock();
             OWInput.ChangeInputMode(InputMode.Character);
 

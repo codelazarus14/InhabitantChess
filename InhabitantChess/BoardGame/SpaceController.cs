@@ -18,7 +18,14 @@ namespace InhabitantChess.BoardGame
 
         private void Update()
         {
+            // TODO: fix someday
 
+            //if (InBeam)
+            //{
+            //    float o = Synchronizer.t;
+            //    var mat = GetComponent<MeshRenderer>().material;
+            //    mat.SetColor("_EmissionColor", new Color(o, o, o, o));
+            //}
         }
 
         public void SetMaterials(Material beamMat)

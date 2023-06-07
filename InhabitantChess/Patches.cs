@@ -134,49 +134,6 @@ namespace InhabitantChess
         //
 
         [HarmonyPostfix]
-        [HarmonyPatch(typeof(Campfire), nameof(Campfire.StartRoasting))]
-        public static void Campfire_StartRoasting_Postfix(Campfire __instance)
-        {
-            Shortcut.LastUsedCampfire = __instance;
-        }
-
-        [HarmonyPostfix]
-        [HarmonyPatch(typeof(Campfire), nameof(Campfire.StartSleeping))]
-        public static void Campfire_StartSleeping_Postfix(Campfire __instance)
-        {
-            Shortcut.LastUsedCampfire = __instance;
-        }
-
-        [HarmonyPostfix]
-        [HarmonyPatch(typeof(NomaiRemoteCameraPlatform), nameof(NomaiRemoteCameraPlatform.OnSocketableDonePlacing))]
-        public static void NomaiRemoteCameraPlatform_SwitchToRemoteCamera_Postfix(NomaiRemoteCameraPlatform __instance)
-        {
-            Shortcut.LastUsedProjectionPool = __instance;
-        }
-
-        [HarmonyPostfix]
-        [HarmonyPatch(typeof(SlideProjector), nameof(SlideProjector.OnPressInteract))]
-        public static void SlideProjector_OnPressInteract_Postfix(SlideProjector __instance)
-        {
-            Shortcut.LastUsedSlideProjector = __instance;
-        }
-
-        [HarmonyPostfix]
-        [HarmonyPatch(typeof(Peephole), nameof(Peephole.Peep))]
-        public static void Peephole_Peep_Postfix(Peephole __instance)
-        {
-            Shortcut.LastUsedPeephole = __instance;
-        }
-
-        [HarmonyPostfix]
-        [HarmonyPatch(typeof(PlayerAttachPoint), nameof(PlayerAttachPoint.AttachPlayer))]
-        public static void PlayerAttachPoint_AttachPlayer_Postfix(PlayerAttachPoint __instance)
-        {
-            Shortcut.LastAttachedPoint = __instance;
-        }
-
-
-        [HarmonyPostfix]
         [HarmonyPatch(typeof(RingWorldController), nameof(RingWorldController.OnExitDreamWorld))]
         public static void RingWorldController_OnExitDreamWorld_Postfix()
         {

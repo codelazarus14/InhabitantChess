@@ -348,7 +348,7 @@ namespace InhabitantChess
             }
         }
 
-        //code below borrowed from https://github.com/Vesper-Works/OuterWildsHalf-Life/blob/main/HalfLifeOverhaul
+        // borrowed from https://github.com/Vesper-Works/OuterWildsHalf-Life/blob/main/HalfLifeOverhaul
         private static GameObject LoadPrefab(AssetBundle bundle, string path)
         {
             GameObject prefab = null;

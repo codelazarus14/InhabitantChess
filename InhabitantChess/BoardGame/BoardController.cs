@@ -46,11 +46,6 @@ namespace InhabitantChess.BoardGame
         private List<(int, int)> _beamSpaces;
         private Transform _spcParent, _pieceParent, _deadwoodParent;
 
-        private void Start()
-        {
-            // unused - BoardGameController.Start() runs Init() after finding component
-        }
-
         private void Update()
         {
             if (Moving)
@@ -63,7 +58,7 @@ namespace InhabitantChess.BoardGame
                 }
                 else
                 {
-                    // https://gamedev.stackexchange.com/questions/157642/moving-a-2d-object-along-circular-arc-between-two-points
+                    // from https://gamedev.stackexchange.com/questions/157642/moving-a-2d-object-along-circular-arc-between-two-points
                     Vector3 c = _startMovePos + (_destMovePos - _startMovePos) / 2 + Vector3.up * _curveHeight;
 
                     Vector3 m1 = Vector3.Lerp(_startMovePos, c, progress);
@@ -108,8 +103,7 @@ namespace InhabitantChess.BoardGame
 
                 for (int i = s_Rows; i > 0; i--)
                 {
-                    // j keep track of # of B spaces per row,
-                    // i will store real count in dict
+                    // i over # of rows, j over # of B spaces per row
                     int idx = s_Rows - i;
                     float rowOffset = idx * s_triSize / 2;
 
@@ -180,7 +174,7 @@ namespace InhabitantChess.BoardGame
                         }
                     }
                 }
-                // final edits, set to invisible until further notice
+                // finish init, default to inactive
                 foreach ((int u, int a) k in SpaceDict.Keys)
                 {
                     GameObject spc = SpaceDict[k];
@@ -245,7 +239,7 @@ namespace InhabitantChess.BoardGame
             // update w starting pos
             DoMove(Pieces.Count - 1, pos, true);
 
-            // set highlight materials - maybe move up near instantiating pieces? or if materials depend on type..
+            // set highlight materials depending on type
             GameObject highlight = pieceObj.transform.Find("Highlighted").gameObject;
             for (int i = 0; i < highlight.transform.childCount; i++)
             {
@@ -349,7 +343,7 @@ namespace InhabitantChess.BoardGame
             return adj;
         }
 
-        // helper to determine B/W based on coords
+        // determine B/W based on coords
         private bool IsBlack((int up, int across) pos)
         {
             bool even = (pos.up + pos.across) % 2 == 0;

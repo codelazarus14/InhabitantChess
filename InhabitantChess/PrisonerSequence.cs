@@ -51,7 +51,7 @@ namespace InhabitantChess
             PrisonerDialogue = PrisonerDirector._characterDialogueTree;
 
             GameObject prisonCell = InhabitantChess.Instance.PrisonCell;
-            // make a copy of the prisoner's lantern so we can fake them setting it up as a light source
+            // make a copy of the prisoner's lantern to be used as a lighting prop
             GameObject lantern = PrisonerDirector._prisonerController._lantern.gameObject;
             GameObject lanternClone = Instantiate(lantern);
             lanternClone.transform.SetParent(prisonCell.transform.Find("Props_PrisonCell/LowerCell"));
@@ -221,7 +221,7 @@ namespace InhabitantChess
 
         private void UpdatePrisonerSequence(float t)
         {
-            // roughly control flow of sequence through flags + timers
+            // roughly control flow of sequence through state + timers
             if (_state == PrisonerState.ReactingToTorch && t >= _initTorchPlaceTime + 2f)
             {
                 // delay reaction enough for player to turn around
@@ -332,7 +332,7 @@ namespace InhabitantChess
                 p.Value.transform.localPosition = t.pos;
                 p.Value.transform.localRotation = t.rot;
             }
-            //make board invisible so we can use the collision
+            // make board invisible so we can use the collision
             foreach (MeshRenderer mesh in _props["emptyBoard"].GetComponentsInChildren<MeshRenderer>())
                 mesh.enabled = false;
             _prisonerLantern.gameObject.SetActive(false);

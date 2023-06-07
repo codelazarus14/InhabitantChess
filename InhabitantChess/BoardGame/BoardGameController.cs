@@ -8,18 +8,6 @@ namespace InhabitantChess.BoardGame
 {
     public class BoardGameController : MonoBehaviour
     {
-        /**
-         * TODO:
-         * - inscryption-style deadwood piece dropping
-         * - sfx for prisoner reactions (howl anim after repeated losses?)
-         * - custom vision torch for delivering game rules
-         * - separate rules (piece creation, legal moves, game over) from board (for supporting
-         *   AI nodes/searching), maybe expose game rules thru interface? idk
-         * - flickering piece highlight or more subtle effect
-         * - log entries related to discovering the game, high scores?
-         * - localize error messages
-         */
-
         public FirstPersonManipulator PlayerManip;
         public bool Playing { get; private set; }
         public delegate void PieceAudioEvent(int idx);
@@ -67,7 +55,6 @@ namespace InhabitantChess.BoardGame
 
         private void RefreshHighlighting()
         {
-            // refresh highlighting
             if (_boardState == BoardState.WaitingForInput)
             {
                 _board.ToggleSpaces(_legalMoves, _movesHighlightEnabled);
@@ -145,7 +132,7 @@ namespace InhabitantChess.BoardGame
                     }
                     // wait until turn finishes
                     yield return new WaitUntil(() => _boardState == BoardState.Idle);
-                    // deleted flagged pieces
+                    // delete pieces
                     var removed = _board.CheckBeam();
                     i = RemovePieces(removed, i);
                     Playing = !IsGameOver();

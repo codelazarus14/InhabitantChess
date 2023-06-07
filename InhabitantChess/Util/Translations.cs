@@ -11,7 +11,7 @@ namespace InhabitantChess.Util
 
         private static Dictionary<TextTranslation.Language, Dictionary<string, string>> _transDict = new()
         {
-            // idea is to write code to populate from .xml later
+            // TODO: populate from json later
             { TextTranslation.Language.ENGLISH, new Dictionary<string, string>()
             {
                 { "IC_INTERACT", "Interact" },

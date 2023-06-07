@@ -5,7 +5,7 @@ namespace InhabitantChess.BoardGame
 {
     public class Synchronizer : MonoBehaviour
     {
-        // https://answers.unity.com/questions/1601104/how-do-i-synchronise-a-function-called-in-multiple.html
+        // from https://answers.unity.com/questions/1601104/how-do-i-synchronise-a-function-called-in-multiple.html
         public UnityEvent OnLerpComplete;
 
         public static float t { get; private set; }
