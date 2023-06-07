@@ -123,7 +123,6 @@ namespace InhabitantChess
                 source.Play();
                 source.RandomizePlayhead();
                 source.FadeOut(duration);
-                Logger.Log($"Played audio {source._audioLibraryClip}");
             }
             else
             {
@@ -138,7 +137,6 @@ namespace InhabitantChess
                 source.AssignAudioLibraryClip(audio);
                 source.SetLocalVolume(1f);
                 source.PlayOneShot(source._audioLibraryClip, 1f);
-                Logger.Log($"Played oneshot {source._audioLibraryClip}");
             }
             else
             {
@@ -244,6 +242,8 @@ namespace InhabitantChess
         private void StopAmbience(bool endLoop = true)
         {
             OWAudioSource musicSource = _audioSources["playerMusic"];
+            if (musicSource == null) return;
+
             float fadeTime = endLoop ? 5 : _fadeDuration;
             // replace other fades with new fade out
             if (musicSource._isLocalFading)

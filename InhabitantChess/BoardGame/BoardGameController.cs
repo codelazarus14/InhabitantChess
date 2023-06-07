@@ -113,7 +113,7 @@ namespace InhabitantChess.BoardGame
         // loop controlling turns, game state
         private IEnumerator Play()
         {
-            int turnCount = 0;
+            //int turnCount = 0;
             // turn on beam at start
             _board.UpdateBeam(_beamHighlightEnabled);
             OnStartGame?.Invoke();
@@ -137,7 +137,7 @@ namespace InhabitantChess.BoardGame
                     i = RemovePieces(removed, i);
                     Playing = !IsGameOver();
                 }
-                Logger.Log($"Turn {++turnCount} complete");
+                //Logger.Log($"Turn {++turnCount} complete");
             }
 
             OnStopGame?.Invoke();

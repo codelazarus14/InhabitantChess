@@ -197,7 +197,7 @@ namespace InhabitantChess
                 _initFinalWordsTime = Time.time;
                 _state = PrisonerState.SaidFinalWords;
             }
-            else Logger.Log("Talked to prisoner and decided to continue playing");
+            //else Logger.Log("Talked to prisoner and decided to continue playing");
         }
 
         public void OnPlayerPickupTorch(OWItem Item)

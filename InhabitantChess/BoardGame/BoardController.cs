@@ -76,7 +76,7 @@ namespace InhabitantChess.BoardGame
                 ((0, 0), PieceType.Blocker),
                 ((0, 12), PieceType.Blocker),
                 ((2, 4), PieceType.Antler),
-                ((2, 8), PieceType.Antler),
+                ((2, 10), PieceType.Antler),
                 ((6, 7), PieceType.Eye)
             };
 
@@ -530,7 +530,7 @@ namespace InhabitantChess.BoardGame
                 {
                     if (Pieces[i].pos == spc && Pieces[i].type != PieceType.Blocker)
                     {
-                        Logger.Log($"Piece {Pieces[i].g.name} hit at {Pieces[i].pos}");
+                        //Logger.Log($"Piece {Pieces[i].g.name} hit at {Pieces[i].pos}");
                         result.Add(i);
                     }
                 }
