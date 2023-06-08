@@ -70,6 +70,7 @@ namespace InhabitantChess
             AssetBundle bundle = ModHelper.Assets.LoadBundle("Assets/triboard");
             LoadPrefabs(bundle, "assets/prefabs/triboard/");
             TextAsset prisonerDialogue = LoadText("Assets/PrisonerDialogue.xml");
+            Translations.LoadTranslations();
 
             LoadManager.OnCompleteSceneLoad += (scene, loadScene) =>
             {

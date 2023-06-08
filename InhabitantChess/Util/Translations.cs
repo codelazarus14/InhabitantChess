@@ -1,5 +1,8 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using OWML.Utils;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace InhabitantChess.Util
@@ -8,24 +11,30 @@ namespace InhabitantChess.Util
     public static class Translations
     {
         private static TextTranslation.Language _language;
+        private static Dictionary<TextTranslation.Language, Dictionary<string, string>> _transDict = new();
 
-        private static Dictionary<TextTranslation.Language, Dictionary<string, string>> _transDict = new()
+        public static void LoadTranslations()
         {
-            // TODO: populate from json later
-            { TextTranslation.Language.ENGLISH, new Dictionary<string, string>()
+            var folder = Path.Combine(InhabitantChess.Instance.ModHelper.Manifest.ModFolderPath, "Assets/Translations/");
+            if (Directory.Exists(folder))
             {
-                { "IC_INTERACT", "Interact" },
-                { "IC_BOARDMOVE", "Select Move" },
-                { "IC_OVERHEAD", "Toggle Overhead" },
-                { "IC_LEAN", "Lean Forward/Back" },
-                { "IC_SILENCE", "..." },
-                { "IC_WAIT", "Wait!" },
-                { "IC_JK", "Uhh... nevermind."},
-                { "IC_DONE", "I think I'm done playing." },
-                { "IC_SHORTCUT", "a Shortcut" },
-                { "IC_PLAYAGAIN", "Play Again" }
-            } },
-        };
+                foreach (var language in EnumUtils.GetValues<TextTranslation.Language>())
+                {
+                    var file = Path.Combine(folder, "ic_" + language.ToString().ToLower() + ".json");
+                    if (File.Exists(file))
+                    {
+                        using StreamReader reader = new(file);
+                        string translation = reader.ReadToEnd();
+                        _transDict.Add(language, JsonConvert.DeserializeObject<Dictionary<string, string>>(translation));
+                    }
+                }
+                string transLangs = "";
+                foreach (var l in _transDict.Keys) transLangs += l.ToString() + ", ";
+                transLangs = transLangs.Trim().TrimEnd(',');
+                Logger.Log($"Translations for {_transDict.Count} language{(_transDict.Count > 1 ? "s" : "")} loaded: {transLangs}");
+            }
+            else Logger.LogError($"Missing Assets/Translations/ folder!");
+        }
 
         public static string GetTranslation(string text)
         {
