@@ -1,12 +1,12 @@
 ![The inhabitant's board game found in the Prisoner's vault.](repoassets/banner.png)
-At last, you can play ~~chess~~ their extremely fun and engaging board game.
+At last, you can play ~~chess~~ their extremely fun and engaging board game. 
 
 ## How to Encounter
-Trigger the "Dreamworld" ending (time loop disabled + trapped in simulation), then head to the Prisoner's vault.
+Trigger the "Dreamworld" ending (time loop disabled + trapped in simulation), then head to the Prisoner's vault. It might be worth stopping by to play one last game before they leave.
 
-The player can choose to end the game by getting up from the table and talking to the Prisoner directly.
+The player can choose to end the game at any time by getting up from the table and talking to the Prisoner directly.
 
-After the game ends and the player has said farewell, a shortcut will unlock at the starting camp.
+After saying farewell, a shortcut will unlock at the starting camp.
 
 ## Rules (at least for now)
 (?) - unimplemented but possible
