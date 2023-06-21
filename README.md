@@ -2,11 +2,13 @@
 At last, you can play ~~chess~~ their extremely fun and engaging board game. 
 
 ## How to Encounter
-Trigger the "Dreamworld" ending (time loop disabled + trapped in simulation), then head to the Prisoner's vault. It might be worth stopping by to play one last game before they leave.
+Set up the conditions for the "Dreamworld" ending, or what is normally needed to access the Prisoner's vault (time loop disabled + trapped in simulation). A *mildly* alternative ending will occur after you finish talking to the Prisoner.
 
-The player can choose to end the game at any time by getting up from the table and talking to the Prisoner directly.
+The player can choose to end the game at any time by getting up from their chair and talking to the Prisoner directly.
 
-After saying farewell, a shortcut will unlock at the starting camp.
+After saying farewell, a shortcut will unlock at the starting camp. The shortcut only needs to be unlocked once, but you can also edit `ic_save.json` in the mod's folder to enable this manually. <sup>*cheater*</sup>
+
+Mod options are available in the "Mods" section of the pause menu to toggle the shortcut and some visual effects.
 
 ## Rules (at least for now)
 (?) - unimplemented but possible
