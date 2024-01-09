@@ -134,7 +134,7 @@ namespace InhabitantChess
                 _saveData = ModHelper.Storage.Load<ICData>(SaveFileName) ?? new();
             //Logger.Log($"Shortcut unlocked? {_saveData.unlockedShortcut}");
 
-            ShortcutEnabled = _saveData.unlockedShortcut && config.GetSettingsValue<bool>("Enable Shortcut (If Unlocked)");
+            ShortcutEnabled = /*_saveData.unlockedShortcut &&*/ config.GetSettingsValue<bool>("Enable Shortcut");
             Highlighting = new(config.GetSettingsValue<bool>("Moves Highlighting"),
                                 config.GetSettingsValue<bool>("Piece Highlighting"),
                                 config.GetSettingsValue<bool>("Beam Highlighting"));
