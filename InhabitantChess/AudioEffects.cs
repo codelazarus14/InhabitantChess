@@ -76,6 +76,7 @@ namespace InhabitantChess
             _instance.OnStandUp += () => StopAmbience();
             _gameController.OnStartGame += InitAmbience;
             _gameController.OnStopGame += () => StopAmbience();
+            _gameController.OnStopGame += PlayGameOver;
             _gameController.OnPieceRemoved += PlayPieceRemoved;
             _board.OnBoardInitialized += GetPieceSources;
             _board.OnPieceFinishedMoving += PlayPieceMoved;
@@ -95,6 +96,7 @@ namespace InhabitantChess
             _instance.OnStandUp -= () => StopAmbience();
             _gameController.OnStartGame -= InitAmbience;
             _gameController.OnStopGame -= () => StopAmbience();
+            _gameController.OnStopGame -= PlayGameOver;
             _gameController.OnPieceRemoved -= PlayPieceRemoved;
             _board.OnBoardInitialized -= GetPieceSources;
             _board.OnPieceFinishedMoving -= PlayPieceMoved;
@@ -115,9 +117,8 @@ namespace InhabitantChess
 
         private void PlayCreaking(OWAudioSource source, AudioType audio, float volume, float duration)
         {
-            if (source != null)
+            if (source != null && !source.isPlaying)
             {
-                if (source.isPlaying) source.Stop();
                 source.AssignAudioLibraryClip(audio);
                 source.SetLocalVolume(volume);
                 source.Play();
@@ -239,11 +240,17 @@ namespace InhabitantChess
             _playingAmbience = true;
         }
 
+        private void PlayGameOver()
+        {
+            AudioType gameOverSound = _gameController.PlayerWon() ? AudioType.SecretKorok : AudioType.Ghost_Laugh;
+            PlayOneShot(_audioSources["playerAudio"], gameOverSound);
+        }
+
         private void StopAmbience(bool endLoop = true)
         {
             OWAudioSource musicSource = _audioSources["playerMusic"];
             if (musicSource == null) return;
-
+      
             float fadeTime = endLoop ? 5 : _fadeDuration;
             // replace other fades with new fade out
             if (musicSource._isLocalFading)

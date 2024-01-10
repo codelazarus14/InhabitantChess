@@ -144,7 +144,7 @@ namespace InhabitantChess.BoardGame
             Logger.Log("Game Over!");
             _totalGames++;
             if (PlayerWon()) _gamesWon++;
-            Logger.Log($"Game finished, win ratio {_gamesWon} : {_totalGames - _gamesWon}");
+            Logger.Log($"Game finished, win ratio {GetScore().Item1} - {GetScore().Item2}");
         }
 
         private IEnumerator PlayerTurn(int pIdx)
@@ -232,13 +232,19 @@ namespace InhabitantChess.BoardGame
             return _reachedEye || _noLegalMoves || _antlerCount < 1;
         }
 
-        private bool PlayerWon()
+        public bool PlayerWon()
         {
             return _reachedEye;
         }
 
+        public (int, int) GetScore()
+        {
+            return (_gamesWon, _totalGames - _gamesWon);
+        }
+
         private int RemovePieces(List<int> Pieces, int currTurn)
         {
+            // TODO: bug related to deleting one player piece causes next one to be skipped/deleted too?
             int i = currTurn;
             foreach (int r in Pieces)
             {

@@ -53,6 +53,7 @@ namespace InhabitantChess
 
         private void Awake()
         {
+            Application.runInBackground = true;
             Instance = this;
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
         }
@@ -176,6 +177,9 @@ namespace InhabitantChess
             if (PlayerState == ChessPlayerState.None)
             {
                 PrisonerSequence.DisableConversation();
+                (int won, int lost) score = _bgController.GetScore();
+                _screenPrompts.SetScore(score.won, score.lost);
+                _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Score, true);
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, true);
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, true);
                 _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, true);
@@ -190,6 +194,7 @@ namespace InhabitantChess
             _seatInteract.ResetInteraction();
             _seatInteract.EnableInteraction();
             PrisonerSequence.EnableConversation();
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Score, false);
             _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, false);
             _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, false);
             _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, false);

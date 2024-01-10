@@ -530,7 +530,7 @@ namespace InhabitantChess.BoardGame
                 {
                     if (Pieces[i].pos == spc && Pieces[i].type != PieceType.Blocker)
                     {
-                        //Logger.Log($"Piece {Pieces[i].g.name} hit at {Pieces[i].pos}");
+                        Logger.Log($"Piece {Pieces[i].g.name} hit at {Pieces[i].pos}");
                         result.Add(i);
                     }
                 }

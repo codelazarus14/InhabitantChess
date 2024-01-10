@@ -11,6 +11,7 @@ namespace InhabitantChess
 
         public enum PromptType
         {
+            Score,
             BoardMove,
             Overhead,
             Lean
@@ -22,6 +23,7 @@ namespace InhabitantChess
             {
                 _prompts = new Dictionary<PromptType, ScreenPrompt>
                 {
+                    { PromptType.Score, new ScreenPrompt(Translations.GetTranslation("IC_SCORE")) },
                     { PromptType.BoardMove, MakeScreenPrompt(InputLibrary.interact, Translations.GetTranslation("IC_BOARDMOVE") + "<CMD>") },
                     { PromptType.Overhead, MakeScreenPrompt(InputLibrary.landingCamera, Translations.GetTranslation("IC_OVERHEAD") + "<CMD>") },
                     { PromptType.Lean, MakeScreenPrompt(InputLibrary.moveXZ, Translations.GetTranslation("IC_LEAN") + "<CMD>") }
@@ -30,6 +32,7 @@ namespace InhabitantChess
             }
 
             PromptManager pm = Locator.GetPromptManager();
+            pm.AddScreenPrompt(_prompts[PromptType.Score], PromptPosition.UpperRight);
             pm.AddScreenPrompt(_prompts[PromptType.BoardMove], PromptPosition.UpperRight);
             pm.AddScreenPrompt(_prompts[PromptType.Overhead], PromptPosition.UpperRight);
             pm.AddScreenPrompt(_prompts[PromptType.Lean], PromptPosition.UpperRight);
@@ -54,6 +57,11 @@ namespace InhabitantChess
         public void SetPromptVisibility(PromptType type, bool visible)
         {
             _activePrompts[type] = visible;
+        }
+
+        public void SetScore(int playerWins, int playerLosses)
+        {
+            _prompts[PromptType.Score].SetText(Translations.GetTranslation("IC_SCORE") + $" {playerWins} - {playerLosses}");
         }
 
         private ScreenPrompt MakeScreenPrompt(IInputCommands cmd, string prompt)
