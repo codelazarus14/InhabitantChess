@@ -125,7 +125,7 @@ namespace InhabitantChess
                 source.RandomizePlayhead();
                 source.FadeOut(duration);
             }
-            else
+            else if (source == null)
             {
                 Logger.LogError($"Couldn't find audio source {source}!");
             }

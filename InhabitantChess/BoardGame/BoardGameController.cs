@@ -150,6 +150,9 @@ namespace InhabitantChess.BoardGame
         private IEnumerator PlayerTurn(int pIdx)
         {
             _currentPlayer = _board.Pieces[pIdx];
+            // fixed bug - reusing this variable without clearing it causes waiting for input loop to be skipped
+            // if the previous piece's selected space was also legal (adjacent pieces)
+            _selectedSpace = null;
             _legalMoves = _board.LegalMoves(_currentPlayer.pos, _currentPlayer.type);
             if (_legalMoves.Count == 0)
             {
@@ -244,7 +247,6 @@ namespace InhabitantChess.BoardGame
 
         private int RemovePieces(List<int> Pieces, int currTurn)
         {
-            // TODO: bug related to deleting one player piece causes next one to be skipped/deleted too?
             int i = currTurn;
             foreach (int r in Pieces)
             {
@@ -259,7 +261,7 @@ namespace InhabitantChess.BoardGame
                 plyr.g.transform.DestroyAllChildren();
                 _toDestroy.Add(plyr.g);
                 OnPieceRemoved?.Invoke(r);
-                Debug.Log($"Removed {plyr.g.name}, i = {i}, list length {_board.Pieces.Count}");
+                //Debug.Log($"Removed {plyr.g.name}, i = {i}, list length {_board.Pieces.Count}");
             }
             _destroyTime = Time.time;
             return i;

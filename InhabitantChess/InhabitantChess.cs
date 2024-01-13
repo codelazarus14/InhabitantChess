@@ -53,7 +53,6 @@ namespace InhabitantChess
 
         private void Awake()
         {
-            Application.runInBackground = true;
             Instance = this;
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
         }
@@ -148,7 +147,7 @@ namespace InhabitantChess
             if (!_saveData.unlockedShortcut) _saveData.unlockedShortcut = true;
             ModHelper.Storage.Save(_saveData, SaveFileName);
 
-            ShortcutEnabled = _saveData.unlockedShortcut && ModHelper.Config.GetSettingsValue<bool>("Enable Shortcut (If Unlocked)");
+            ShortcutEnabled = _saveData.unlockedShortcut && ModHelper.Config.GetSettingsValue<bool>("Enable Shortcut");
         }
 
         private void OnEnterDreamworld()
