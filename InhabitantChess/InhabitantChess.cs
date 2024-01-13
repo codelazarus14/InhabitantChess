@@ -143,7 +143,7 @@ namespace InhabitantChess
 
         public void ShortcutUnlocked()
         {
-            Logger.Log("Player unlocked shortcut!");
+            //Logger.Log("Player unlocked shortcut!");
             if (!_saveData.unlockedShortcut) _saveData.unlockedShortcut = true;
             ModHelper.Storage.Save(_saveData, SaveFileName);
 

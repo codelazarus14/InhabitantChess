@@ -77,7 +77,7 @@ namespace InhabitantChess
 
         public void EnableShortcut(bool enabled)
         {
-            Lantern.gameObject?.SetActive(enabled); // TODO: why does this give nullref after quit to title
+            Lantern.gameObject?.SetActive(enabled);
             UsedShortcut = !enabled;
         }
 
@@ -108,6 +108,9 @@ namespace InhabitantChess
             director._prisonerEffects.OnReadyToReceiveTorch -= _sequence.OnReadyForTorch;
             _sequence.TorchSocket.OnSocketablePlaced = (OWItemSocket.SocketEvent)Delegate.Remove(_sequence.TorchSocket.OnSocketablePlaced,
                                                                     new OWItemSocket.SocketEvent(_sequence.OnPlayerPlaceTorch));
+            _sequence.TorchSocket.OnSocketableRemoved = (OWItemSocket.SocketEvent)Delegate.Combine(_sequence.TorchSocket.OnSocketableRemoved,
+                                                                    new OWItemSocket.SocketEvent(_sequence.OnPlayerPickupTorch));
+
             // remove darkness plane, give lantern, turn on lights
             director._darknessAwoken = true;
             director._prisonerController._lantern.SetConcealed(true);

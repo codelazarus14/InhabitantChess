@@ -115,7 +115,7 @@ namespace InhabitantChess
 
         private void SetTorchSocket(VisionTorchSocket socket)
         {
-            // TOOD: Patch "Give" prompt into a "Place" in FirstPersonManipulator? seems hardcoded to be give/take
+            // TODO: Patch "Give" prompt into a "Place" in FirstPersonManipulator? seems hardcoded to be give/take
             TorchSocket = socket;
             TorchSocket.OnSocketablePlaced = (OWItemSocket.SocketEvent)Delegate.Combine(TorchSocket.OnSocketablePlaced, new OWItemSocket.SocketEvent(OnPlayerPlaceTorch));
             TorchSocket.EnableInteraction(false);
@@ -202,7 +202,6 @@ namespace InhabitantChess
 
         public void OnPlayerPickupTorch(OWItem Item)
         {
-            // TODO: why is this not disabling the torch socket after giving it back at the end
             TorchSocket.OnSocketableRemoved = (OWItemSocket.SocketEvent)Delegate.Remove(TorchSocket.OnSocketableRemoved, new OWItemSocket.SocketEvent(OnPlayerPickupTorch));
             TorchSocket.EnableInteraction(false);
         }
@@ -279,6 +278,9 @@ namespace InhabitantChess
             DisableConversation();
             SetPlayerChairCollision(true);
             TorchSocket.EnableInteraction(true);
+            // VisionTorchItem is disabled by director at start, and only enabled by the vision-sharing sequence
+            // I put it down here - might as well avoid affecting other stuff earlier
+            TorchSocket._socketedItem.EnableInteraction(true);
             InhabitantChess.Instance.BoardGame.SetActive(false);
             InhabitantChess.Instance.ShortcutUnlocked();
             OnCleanupGame?.Invoke();
