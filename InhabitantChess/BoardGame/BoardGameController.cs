@@ -141,7 +141,6 @@ namespace InhabitantChess.BoardGame
             }
 
             OnStopGame?.Invoke();
-            Logger.Log("Game Over!");
             _totalGames++;
             if (PlayerWon()) _gamesWon++;
             Logger.Log($"Game finished, win ratio {GetScore().Item1} - {GetScore().Item2}");
