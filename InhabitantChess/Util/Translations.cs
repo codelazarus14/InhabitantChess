@@ -61,7 +61,7 @@ namespace InhabitantChess.Util
             Dictionary<int, string> table = TextTranslation.Get().m_table.theUITable;
             _language = TextTranslation.Get().m_language;
 
-            string transText = _transDict[_language][text.ToUpper()];
+            string transText = _transDict.ContainsKey(_language) ? _transDict[_language][text.ToUpper()] : _transDict[TextTranslation.Language.ENGLISH][text.ToUpper()];
 
             int key = table.Keys.Max() + 1;
             try
