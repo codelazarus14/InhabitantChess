@@ -293,6 +293,9 @@ namespace InhabitantChess
                 if (!_bgController.Playing)
                 {
                     _seatInteract.ChangePrompt((UITextType)Translations.GetUITextType("IC_PLAYAGAIN"));
+
+                    (int won, int lost) score = _bgController.GetScore();
+                    _screenPrompts.SetScore(score.won, score.lost);
                 }
             }
             if (PlayerState != ChessPlayerState.EnteringOverhead)
