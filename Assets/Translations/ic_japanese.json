@@ -1,0 +1,14 @@
+{
+    "IC_INTERACT": "始める",
+    "IC_NOINTERACT": "始められない:ランタンを持っている！",
+    "IC_SCORE" : "スコア:",
+    "IC_BOARDMOVE": "移動先を選択",
+    "IC_OVERHEAD": "視点の切り替え",
+    "IC_LEAN": "前傾/後傾",
+    "IC_SILENCE": "…",
+    "IC_WAIT": "待って！",
+    "IC_JK": "いや…何でもない。",
+    "IC_DONE": "もう遊び終わったと思う。",
+    "IC_SHORTCUT": "ショートカット",
+    "IC_PLAYAGAIN": "もう一度遊ぶ"
+}
