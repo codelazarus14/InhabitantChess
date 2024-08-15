@@ -41,7 +41,7 @@ namespace InhabitantChess.BoardGame
             _board = transform.Find("BoardGame_Board").gameObject.GetComponent<BoardController>();
             _board.Init();
             _toDestroy = new();
-            OnHighlightConfigure(InhabitantChess.Instance.Highlighting);
+            OnHighlightConfigure(InhabitantChess.Instance.HighlightSettings);
         }
 
         public void OnHighlightConfigure((bool moves, bool pieces, bool beam) hConfig)

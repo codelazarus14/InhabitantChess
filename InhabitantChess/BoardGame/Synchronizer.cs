@@ -8,6 +8,7 @@ namespace InhabitantChess.BoardGame
         // from https://answers.unity.com/questions/1601104/how-do-i-synchronise-a-function-called-in-multiple.html
         public UnityEvent OnLerpComplete;
 
+        // TODO: remove this class and make space controllers use sin with their own static T-value
         public static float t { get; private set; }
 
         private void Start()

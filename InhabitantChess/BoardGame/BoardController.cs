@@ -1,12 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using Logger = InhabitantChess.Util.Logger;
 
 namespace InhabitantChess.BoardGame
 {
     public class BoardController : MonoBehaviour
-
     {
         public GameObject SpacePrefab;
         public GameObject BlockerPrefab;
@@ -18,6 +16,7 @@ namespace InhabitantChess.BoardGame
 
         public List<(GameObject g, (int up, int across) pos, PieceType type)> Pieces { get; private set; }
         // this may change in future bc it depends on world, not local space
+        // TODO: matrix of gameobjects?
         public Dictionary<(int up, int across), GameObject> SpaceDict { get; private set; }
         public bool IsInitialized { get; private set; }
         public bool Moving { get; private set; }

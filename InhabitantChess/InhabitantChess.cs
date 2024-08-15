@@ -4,7 +4,6 @@ using InhabitantChess.Util;
 using OWML.Common;
 using OWML.ModHelper;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
@@ -30,7 +29,7 @@ namespace InhabitantChess
         public AudioEffects AudioEffects { get; private set; }
         public Shortcut Shortcut { get; private set; }
         public ChessPlayerState PlayerState { get; private set; }
-        public (bool moves, bool pieces, bool beam) Highlighting { get; private set; }
+        public (bool moves, bool pieces, bool beam) HighlightSettings { get; private set; }
         public bool ShortcutEnabled { get; private set; }
 
         public delegate void ChessPlayerAudioEvent();
@@ -42,23 +41,37 @@ namespace InhabitantChess
         private delegate void ConfigureEvent();
         private ConfigureEvent OnConfigure;
 
-        private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
-        private float _oldLeanAmt, _leanAmt, _lastLeanSoundTime, _maxLeanAmt = 1f, _leanSpeed = 1.5f, _leanSoundCooldown = 1f;
-        private BoardGameController _bgController;
-        private ICommonCameraAPI _cameraAPI;
-        private PlayerCameraController _playerCamController;
-        private OverheadCameraController _overheadCamController;
-        private ScreenPrompts _screenPrompts;
-        private PlayerAttachPoint _attachPoint;
-        private InteractZone _seatInteract;
-        private Dictionary<string, GameObject> _prefabDict = new();
-        private const string SaveFileName = "ic_save.json";
-        private static Shader s_standardShader = Shader.Find("Standard");
         private class ICData
         {
             public bool unlockedShortcut;
         }
         private ICData _saveData;
+
+        private struct ICPrefabs
+        {
+            public GameObject chess;
+            public GameObject space;
+            public GameObject blocker;
+            public GameObject antler;
+            public GameObject eye;
+        }
+        private ICPrefabs _prefabs;
+
+        private const string SaveFileName = "ic_save.json";
+        private static Shader s_standardShader = Shader.Find("Standard");
+
+        private ICommonCameraAPI _cameraAPI;
+        private BoardGameController _bgController;
+        private PlayerCameraController _playerCamController;
+        private OverheadCameraController _overheadCamController;
+        private ScreenPrompts _screenPrompts;
+        private PlayerAttachPoint _attachPoint;
+        private InteractZone _seatInteract;
+        private Shader _highlightShader;
+        private Material[] _highlightMaterials;
+        private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
+        private float _oldLeanAmt, _leanAmt, _lastLeanSoundTime, _maxLeanAmt = 1f, _leanSpeed = 1.5f, _leanSoundCooldown = 1f;
+        private bool _hasCachedData;
 
         private void Awake()
         {
@@ -75,38 +88,48 @@ namespace InhabitantChess
                 return;
             }
             _cameraAPI = ModHelper.Interaction.TryGetModApi<ICommonCameraAPI>("xen.CommonCameraUtility");
+            var dependants = GetDependants();
+            bool instancing = dependants.Count > 0;
+            if (instancing)
+                Logger.Log($"Dependencies detected - enabling chess game instancing");
+
+            // TODO testing - delete later
+            //instancing = true;
 
             AssetBundle bundle = ModHelper.Assets.LoadBundle("Assets/triboard");
-            LoadPrefabs(bundle, "assets/prefabs/triboard/");
+            _prefabs = LoadPrefabs(bundle, "assets/prefabs/triboard/");
             TextAsset prisonerDialogue = LoadText("Assets/PrisonerDialogue.xml");
             Translations.LoadTranslations();
 
             LoadManager.OnCompleteSceneLoad += (scene, loadScene) =>
             {
-                if (loadScene != OWScene.SolarSystem) return;
+                if (loadScene == OWScene.SolarSystem)
+                    CacheExistingData();
+                else if (!_hasCachedData)
+                {
+                    Logger.LogError($"Solar System scene hasn't been loaded - data is missing!");
+                    return;
+                }
 
                 PlayerState = ChessPlayerState.None;
 
+                if (instancing) return;
+
                 PrisonCell = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_Underground/Sector_PrisonCell");
 
-                BoardGame = Instantiate(_prefabDict["chessPrefab"], PrisonCell.transform);
+                BoardGame = Instantiate(_prefabs.chess, PrisonCell.transform);
                 BoardGame.transform.localPosition = new Vector3(4, -35.105f, 0.2f);
                 BoardGame.transform.localRotation = Quaternion.Euler(0, 270, 0);
 
                 Synchronizer synch = BoardGame.AddComponent<Synchronizer>();
                 BoardController bController = BoardGame.transform.Find("BoardGame_Board").gameObject.AddComponent<BoardController>();
-                bController.SpacePrefab = _prefabDict["spacePrefab"];
-                bController.BlockerPrefab = _prefabDict["blockerPrefab"];
-                bController.AntlerPrefab = _prefabDict["antlerPrefab"];
-                bController.EyePrefab = _prefabDict["eyePrefab"];
+                bController.SpacePrefab = _prefabs.space;
+                bController.BlockerPrefab = _prefabs.blocker;
+                bController.AntlerPrefab = _prefabs.antler;
+                bController.EyePrefab = _prefabs.eye;
                 bController.Synchronizer = synch;
-
-                GameObject sampleBoardGame = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_1/Simulation_DreamZone_1/Props_DreamZone_1/Props_GenericHouse_B (1)/Effects_IP_SIM_BoardGame");
-                MeshRenderer sampleMesh = sampleBoardGame.GetComponent<MeshRenderer>();
-                Material dreamGridVP = sampleMesh.materials[0];
-                Material dreamGrid = sampleMesh.materials[1];
-                bController.HighlightShader = sampleMesh.material.shader;
-                bController.HighlightMaterials = new Material[] { dreamGridVP, dreamGrid };
+                bController.HighlightShader = _highlightShader;
+                bController.HighlightMaterials = _highlightMaterials;
                 _bgController = BoardGame.AddComponent<BoardGameController>();
 
                 GameObject cockpitAttach = GameObject.Find("Ship_Body/Module_Cockpit/Systems_Cockpit/CockpitAttachPoint");
@@ -126,7 +149,7 @@ namespace InhabitantChess
                 Shortcut = PrisonCell.AddComponent<Shortcut>();
                 AudioEffects = PrisonCell.AddComponent<AudioEffects>();
 
-                OnConfigure += () => _bgController.OnHighlightConfigure(Highlighting);
+                OnConfigure += () => _bgController.OnHighlightConfigure(HighlightSettings);
                 OnConfigure += () => Shortcut.EnableShortcut(ShortcutEnabled);
                 _seatInteract.OnPressInteract += OnPressInteract;
                 TextTranslation.Get().OnLanguageChanged += Translations.UpdateLanguage;
@@ -144,7 +167,7 @@ namespace InhabitantChess
             //Logger.Log($"Shortcut unlocked? {_saveData.unlockedShortcut}");
 
             ShortcutEnabled = /*_saveData.unlockedShortcut &&*/ config.GetSettingsValue<bool>("Enable Shortcut");
-            Highlighting = new(config.GetSettingsValue<bool>("Moves Highlighting"),
+            HighlightSettings = new(config.GetSettingsValue<bool>("Moves Highlighting"),
                                 config.GetSettingsValue<bool>("Piece Highlighting"),
                                 config.GetSettingsValue<bool>("Beam Highlighting"));
             OnConfigure?.Invoke();
@@ -157,6 +180,16 @@ namespace InhabitantChess
             ModHelper.Storage.Save(_saveData, SaveFileName);
 
             ShortcutEnabled = _saveData.unlockedShortcut && ModHelper.Config.GetSettingsValue<bool>("Enable Shortcut");
+        }
+
+        private void CacheExistingData()
+        {
+            // TODO: see if we can replace this with Resources.loading stuff
+            GameObject sampleBoardGame = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_1/Simulation_DreamZone_1/Props_DreamZone_1/Props_GenericHouse_B (1)/Effects_IP_SIM_BoardGame");
+            MeshRenderer sampleMesh = sampleBoardGame.GetComponent<MeshRenderer>();
+            _highlightMaterials = [sampleMesh.materials[0], sampleMesh.materials[1]];
+            _highlightShader = sampleMesh.material.shader;
+            _hasCachedData = true;
         }
 
         private void OnEnterDreamworld()
@@ -345,24 +378,21 @@ namespace InhabitantChess
             TextTranslation.Get().OnLanguageChanged -= Translations.UpdateLanguage;
             if (_seatInteract != null) _seatInteract.OnPressInteract -= OnPressInteract;
             OnConfigure -= () => Shortcut.EnableShortcut(ShortcutEnabled);
-            OnConfigure -= () => _bgController.OnHighlightConfigure(Highlighting);
+            OnConfigure -= () => _bgController.OnHighlightConfigure(HighlightSettings);
         }
 
-        private void LoadPrefabs(AssetBundle bundle, string bundlePath)
+        private ICPrefabs LoadPrefabs(AssetBundle bundle, string bundlePath)
         {
-            (string label, string name)[] prefabs =
-            {
-                ("chessPrefab", "boardgame.prefab"),
-                ("spacePrefab", "boardgame_spacehighlight.prefab"),
-                ("blockerPrefab", "boardgame_blocker.prefab"),
-                ("antlerPrefab", "boardgame_antler.prefab"),
-                ("eyePrefab", "boardgame_eye.prefab")
-            };
+            GameObject LoadAtPath(string prefabName) { return LoadPrefab(bundle, bundlePath + prefabName); }
 
-            for (int i = 0; i < prefabs.Length; i++)
+            return new ICPrefabs
             {
-                _prefabDict.Add(prefabs[i].label, LoadPrefab(bundle, bundlePath + prefabs[i].name));
-            }
+                chess = LoadAtPath("boardgame.prefab"),
+                space = LoadAtPath("boardgame_spacehighlight.prefab"),
+                blocker = LoadAtPath("boardgame_blocker.prefab"),
+                antler = LoadAtPath("boardgame_antler.prefab"),
+                eye = LoadAtPath("boardgame_eye.prefab")
+            };
         }
 
         // borrowed from https://github.com/Vesper-Works/OuterWildsHalf-Life/blob/main/HalfLifeOverhaul
