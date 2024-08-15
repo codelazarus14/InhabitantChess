@@ -5,7 +5,7 @@
   "name": "Inhabitant Chess",
   "uniqueName": "codelazarus14.InhabitantChess",
   "version": "0.1.2",
-  "owmlVersion": "2.9.8",
+  "owmlVersion": "2.13.0",
   "dependencies": [ "xen.CommonCameraUtility" ],
   "conflicts": [ "VioVayo.HugMod" ]
 }

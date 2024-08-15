@@ -10,6 +10,15 @@ using System.Reflection;
 using UnityEngine;
 using Logger = InhabitantChess.Util.Logger;
 
+// TODO: eyes of the past branch
+// - game instancing system: move some of the per-game logic (instantiation, player state, audio, update loops) to separate class
+//   to support creating separate game instances and npc encounters in the world
+// - same w prisoner sequence - make some generic class for wrapping dialogue/scripted sequences around setting up and clearing away the game
+// - remove shortcut?
+// - interacting with the board - prompt user to interact w spaces (screenprompt, highlight glows brighter)
+// - display rules (ask the inhabitant diff options thru dialogue, optional "can i review the rules")
+// - difficulty options (per game/instance), parameter for decision making, dialogue option
+
 namespace InhabitantChess
 {
     public class InhabitantChess : ModBehaviour
