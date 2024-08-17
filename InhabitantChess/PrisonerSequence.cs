@@ -237,6 +237,8 @@ namespace InhabitantChess
             if (_state == PrisonerState.SaidFinalWords && t >= _initFinalWordsTime + 2f)
             {
                 _state = PrisonerState.BeingRestored;
+                if (InhabitantChess.Instance.PlayerState == ChessPlayerState.Seated)
+                    InhabitantChess.Instance.StandUp();
                 SleepPlayer();
             }
             if (_eyesClosed)

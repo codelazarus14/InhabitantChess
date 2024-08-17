@@ -230,6 +230,15 @@ namespace InhabitantChess
             }
         }
 
+        public void StandUp()
+        {
+            _leanAmt = 0f;
+            _oldLeanAmt = 0f;
+            _playerCamController.CenterCameraOverSeconds(0.2f, false);
+            PlayerState = ChessPlayerState.StandingUp;
+            _exitSeatTime = Time.time;
+        }
+
         private void CompleteStandingUp()
         {
             _seatInteract.ResetInteraction();
@@ -318,11 +327,7 @@ namespace InhabitantChess
                 if (OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All))
                 {
                     //_bgController.ExitGame();
-                    _leanAmt = 0f;
-                    _oldLeanAmt = 0f;
-                    _playerCamController.CenterCameraOverSeconds(0.2f, false);
-                    PlayerState = ChessPlayerState.StandingUp;
-                    _exitSeatTime = Time.time;
+                    StandUp();
                 }
                 else if (OWInput.IsPressed(InputLibrary.moveXZ, InputMode.All))
                 {
