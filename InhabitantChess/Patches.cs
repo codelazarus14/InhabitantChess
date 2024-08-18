@@ -1,7 +1,6 @@
 ﻿using HarmonyLib;
 using InhabitantChess.Util;
 using UnityEngine;
-using static ItemTool;
 
 namespace InhabitantChess
 {
@@ -91,7 +90,7 @@ namespace InhabitantChess
         // show shortcut prompt text
         [HarmonyPostfix]
         [HarmonyPatch(typeof(ItemTool), nameof(ItemTool.UpdateState))]
-        public static void ItemTool_UpdateState_Postfix(ItemTool __instance, PromptState newState, string itemName)
+        public static void ItemTool_UpdateState_Postfix(ItemTool __instance, ItemTool.PromptState newState, string itemName)
         {
             if (Locator.GetPlayerBody().GetComponentInChildren<PlayerSectorDetector>().IsWithinSector(Sector.Name.TimberHearth))
             {
@@ -149,6 +148,5 @@ namespace InhabitantChess
             var distance = Vector3.Distance(Locator.GetPlayerTransform().position, receiver.gameObject.transform.position);
             return (distance < receiver._interactRange * 2.5f);
         }
-
     }
 }

@@ -4,6 +4,7 @@ using InhabitantChess.Util;
 using OWML.Common;
 using OWML.ModHelper;
 using System;
+using System.Collections;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
@@ -65,6 +66,7 @@ namespace InhabitantChess
         private PlayerCameraController _playerCamController;
         private OverheadCameraController _overheadCamController;
         private ScreenPrompts _screenPrompts;
+        private GameObject _cockpitClone;
         private PlayerAttachPoint _attachPoint;
         private InteractZone _seatInteract;
         private Shader _highlightShader;
@@ -103,7 +105,7 @@ namespace InhabitantChess
 
             LoadManager.OnCompleteSceneLoad += (scene, loadScene) =>
             {
-                if (loadScene == OWScene.SolarSystem)
+                if (loadScene == OWScene.SolarSystem && !_hasCachedData)
                     CacheExistingData();
                 else if (!_hasCachedData)
                 {
@@ -132,16 +134,7 @@ namespace InhabitantChess
                 bController.HighlightMaterials = _highlightMaterials;
                 _bgController = BoardGame.AddComponent<BoardGameController>();
 
-                GameObject cockpitAttach = GameObject.Find("Ship_Body/Module_Cockpit/Systems_Cockpit/CockpitAttachPoint");
-                GameObject gameAttach = Instantiate(cockpitAttach, BoardGame.transform);
-                gameAttach.transform.localPosition = new Vector3(1, 0, 0);
-                gameAttach.transform.localRotation = Quaternion.Euler(0, 270, 0);
-                gameAttach.GetComponent<CapsuleCollider>().radius *= 2;
-                _attachPoint = gameAttach.GetComponent<PlayerAttachPoint>();
-                _seatInteract = gameAttach.GetComponent<InteractZone>();
-                _seatInteract._textID = (UITextType)Translations.GetUITextType("IC_INTERACT");
-                // default screen prompts not initialized yet? so we have to create our own
-                _seatInteract.Awake();
+                StartCoroutine(CreateGameSeat(BoardGame.transform, Vector3.right, Quaternion.Euler(0, 270, 0)));
 
                 _screenPrompts = BoardGame.AddComponent<ScreenPrompts>();
                 PrisonerSequence = PrisonCell.AddComponent<PrisonerSequence>();
@@ -152,6 +145,7 @@ namespace InhabitantChess
                 OnConfigure += () => _bgController.OnHighlightConfigure(HighlightSettings);
                 OnConfigure += () => Shortcut.EnableShortcut(ShortcutEnabled);
                 _seatInteract.OnPressInteract += OnPressInteract;
+                _seatInteract.OnPressInteract += _bgController.OnPressInteract;
                 TextTranslation.Get().OnLanguageChanged += Translations.UpdateLanguage;
                 // set up camera w util later
                 GlobalMessenger.AddListener("EnterDreamWorld", new Callback(OnEnterDreamworld));
@@ -184,12 +178,46 @@ namespace InhabitantChess
 
         private void CacheExistingData()
         {
-            // TODO: see if we can replace this with Resources.loading stuff
+            // TODO: see if we can replace this with Resources.loading stuff, creating objects on the fly
             GameObject sampleBoardGame = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_1/Simulation_DreamZone_1/Props_DreamZone_1/Props_GenericHouse_B (1)/Effects_IP_SIM_BoardGame");
             MeshRenderer sampleMesh = sampleBoardGame.GetComponent<MeshRenderer>();
             _highlightMaterials = [sampleMesh.materials[0], sampleMesh.materials[1]];
             _highlightShader = sampleMesh.material.shader;
             _hasCachedData = true;
+
+            // create object mimicking the functionality of ship's CockpitAttachPoint
+            _cockpitClone = new GameObject();
+            _cockpitClone.SetActive(false);
+            _cockpitClone.layer = LayerMask.NameToLayer("AdvancedEffectVolume");
+            CapsuleCollider col = _cockpitClone.AddComponent<CapsuleCollider>();
+            col.height = 2;
+            col.radius = 1f;
+            col.isTrigger = true;
+
+            _cockpitClone.AddComponent<PlayerAttachPoint>();
+            InteractZone interactZone = _cockpitClone.AddComponent<InteractZone>();
+            interactZone._textID = (UITextType)Translations.GetUITextType("IC_INTERACT");
+            // initialize screen prompts and trigger volume
+            interactZone.Awake();
+
+            DontDestroyOnLoad(_cockpitClone);
+            Logger.Log("Finished caching objects");
+        }
+
+        private IEnumerator CreateGameSeat(Transform parent, Vector3 localPos, Quaternion localRot)
+        {
+            GameObject gameSeat = Instantiate(_cockpitClone, BoardGame.transform);
+            gameSeat.transform.localPosition = localPos;
+            gameSeat.transform.localRotation = localRot;
+            gameSeat.SetActive(true);
+            _attachPoint = gameSeat.GetComponent<PlayerAttachPoint>();
+            _seatInteract = gameSeat.GetComponent<InteractZone>();
+            // wait for Locator to be ready since its used in PlayerAttachPoint's Start()
+            yield return new WaitUntil(() => Locator.GetPlayerBody() != null);
+            // even though it should be enabled by default, have to do this explicitly to trigger Start()
+            // this solves a bug where AttachPlayer()'s setting enabled would be overridden
+            // by Start() being triggered right after (before instantiated object's first frame update)
+            _attachPoint.enabled = true;
         }
 
         private void OnEnterDreamworld()
@@ -210,24 +238,17 @@ namespace InhabitantChess
 
         private void OnPressInteract()
         {
-            if (_overheadCamController == null || _playerCamController == null) return;
-
+            _attachPoint.AttachPlayer();
             _seatInteract.DisableInteraction();
-            _bgController.OnInteract();
-            // only update if not seated
-            if (PlayerState == ChessPlayerState.None)
-            {
-                PrisonerSequence.DisableConversation();
-                (int won, int lost) score = _bgController.GetScore();
-                _screenPrompts.SetScore(score.won, score.lost);
-                _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Score, true);
-                _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, true);
-                _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, true);
-                _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, true);
-                _attachPoint.AttachPlayer();
-                PlayerState = ChessPlayerState.Seated;
-                OnSitDown?.Invoke();
-            }
+            PrisonerSequence.DisableConversation();
+            (int won, int lost) score = _bgController.GetScore();
+            _screenPrompts.SetScore(score.won, score.lost);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Score, true);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, true);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, true);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, true);
+            PlayerState = ChessPlayerState.Seated;
+            OnSitDown?.Invoke();
         }
 
         public void StandUp()
@@ -241,6 +262,7 @@ namespace InhabitantChess
 
         private void CompleteStandingUp()
         {
+            _attachPoint.DetachPlayer();
             _seatInteract.ResetInteraction();
             _seatInteract.EnableInteraction();
             PrisonerSequence.EnableConversation();
@@ -248,7 +270,6 @@ namespace InhabitantChess
             _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, false);
             _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, false);
             _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, false);
-            _attachPoint.DetachPlayer();
             PlayerState = ChessPlayerState.None;
             OnStandUp?.Invoke();
         }
@@ -381,7 +402,11 @@ namespace InhabitantChess
         {
             GlobalMessenger.RemoveListener("EnterDreamWorld", new Callback(OnEnterDreamworld));
             TextTranslation.Get().OnLanguageChanged -= Translations.UpdateLanguage;
-            if (_seatInteract != null) _seatInteract.OnPressInteract -= OnPressInteract;
+            if (_seatInteract != null)
+            {
+                _seatInteract.OnPressInteract -= OnPressInteract;
+                _seatInteract.OnPressInteract -= _bgController.OnPressInteract;
+            }
             OnConfigure -= () => Shortcut.EnableShortcut(ShortcutEnabled);
             OnConfigure -= () => _bgController.OnHighlightConfigure(HighlightSettings);
         }

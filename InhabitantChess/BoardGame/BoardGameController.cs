@@ -97,7 +97,7 @@ namespace InhabitantChess.BoardGame
             }
         }
 
-        public void OnInteract()
+        public void OnPressInteract()
         {
             // does nothing if mid-game
             if (Playing) return;
