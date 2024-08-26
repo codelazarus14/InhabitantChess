@@ -9,12 +9,9 @@ namespace InhabitantChess.BoardGame
         public (int up, int across) Space { get; private set; }
 
         private Material _ogMaterial, _beamMaterial;
+        private MeshRenderer _meshRenderer;
+        private Collider[] _colliders;
         private float _min = 0.0f, _max = 0.4f;
-
-        private void Start()
-        {
-
-        }
 
         private void Update()
         {
@@ -30,21 +27,29 @@ namespace InhabitantChess.BoardGame
 
         public void SetMaterials(Material beamMat)
         {
-            _ogMaterial = GetComponent<MeshRenderer>().material;
+            if (_meshRenderer == null)
+                _meshRenderer = GetComponent<MeshRenderer>();
+            _ogMaterial = _meshRenderer.material;
             _beamMaterial = beamMat;
-        }
-
-        public void SetBeam(bool inBeam)
-        {
-            MeshRenderer mesh = GetComponent<MeshRenderer>();
-            if (inBeam) mesh.material = _beamMaterial;
-            else mesh.material = _ogMaterial;
-            InBeam = inBeam;
         }
 
         public void SetVisible(bool visible)
         {
-            GetComponent<MeshRenderer>().enabled = visible;
+            _meshRenderer.enabled = visible;
+        }
+
+        public void SetInteractive(bool active)
+        {
+            if (_colliders == null)
+                _colliders = GetComponentsInChildren<Collider>();
+            foreach (var col in _colliders)
+                col.enabled = active;
+        }
+
+        public void SetBeam(bool inBeam)
+        {
+            _meshRenderer.material = inBeam ? _beamMaterial : _ogMaterial;
+            InBeam = inBeam;
         }
 
         public void FlipHighlightLerp()

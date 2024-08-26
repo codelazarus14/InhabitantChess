@@ -57,8 +57,8 @@ namespace InhabitantChess.BoardGame
         {
             if (_boardState == BoardState.WaitingForInput)
             {
-                _board.ToggleSpaces(_legalMoves, _movesHighlightEnabled);
-                _board.ToggleHighlight(_currentPlayer.g, _pieceHighlightEnabled);
+                _board.SetSpaces(_legalMoves, _movesHighlightEnabled, true);
+                _board.SetPieceHighlight(_currentPlayer.g, _pieceHighlightEnabled);
             }
             _board.UpdateBeam(_beamHighlightEnabled);
         }
@@ -160,8 +160,9 @@ namespace InhabitantChess.BoardGame
                 yield break;
             }
 
-            _board.ToggleSpaces(_legalMoves, _movesHighlightEnabled);
-            _board.ToggleHighlight(_currentPlayer.g, _pieceHighlightEnabled);
+            // TODO: visualize legal moves that are possibly dangerous (walking into beam) when beam visual is turned off?
+            _board.SetSpaces(_legalMoves, _movesHighlightEnabled, true);
+            _board.SetPieceHighlight(_currentPlayer.g, _pieceHighlightEnabled);
             // wait for input, then move
             while (_selectedSpace == null || !_legalMoves.Contains(_selectedSpace.Space))
             {
@@ -173,8 +174,8 @@ namespace InhabitantChess.BoardGame
             yield return new WaitUntil(() => !_board.Moving);
             _boardState = BoardState.DoneMoving;
             // reset highlighting/visibility and finish
-            _board.ToggleHighlight(_currentPlayer.g, false);
-            _board.ToggleSpaces(_legalMoves, _movesHighlightEnabled);
+            _board.SetSpaces(_legalMoves, false, false);
+            _board.SetPieceHighlight(_currentPlayer.g, false);
             // blocker piece should update beam on move
             if (_currentPlayer.type == PieceType.Blocker)
             {
@@ -193,7 +194,7 @@ namespace InhabitantChess.BoardGame
                 _boardState = BoardState.Idle;
                 yield break;
             }
-            _board.ToggleHighlight(_currentPlayer.g, _pieceHighlightEnabled);
+            _board.SetPieceHighlight(_currentPlayer.g, _pieceHighlightEnabled);
             // add artificial wait
             _boardState = BoardState.WaitingForInput;
             yield return new WaitForSecondsRealtime(s_CPUTurnTime);
@@ -206,7 +207,7 @@ namespace InhabitantChess.BoardGame
             _boardState = BoardState.DoneMoving;
             _board.UpdateBeam(_beamHighlightEnabled);
             // reset
-            _board.ToggleHighlight(_currentPlayer.g, false);
+            _board.SetPieceHighlight(_currentPlayer.g, false);
             _boardState = BoardState.Idle;
         }
 

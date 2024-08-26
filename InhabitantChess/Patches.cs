@@ -92,7 +92,7 @@ namespace InhabitantChess
         [HarmonyPatch(typeof(ItemTool), nameof(ItemTool.UpdateState))]
         public static void ItemTool_UpdateState_Postfix(ItemTool __instance, ItemTool.PromptState newState, string itemName)
         {
-            if (Locator.GetPlayerBody().GetComponentInChildren<PlayerSectorDetector>().IsWithinSector(Sector.Name.TimberHearth))
+            if (Locator.GetPlayerSectorDetector().IsWithinSector(Sector.Name.TimberHearth))
             {
                 Shortcut shortcut = InhabitantChess.Instance.Shortcut;
                 if (shortcut != null && !shortcut.UsedShortcut && itemName.Equals(shortcut.Lantern.GetDisplayName()))

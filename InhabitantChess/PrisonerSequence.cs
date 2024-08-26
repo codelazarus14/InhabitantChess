@@ -24,7 +24,7 @@ namespace InhabitantChess
 
         private OWLight _torchSpotlight;
         private DreamLanternController _prisonerLantern, _lanternCopy;
-        private Dictionary<string, GameObject> _props;
+        private Dictionary<string, GameObject> _props; // TODO: convert to struct
         private List<(string name, Vector3 pos, Quaternion rot)> _ogTransforms, _movedTransforms;
         private Transform _elevatorPos, _seatPos, _cueMarker;
         private string _talkToText, _giveTorchText;

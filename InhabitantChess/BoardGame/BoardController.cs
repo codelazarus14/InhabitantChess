@@ -16,7 +16,7 @@ namespace InhabitantChess.BoardGame
 
         public List<(GameObject g, (int up, int across) pos, PieceType type)> Pieces { get; private set; }
         // this may change in future bc it depends on world, not local space
-        // TODO: matrix of gameobjects?
+        // TODO: matrix of SpaceControllers?
         public Dictionary<(int up, int across), GameObject> SpaceDict { get; private set; }
         public bool IsInitialized { get; private set; }
         public bool Moving { get; private set; }
@@ -177,13 +177,14 @@ namespace InhabitantChess.BoardGame
                 foreach ((int u, int a) k in SpaceDict.Keys)
                 {
                     GameObject spc = SpaceDict[k];
+                    spc.SetActive(true);
                     SpaceController spcController = spc.AddComponent<SpaceController>();
                     spcController.SetSpace(k.u, k.a);
                     spcController.SetMaterials(HighlightMaterials[0]);
                     if (!IsBlack(k)) spc.transform.localRotation = Quaternion.AngleAxis(-180, Vector3.up);
-                    spc.SetActive(false);
                     Synchronizer.OnLerpComplete.AddListener(spcController.FlipHighlightLerp);
                 }
+                SetSpaces(SpaceDict.Keys, false, false);
             }
         }
 
@@ -279,7 +280,7 @@ namespace InhabitantChess.BoardGame
         public void ResetBoard()
         {
             IsInitialized = false;
-            UpdateBeam(true, true);
+            UpdateBeam(false, true);
             // delete old game pieces before we lose track of them
             foreach (var p in Pieces)
             {
@@ -357,39 +358,29 @@ namespace InhabitantChess.BoardGame
             return firstRow || 0 < pos.up && pos.up < s_Rows && pos.up <= pos.across && pos.across <= 2 * s_Rows - pos.up;
         }
 
-        // set space clickability/highlight visibility
-        public void ToggleSpaces(List<(int up, int across)> spaces, bool visible, bool? setBeam = null)
+        // set properties across multiple spaces (clickable, visible, is in beam)
+        public void SetSpaces(IEnumerable<(int up, int across)> spaces, bool isVisible, bool isInteractive, bool? inBeam = null)
         {
             foreach (var s in spaces)
             {
-                SpaceController spc = SpaceDict[(s.up, s.across)].GetComponent<SpaceController>();
+                SpaceController spc = SpaceDict[s].GetComponent<SpaceController>();
                 // don't toggle beam spaces if we're not updating the beam!
-                if (!spc.InBeam || setBeam != null)
-                {
-                    spc.SetVisible(visible);
-                    spc.gameObject.SetActive(!spc.gameObject.activeSelf);
-                }
-                // allow beam spaces to be toggled when parameter supplied
-                if (setBeam != null)
-                    spc.SetBeam((bool)setBeam);
+                if (spc.InBeam && inBeam == null) continue;
+
+                spc.SetVisible(isVisible);
+                spc.SetInteractive(isInteractive);
+                if (inBeam != null)
+                    spc.SetBeam((bool)inBeam);
             }
         }
 
-        public void ToggleHighlight(GameObject piece, bool highlightEnabled)
+        public void SetPieceHighlight(GameObject piece, bool highlighted)
         {
             // toggle parent transforms of normal/highlighted piece
             GameObject normal = piece.transform.Find("Normal").gameObject;
             GameObject highlight = piece.transform.Find("Highlighted").gameObject;
-            if (highlightEnabled)
-            {
-                normal.SetActive(!normal.activeSelf);
-                highlight.SetActive(!highlight.activeSelf);
-            }
-            else
-            {
-                normal.SetActive(true);
-                highlight.SetActive(false);
-            }
+            normal.SetActive(!highlighted);
+            highlight.SetActive(highlighted);
         }
 
         public void DoMove(int pIdx, (int up, int across) newPos, bool settingUp = false)
@@ -430,93 +421,92 @@ namespace InhabitantChess.BoardGame
             }
         }
 
-        public void UpdateBeam(bool visible, bool clear = false)
+        public void UpdateBeam(bool visible, bool clearBeam = false)
         {
             // reset (turn off) old spaces
-            ToggleSpaces(_beamSpaces, visible, false);
+            SetSpaces(_beamSpaces, false, false, false);
 
-            if (!clear)
+            if (clearBeam) return;
+
+            // see who's been hit and remove
+            var newBeamSpaces = new List<(int, int)>();
+            (int u, int a) eyePos = Pieces.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
+            // list of flags to keep track of blocked beams
+            bool[] blocked = { false, false, false };
+
+            for (int i = 1; i < s_Rows; i++)
             {
-                // see who's been hit and remove
-                var newBeamSpaces = new List<(int, int)>();
-                (int u, int a) eyePos = Pieces.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
-                // list of flags to keep track of blocked beams
-                bool[] blocked = { false, false, false };
-
-                for (int i = 1; i < s_Rows; i++)
+                var currDepthSpaces = new List<(int, int)>();
+                // check first row conditions
+                int lowerOffset() => eyePos.u - i == 0 ? 1 : 0;
+                int upperOffset() => eyePos.u + i == 1 ? 1 : 0;
+                // add spaces to list along 3 lines stretching from triangle vertices
+                if (IsBlack(eyePos))
                 {
-                    var currDepthSpaces = new List<(int, int)>();
-                    // check first row conditions
-                    int lowerOffset() => eyePos.u - i == 0 ? 1 : 0;
-                    int upperOffset() => eyePos.u + i == 1 ? 1 : 0;
-                    // add spaces to list along 3 lines stretching from triangle vertices
-                    if (IsBlack(eyePos))
+                    // below
+                    (int, int) below = (eyePos.u - i, eyePos.a - lowerOffset());
+                    blocked[0] = IsBlocked(below, blocked[0]);
+                    if (!blocked[0]) currDepthSpaces.Add(below);
+
+                    // upper R diagonal
+                    (int, int) upperR1 = (eyePos.u + i, eyePos.a + 3 * i - 1 + upperOffset());
+                    (int, int) upperR2 = (eyePos.u + i, eyePos.a + 3 * i + upperOffset());
+                    blocked[1] = IsBlocked(upperR1, blocked[1]);
+                    if (!blocked[1])
                     {
-                        // below
-                        (int, int) below = (eyePos.u - i, eyePos.a - lowerOffset());
-                        blocked[0] = IsBlocked(below, blocked[0]);
-                        if (!blocked[0]) currDepthSpaces.Add(below);
-
-                        // upper R diagonal
-                        (int, int) upperR1 = (eyePos.u + i, eyePos.a + 3 * i - 1 + upperOffset());
-                        (int, int) upperR2 = (eyePos.u + i, eyePos.a + 3 * i + upperOffset());
-                        blocked[1] = IsBlocked(upperR1, blocked[1]);
-                        if (!blocked[1])
-                        {
-                            currDepthSpaces.Add(upperR1);
-                            blocked[1] = IsBlocked(upperR2, blocked[1]);
-                            if (!blocked[1]) currDepthSpaces.Add(upperR2);
-                        }
-
-                        // upper L diagonal
-                        (int, int) upperL1 = (eyePos.u + i, eyePos.a - 3 * i + 1 + upperOffset());
-                        (int, int) upperL2 = (eyePos.u + i, eyePos.a - 3 * i + upperOffset());
-                        blocked[2] = IsBlocked(upperL1, blocked[2]);
-                        if (!blocked[2])
-                        {
-                            currDepthSpaces.Add(upperL1);
-                            blocked[2] = IsBlocked(upperL2, blocked[2]);
-                            if (!blocked[2]) currDepthSpaces.Add(upperL2);
-                        }
+                        currDepthSpaces.Add(upperR1);
+                        blocked[1] = IsBlocked(upperR2, blocked[1]);
+                        if (!blocked[1]) currDepthSpaces.Add(upperR2);
                     }
-                    else
+
+                    // upper L diagonal
+                    (int, int) upperL1 = (eyePos.u + i, eyePos.a - 3 * i + 1 + upperOffset());
+                    (int, int) upperL2 = (eyePos.u + i, eyePos.a - 3 * i + upperOffset());
+                    blocked[2] = IsBlocked(upperL1, blocked[2]);
+                    if (!blocked[2])
                     {
-                        // above
-                        (int, int) above = (eyePos.u + i, eyePos.a + upperOffset());
-                        blocked[0] = IsBlocked(above, blocked[0]);
-                        if (!blocked[0]) currDepthSpaces.Add(above);
-
-                        // lower R diagonal
-                        (int, int) lowerR1 = (eyePos.u - i, eyePos.a + 3 * i - 1 - lowerOffset());
-                        (int, int) lowerR2 = (eyePos.u - i, eyePos.a + 3 * i - lowerOffset());
-                        blocked[1] = IsBlocked(lowerR1, blocked[1]);
-                        if (!blocked[1])
-                        {
-                            currDepthSpaces.Add(lowerR1);
-                            blocked[1] = IsBlocked(lowerR2, blocked[1]);
-                            if (!blocked[1]) currDepthSpaces.Add(lowerR2);
-                        }
-
-                        // lower L diagonal
-                        (int, int) lowerL1 = (eyePos.u - i, eyePos.a - 3 * i + 1 - lowerOffset());
-                        (int, int) lowerL2 = (eyePos.u - i, eyePos.a - 3 * i - lowerOffset());
-                        blocked[2] = IsBlocked(lowerL1, blocked[2]);
-                        if (!blocked[2])
-                        {
-                            currDepthSpaces.Add(lowerL1);
-                            blocked[2] = IsBlocked(lowerL2, blocked[2]);
-                            if (!blocked[2]) currDepthSpaces.Add(lowerL2);
-                        }
+                        currDepthSpaces.Add(upperL1);
+                        blocked[2] = IsBlocked(upperL2, blocked[2]);
+                        if (!blocked[2]) currDepthSpaces.Add(upperL2);
                     }
-                    // filter out-of-bounds
-                    var currInBounds = currDepthSpaces.Where(InBounds);
-                    newBeamSpaces.AddRange(currInBounds.ToList());
                 }
+                else
+                {
+                    // above
+                    (int, int) above = (eyePos.u + i, eyePos.a + upperOffset());
+                    blocked[0] = IsBlocked(above, blocked[0]);
+                    if (!blocked[0]) currDepthSpaces.Add(above);
 
-                // show new ones
-                _beamSpaces = newBeamSpaces;
-                ToggleSpaces(_beamSpaces, visible, true);
+                    // lower R diagonal
+                    (int, int) lowerR1 = (eyePos.u - i, eyePos.a + 3 * i - 1 - lowerOffset());
+                    (int, int) lowerR2 = (eyePos.u - i, eyePos.a + 3 * i - lowerOffset());
+                    blocked[1] = IsBlocked(lowerR1, blocked[1]);
+                    if (!blocked[1])
+                    {
+                        currDepthSpaces.Add(lowerR1);
+                        blocked[1] = IsBlocked(lowerR2, blocked[1]);
+                        if (!blocked[1]) currDepthSpaces.Add(lowerR2);
+                    }
+
+                    // lower L diagonal
+                    (int, int) lowerL1 = (eyePos.u - i, eyePos.a - 3 * i + 1 - lowerOffset());
+                    (int, int) lowerL2 = (eyePos.u - i, eyePos.a - 3 * i - lowerOffset());
+                    blocked[2] = IsBlocked(lowerL1, blocked[2]);
+                    if (!blocked[2])
+                    {
+                        currDepthSpaces.Add(lowerL1);
+                        blocked[2] = IsBlocked(lowerL2, blocked[2]);
+                        if (!blocked[2]) currDepthSpaces.Add(lowerL2);
+                    }
+                }
+                // filter out-of-bounds
+                var currInBounds = currDepthSpaces.Where(InBounds);
+                newBeamSpaces.AddRange(currInBounds.ToList());
             }
+
+            // show new ones
+            _beamSpaces = newBeamSpaces;
+            SetSpaces(_beamSpaces, visible, true, true);
         }
 
         public List<int> CheckBeam()

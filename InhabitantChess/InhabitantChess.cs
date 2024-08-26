@@ -387,11 +387,10 @@ namespace InhabitantChess
                 _bgController.PlayerManip = Locator.GetPlayerTransform().GetComponentInChildren<FirstPersonManipulator>();
                 _playerCamController = Locator.GetPlayerCameraController();
                 (OWCamera owCam, _) = _cameraAPI.CreateCustomCamera("Overhead Camera");
-                Transform overhead = owCam.transform;
-                overhead.SetParent(BoardGame.transform);
-                overhead.localPosition = new Vector3(0f, 2f, 0);
-                overhead.localRotation = Quaternion.Euler(90, 270, 0);
-                _overheadCamController = overhead.gameObject.AddComponent<OverheadCameraController>();
+                owCam.transform.SetParent(BoardGame.transform);
+                owCam.transform.localPosition = new Vector3(0f, 2f, 0);
+                owCam.transform.localRotation = Quaternion.Euler(90, 270, 0);
+                _overheadCamController = owCam.gameObject.AddComponent<OverheadCameraController>();
                 _overheadCamController.Setup();
             }
         }
