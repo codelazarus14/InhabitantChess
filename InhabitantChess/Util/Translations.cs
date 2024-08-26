@@ -78,11 +78,6 @@ namespace InhabitantChess.Util
             return key;
         }
 
-        public static void UpdateLanguage()
-        {
-            _language = TextTranslation.Get().m_language;
-        }
-
         public static void UpdateCharacterDialogue(CharacterDialogueTree dialogue)
         {
             TextTranslation.TranslationTable table = TextTranslation.Get().m_table;
@@ -113,6 +108,11 @@ namespace InhabitantChess.Util
                     }
                 }
             }
+        }
+
+        public static void OnLanguageChanged()
+        {
+            _language = TextTranslation.Get().m_language;
         }
     }
 }

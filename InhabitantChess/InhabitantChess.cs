@@ -142,22 +142,104 @@ namespace InhabitantChess
                 Shortcut = PrisonCell.AddComponent<Shortcut>();
                 AudioEffects = PrisonCell.AddComponent<AudioEffects>();
 
-                OnConfigure += () => _bgController.OnHighlightConfigure(HighlightSettings);
-                OnConfigure += () => Shortcut.EnableShortcut(ShortcutEnabled);
-                _seatInteract.OnPressInteract += OnPressInteract;
-                _seatInteract.OnPressInteract += _bgController.OnPressInteract;
-                TextTranslation.Get().OnLanguageChanged += Translations.UpdateLanguage;
                 // set up camera w util later
                 GlobalMessenger.AddListener("EnterDreamWorld", new Callback(OnEnterDreamworld));
+                TextTranslation.Get().OnLanguageChanged += Translations.OnLanguageChanged;
+                _seatInteract.OnPressInteract += OnPressInteract;
+                _seatInteract.OnPressInteract += _bgController.OnPressInteract;
+                OnConfigure += () => _bgController.OnHighlightConfigure(HighlightSettings);
+                OnConfigure += () => Shortcut.EnableShortcut(ShortcutEnabled);
 
                 Logger.LogSuccess("Finished setup");
             };
         }
 
+        private void OnDestroy()
+        {
+            GlobalMessenger.RemoveListener("EnterDreamWorld", new Callback(OnEnterDreamworld));
+            TextTranslation.Get().OnLanguageChanged -= Translations.OnLanguageChanged;
+            if (_seatInteract != null)
+            {
+                _seatInteract.OnPressInteract -= OnPressInteract;
+                _seatInteract.OnPressInteract -= _bgController.OnPressInteract;
+            }
+            OnConfigure -= () => Shortcut.EnableShortcut(ShortcutEnabled);
+            OnConfigure -= () => _bgController.OnHighlightConfigure(HighlightSettings);
+        }
+
+        private void Update()
+        {
+            if (_seatInteract == null || PlayerState == ChessPlayerState.None) return;
+
+            if (PlayerState == ChessPlayerState.Seated)
+            {
+                if (OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All))
+                {
+                    //_bgController.ExitGame();
+                    StandUp();
+                }
+                else if (OWInput.IsPressed(InputLibrary.moveXZ, InputMode.All))
+                {
+                    float v = OWInput.GetAxisValue(InputLibrary.moveXZ).y;
+                    _oldLeanAmt = _leanAmt;
+                    _leanAmt += v * _leanSpeed * Time.deltaTime;
+                    _leanAmt = Mathf.Clamp(_leanAmt, 0.0f, _maxLeanAmt);
+                    CheckAndFireLeanSFX();
+                }
+                if (!_bgController.Playing)
+                {
+                    _seatInteract.ChangePrompt((UITextType)Translations.GetUITextType("IC_PLAYAGAIN"));
+
+                    (int won, int lost) = _bgController.GetScore();
+                    _screenPrompts.SetScore(won, lost);
+                }
+            }
+            if (PlayerState != ChessPlayerState.EnteringOverhead)
+            {
+                if (PlayerState == ChessPlayerState.Seated && OWInput.IsNewlyPressed(InputLibrary.landingCamera, InputMode.All))
+                {
+                    EnterOverheadView();
+                }
+                else if (PlayerState == ChessPlayerState.InOverhead && (OWInput.IsNewlyPressed(InputLibrary.landingCamera, InputMode.All) ||
+                        OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All)))
+                {
+                    InputLibrary.cancel.ConsumeInput();
+                    ExitOverheadView();
+                }
+            }
+            else
+            {
+                UpdateEnterOverheadTransition();
+            }
+        }
+
+        private void UpdateEnterOverheadTransition()
+        {
+            if (Time.time > _initOverheadTime + 0.45f)
+            {
+                PlayerState = ChessPlayerState.InOverhead;
+                _cameraAPI.EnterCamera(_overheadCamController.OverheadCam);
+                _overheadCamController.ResetPosition();
+            }
+        }
+
+        private void FixedUpdate()
+        {
+            // delay copied from ship cockpit controller to force recentering of camera
+            if (PlayerState == ChessPlayerState.StandingUp && Time.time >= _exitSeatTime + 0.2f)
+            {
+                CompleteStandingUp();
+            }
+            if (PlayerState == ChessPlayerState.ExitingOverhead && Time.time >= _exitOverheadTime + 0.45f)
+            {
+                PlayerState = ChessPlayerState.Seated;
+            }
+        }
+
+
         public override void Configure(IModConfig config)
         {
-            if (_saveData == null)
-                _saveData = ModHelper.Storage.Load<ICData>(SaveFileName) ?? new();
+            _saveData ??= ModHelper.Storage.Load<ICData>(SaveFileName) ?? new();
             //Logger.Log($"Shortcut unlocked? {_saveData.unlockedShortcut}");
 
             ShortcutEnabled = /*_saveData.unlockedShortcut &&*/ config.GetSettingsValue<bool>("Enable Shortcut");
@@ -174,6 +256,15 @@ namespace InhabitantChess
             ModHelper.Storage.Save(_saveData, SaveFileName);
 
             ShortcutEnabled = _saveData.unlockedShortcut && ModHelper.Config.GetSettingsValue<bool>("Enable Shortcut");
+        }
+
+        public void StandUp()
+        {
+            _leanAmt = 0f;
+            _oldLeanAmt = 0f;
+            _playerCamController.CenterCameraOverSeconds(0.2f, false);
+            PlayerState = ChessPlayerState.StandingUp;
+            _exitSeatTime = Time.time;
         }
 
         private void CacheExistingData()
@@ -206,7 +297,7 @@ namespace InhabitantChess
 
         private IEnumerator CreateGameSeat(Transform parent, Vector3 localPos, Quaternion localRot)
         {
-            GameObject gameSeat = Instantiate(_cockpitClone, BoardGame.transform);
+            GameObject gameSeat = Instantiate(_cockpitClone, parent);
             gameSeat.transform.localPosition = localPos;
             gameSeat.transform.localRotation = localRot;
             gameSeat.SetActive(true);
@@ -218,60 +309,6 @@ namespace InhabitantChess
             // this solves a bug where AttachPlayer()'s setting enabled would be overridden
             // by Start() being triggered right after (before instantiated object's first frame update)
             _attachPoint.enabled = true;
-        }
-
-        private void OnEnterDreamworld()
-        {
-            if (_bgController.PlayerManip == null)
-            {
-                _bgController.PlayerManip = Locator.GetPlayerTransform().GetComponentInChildren<FirstPersonManipulator>();
-                _playerCamController = Locator.GetPlayerCameraController();
-                (OWCamera owCam, Camera cam) customCamera = _cameraAPI.CreateCustomCamera("Overhead Camera");
-                Transform overhead = customCamera.owCam.transform;
-                overhead.SetParent(BoardGame.transform);
-                overhead.localPosition = new Vector3(0f, 2f, 0);
-                overhead.localRotation = Quaternion.Euler(90, 270, 0);
-                _overheadCamController = overhead.gameObject.AddComponent<OverheadCameraController>();
-                _overheadCamController.Setup();
-            }
-        }
-
-        private void OnPressInteract()
-        {
-            _attachPoint.AttachPlayer();
-            _seatInteract.DisableInteraction();
-            PrisonerSequence.DisableConversation();
-            (int won, int lost) score = _bgController.GetScore();
-            _screenPrompts.SetScore(score.won, score.lost);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Score, true);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, true);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, true);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, true);
-            PlayerState = ChessPlayerState.Seated;
-            OnSitDown?.Invoke();
-        }
-
-        public void StandUp()
-        {
-            _leanAmt = 0f;
-            _oldLeanAmt = 0f;
-            _playerCamController.CenterCameraOverSeconds(0.2f, false);
-            PlayerState = ChessPlayerState.StandingUp;
-            _exitSeatTime = Time.time;
-        }
-
-        private void CompleteStandingUp()
-        {
-            _attachPoint.DetachPlayer();
-            _seatInteract.ResetInteraction();
-            _seatInteract.EnableInteraction();
-            PrisonerSequence.EnableConversation();
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Score, false);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, false);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, false);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, false);
-            PlayerState = ChessPlayerState.None;
-            OnStandUp?.Invoke();
         }
 
         private void EnterOverheadView()
@@ -301,14 +338,18 @@ namespace InhabitantChess
             OWInput.ChangeInputMode(InputMode.Character);
         }
 
-        private void UpdateEnterOverheadTransition()
+        private void CompleteStandingUp()
         {
-            if (Time.time > _initOverheadTime + 0.45f)
-            {
-                PlayerState = ChessPlayerState.InOverhead;
-                _cameraAPI.EnterCamera(_overheadCamController.OverheadCam);
-                _overheadCamController.ResetPosition();
-            }
+            _attachPoint.DetachPlayer();
+            _seatInteract.ResetInteraction();
+            _seatInteract.EnableInteraction();
+            PrisonerSequence.EnableConversation();
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Score, false);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, false);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, false);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, false);
+            PlayerState = ChessPlayerState.None;
+            OnStandUp?.Invoke();
         }
 
         public float GetLean()
@@ -339,79 +380,38 @@ namespace InhabitantChess
             if (playedSound) _lastLeanSoundTime = Time.time;
         }
 
-        private void Update()
+        private void OnEnterDreamworld()
         {
-            if (_seatInteract == null || PlayerState == ChessPlayerState.None) return;
-
-            if (PlayerState == ChessPlayerState.Seated)
+            if (_bgController.PlayerManip == null)
             {
-                if (OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All))
-                {
-                    //_bgController.ExitGame();
-                    StandUp();
-                }
-                else if (OWInput.IsPressed(InputLibrary.moveXZ, InputMode.All))
-                {
-                    float v = OWInput.GetAxisValue(InputLibrary.moveXZ).y;
-                    _oldLeanAmt = _leanAmt;
-                    _leanAmt += v * _leanSpeed * Time.deltaTime;
-                    _leanAmt = Mathf.Clamp(_leanAmt, 0.0f, _maxLeanAmt);
-                    CheckAndFireLeanSFX();
-                }
-                if (!_bgController.Playing)
-                {
-                    _seatInteract.ChangePrompt((UITextType)Translations.GetUITextType("IC_PLAYAGAIN"));
-
-                    (int won, int lost) score = _bgController.GetScore();
-                    _screenPrompts.SetScore(score.won, score.lost);
-                }
-            }
-            if (PlayerState != ChessPlayerState.EnteringOverhead)
-            {
-                if (PlayerState == ChessPlayerState.Seated && OWInput.IsNewlyPressed(InputLibrary.landingCamera, InputMode.All))
-                {
-                    EnterOverheadView();
-                }
-                else if (PlayerState == ChessPlayerState.InOverhead && (OWInput.IsNewlyPressed(InputLibrary.landingCamera, InputMode.All) ||
-                        OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All)))
-                {
-                    InputLibrary.cancel.ConsumeInput();
-                    ExitOverheadView();
-                }
-            }
-            else
-            {
-                UpdateEnterOverheadTransition();
+                _bgController.PlayerManip = Locator.GetPlayerTransform().GetComponentInChildren<FirstPersonManipulator>();
+                _playerCamController = Locator.GetPlayerCameraController();
+                (OWCamera owCam, _) = _cameraAPI.CreateCustomCamera("Overhead Camera");
+                Transform overhead = owCam.transform;
+                overhead.SetParent(BoardGame.transform);
+                overhead.localPosition = new Vector3(0f, 2f, 0);
+                overhead.localRotation = Quaternion.Euler(90, 270, 0);
+                _overheadCamController = overhead.gameObject.AddComponent<OverheadCameraController>();
+                _overheadCamController.Setup();
             }
         }
 
-        private void FixedUpdate()
+        private void OnPressInteract()
         {
-            // delay copied from ship cockpit controller to force recentering of camera
-            if (PlayerState == ChessPlayerState.StandingUp && Time.time >= _exitSeatTime + 0.2f)
-            {
-                CompleteStandingUp();
-            }
-            if (PlayerState == ChessPlayerState.ExitingOverhead && Time.time >= _exitOverheadTime + 0.45f)
-            {
-                PlayerState = ChessPlayerState.Seated;
-            }
+            _attachPoint.AttachPlayer();
+            _seatInteract.DisableInteraction();
+            PrisonerSequence.DisableConversation();
+            (int won, int lost) = _bgController.GetScore();
+            _screenPrompts.SetScore(won, lost);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Score, true);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, true);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, true);
+            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, true);
+            PlayerState = ChessPlayerState.Seated;
+            OnSitDown?.Invoke();
         }
 
-        private void OnDestroy()
-        {
-            GlobalMessenger.RemoveListener("EnterDreamWorld", new Callback(OnEnterDreamworld));
-            TextTranslation.Get().OnLanguageChanged -= Translations.UpdateLanguage;
-            if (_seatInteract != null)
-            {
-                _seatInteract.OnPressInteract -= OnPressInteract;
-                _seatInteract.OnPressInteract -= _bgController.OnPressInteract;
-            }
-            OnConfigure -= () => Shortcut.EnableShortcut(ShortcutEnabled);
-            OnConfigure -= () => _bgController.OnHighlightConfigure(HighlightSettings);
-        }
-
-        private ICPrefabs LoadPrefabs(AssetBundle bundle, string bundlePath)
+        private static ICPrefabs LoadPrefabs(AssetBundle bundle, string bundlePath)
         {
             GameObject LoadAtPath(string prefabName) { return LoadPrefab(bundle, bundlePath + prefabName); }
 
