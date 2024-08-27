@@ -268,11 +268,11 @@ namespace InhabitantChess.BoardGame
                 {
                     // antler's meshes are reordered for some reason so there isn't a fancy index-based way
                     // to make them look right (0,1 - grey 2,3 - glowy)
-                    if (i >= 2) highlightRenderer.materials = [_highlightMaterials[0]];
-                    else highlightRenderer.materials = [_highlightMaterials[1]];
+                    if (i >= 2) highlightRenderer.sharedMaterials = [_highlightMaterials[0]];
+                    else highlightRenderer.sharedMaterials = [_highlightMaterials[1]];
                 }
                 else
-                    highlightRenderer.materials = [_highlightMaterials[(i + 1) % 2]];
+                    highlightRenderer.sharedMaterials = [_highlightMaterials[(i + 1) % 2]];
             }
         }
 

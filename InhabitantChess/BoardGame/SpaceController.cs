@@ -29,7 +29,7 @@ namespace InhabitantChess.BoardGame
         {
             if (_meshRenderer == null)
                 _meshRenderer = GetComponent<MeshRenderer>();
-            _ogMaterial = _meshRenderer.material;
+            _ogMaterial = _meshRenderer.sharedMaterial;
             _beamMaterial = beamMat;
         }
 
@@ -48,7 +48,7 @@ namespace InhabitantChess.BoardGame
 
         public void SetBeam(bool inBeam)
         {
-            _meshRenderer.material = inBeam ? _beamMaterial : _ogMaterial;
+            _meshRenderer.sharedMaterial = inBeam ? _beamMaterial : _ogMaterial;
             InBeam = inBeam;
         }
 

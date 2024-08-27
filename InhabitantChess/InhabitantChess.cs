@@ -263,7 +263,7 @@ namespace InhabitantChess
             // TODO: see if we can replace this with Resources.loading stuff, creating objects on the fly
             GameObject sampleBoardGame = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_1/Simulation_DreamZone_1/Props_DreamZone_1/Props_GenericHouse_B (1)/Effects_IP_SIM_BoardGame");
             MeshRenderer sampleMesh = sampleBoardGame.GetComponent<MeshRenderer>();
-            _highlightMaterials = [sampleMesh.materials[0], sampleMesh.materials[1]];
+            _highlightMaterials = [sampleMesh.sharedMaterials[0], sampleMesh.sharedMaterials[1]];
 
             // create object mimicking the functionality of ship's CockpitAttachPoint
             _cockpitClone = new GameObject();
