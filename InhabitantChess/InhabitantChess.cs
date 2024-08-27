@@ -69,7 +69,6 @@ namespace InhabitantChess
         private GameObject _cockpitClone;
         private PlayerAttachPoint _attachPoint;
         private InteractZone _seatInteract;
-        private Shader _highlightShader;
         private Material[] _highlightMaterials;
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
         private float _oldLeanAmt, _leanAmt, _lastLeanSoundTime, _maxLeanAmt = 1f, _leanSpeed = 1.5f, _leanSoundCooldown = 1f;
@@ -122,15 +121,8 @@ namespace InhabitantChess
                 BoardGame.transform.localPosition = new Vector3(4, -35.105f, 0.2f);
                 BoardGame.transform.localRotation = Quaternion.Euler(0, 270, 0);
 
-                Synchronizer synch = BoardGame.AddComponent<Synchronizer>();
                 BoardController bController = BoardGame.transform.Find("BoardGame_Board").gameObject.AddComponent<BoardController>();
-                bController.SpacePrefab = _prefabs.space;
-                bController.BlockerPrefab = _prefabs.blocker;
-                bController.AntlerPrefab = _prefabs.antler;
-                bController.EyePrefab = _prefabs.eye;
-                bController.Synchronizer = synch;
-                bController.HighlightShader = _highlightShader;
-                bController.HighlightMaterials = _highlightMaterials;
+                bController.Init(_prefabs.space, _prefabs.blocker, _prefabs.antler, _prefabs.eye, _highlightMaterials);
                 _bgController = BoardGame.AddComponent<BoardGameController>();
 
                 StartCoroutine(CreateGameSeat(BoardGame.transform, Vector3.right, Quaternion.Euler(0, 270, 0)));
@@ -272,8 +264,6 @@ namespace InhabitantChess
             GameObject sampleBoardGame = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_1/Simulation_DreamZone_1/Props_DreamZone_1/Props_GenericHouse_B (1)/Effects_IP_SIM_BoardGame");
             MeshRenderer sampleMesh = sampleBoardGame.GetComponent<MeshRenderer>();
             _highlightMaterials = [sampleMesh.materials[0], sampleMesh.materials[1]];
-            _highlightShader = sampleMesh.material.shader;
-            _hasCachedData = true;
 
             // create object mimicking the functionality of ship's CockpitAttachPoint
             _cockpitClone = new GameObject();
@@ -290,6 +280,7 @@ namespace InhabitantChess
             // initialize screen prompts and trigger volume
             interactZone.Awake();
 
+            _hasCachedData = true;
             DontDestroyOnLoad(_cockpitClone);
             Logger.Log("Finished caching objects");
         }

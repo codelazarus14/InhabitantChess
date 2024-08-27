@@ -6,14 +6,6 @@ namespace InhabitantChess.BoardGame
 {
     public class BoardController : MonoBehaviour
     {
-        public GameObject SpacePrefab;
-        public GameObject BlockerPrefab;
-        public GameObject AntlerPrefab;
-        public GameObject EyePrefab;
-        public Synchronizer Synchronizer;
-        public Shader HighlightShader;
-        public Material[] HighlightMaterials;
-
         // TODO: turn piece into struct/type?
         public List<(GameObject g, (int up, int across) pos, PieceType type)> Pieces { get; private set; }
         // this may change in future bc it depends on world, not local space
@@ -43,6 +35,12 @@ namespace InhabitantChess.BoardGame
         };
 
         private List<(int, int)> _beamSpaces;
+        private Material[] _highlightMaterials;
+        private GameObject _spacePrefab;
+        private GameObject _blockerPrefab;
+        private GameObject _antlerPrefab;
+        private GameObject _eyePrefab;
+        private Synchronizer _synchronizer;
         private Transform _spcParent, _pieceParent, _deadwoodParent;
 
         private GameObject _movingPiece;
@@ -77,6 +75,16 @@ namespace InhabitantChess.BoardGame
             }
         }
 
+        public void Init(GameObject spacePrefab, GameObject blockerPrefab, GameObject antlerPrefab, GameObject eyePrefab, Material[] highlightMaterials)
+        {
+            _spacePrefab = spacePrefab;
+            _blockerPrefab = blockerPrefab;
+            _antlerPrefab = antlerPrefab;
+            _eyePrefab = eyePrefab;
+            _highlightMaterials = highlightMaterials;
+            _synchronizer = gameObject.AddComponent<Synchronizer>();
+        }
+
         public void ResetBoard()
         {
             // clear beam spaces
@@ -93,99 +101,99 @@ namespace InhabitantChess.BoardGame
             // skip if board already exists
             if (SpaceDict != null) return;
 
-                SpaceDict = new Dictionary<(int up, int across), GameObject>();
+            SpaceDict = new Dictionary<(int up, int across), GameObject>();
 
-                _spcParent = new GameObject("BoardGame_Spaces").transform;
-                _spcParent.SetParent(transform.parent);
-                _spcParent.localPosition = Vector3.zero;
-                _spcParent.localRotation = Quaternion.identity;
+            _spcParent = new GameObject("BoardGame_Spaces").transform;
+            _spcParent.SetParent(transform.parent);
+            _spcParent.localPosition = Vector3.zero;
+            _spcParent.localRotation = Quaternion.identity;
 
-                for (int i = s_Rows; i > 0; i--)
+            for (int i = s_Rows; i > 0; i--)
+            {
+                // i over # of rows, j over # of B spaces per row
+                int idx = s_Rows - i;
+                float rowOffset = idx * s_triSize / 2;
+
+                for (int j = 0; j < i; j++)
                 {
-                    // i over # of rows, j over # of B spaces per row
-                    int idx = s_Rows - i;
-                    float rowOffset = idx * s_triSize / 2;
+                    // default to lowest height level
+                    float newHeight = s_boardLevels[0];
+                    GameObject hSpace;
 
-                    for (int j = 0; j < i; j++)
+                    // find B positions relative to starting pos
+                    Vector3 newPos = new Vector3(
+                        s_startingPos.x - s_triHeight * (s_Rows - i),
+                        newHeight,
+                        s_startingPos.z + rowOffset + j * s_triSize);
+
+                    // don't add W to left corner
+                    if (s_Rows > i && j == 0)
                     {
-                        // default to lowest height level
-                        float newHeight = s_boardLevels[0];
-                        GameObject hSpace;
-
-                        // find B positions relative to starting pos
-                        Vector3 newPos = new Vector3(
-                            s_startingPos.x - s_triHeight * (s_Rows - i),
+                        // add W spaces to left edge 
+                        Vector3 newPosW = new Vector3(
+                            newPos.x - s_wOffset.x,
                             newHeight,
-                            s_startingPos.z + rowOffset + j * s_triSize);
+                            newPos.z - s_wOffset.z);
 
-                        // don't add W to left corner
-                        if (s_Rows > i && j == 0)
-                        {
-                            // add W spaces to left edge 
-                            Vector3 newPosW = new Vector3(
-                                newPos.x - s_wOffset.x,
-                                newHeight,
-                                newPos.z - s_wOffset.z);
-
-                            hSpace = Instantiate(SpacePrefab, _spcParent);
-                            hSpace.transform.localPosition = newPosW;
-                            hSpace.transform.localRotation = Quaternion.identity;
-                            SpaceDict[(s_Rows - i, idx)] = hSpace;
-
-                            idx++;
-                        }
-
-                        // determine height based on position
-                        if (s_Rows - 1 > i && i > 4 && 1 < j && j < i - 2) newHeight = s_boardLevels[2];
-                        else if (s_Rows > i && i > 1 && 0 < j && j < i - 1) newHeight = s_boardLevels[1];
-
-                        // only update y (x/z already defined for left edge W, which can never be elevated)
-                        newPos.y = newHeight;
-
-                        // add B spaces
-                        hSpace = Instantiate(SpacePrefab, _spcParent);
-                        hSpace.transform.localPosition = newPos;
+                        hSpace = Instantiate(_spacePrefab, _spcParent);
+                        hSpace.transform.localPosition = newPosW;
                         hSpace.transform.localRotation = Quaternion.identity;
                         SpaceDict[(s_Rows - i, idx)] = hSpace;
 
                         idx++;
+                    }
 
-                        // don't add W to right corner
-                        if (s_Rows > i || j < i - 1)
-                        {
-                            // add W spaces to right of every other B piece
-                            if (s_Rows - 1 > i && i > 3 && 0 < j && j < i - 2) newHeight = s_boardLevels[2];
-                            else if (s_Rows > i && i > 1 && 0 <= j && j < i - 1) newHeight = s_boardLevels[1];
-                            else newHeight = s_boardLevels[0];
+                    // determine height based on position
+                    if (s_Rows - 1 > i && i > 4 && 1 < j && j < i - 2) newHeight = s_boardLevels[2];
+                    else if (s_Rows > i && i > 1 && 0 < j && j < i - 1) newHeight = s_boardLevels[1];
 
-                            // need to update all three components (right/down of B and also diff height)
-                            Vector3 newPosW = new Vector3(
-                                newPos.x - s_wOffset.x,
-                                newHeight,
-                                newPos.z + s_wOffset.z);
+                    // only update y (x/z already defined for left edge W, which can never be elevated)
+                    newPos.y = newHeight;
 
-                            hSpace = Instantiate(SpacePrefab, _spcParent);
-                            hSpace.transform.localPosition = newPosW;
-                            hSpace.transform.localRotation = Quaternion.identity;
-                            SpaceDict[(s_Rows - i, idx)] = hSpace;
+                    // add B spaces
+                    hSpace = Instantiate(_spacePrefab, _spcParent);
+                    hSpace.transform.localPosition = newPos;
+                    hSpace.transform.localRotation = Quaternion.identity;
+                    SpaceDict[(s_Rows - i, idx)] = hSpace;
 
-                            idx++;
-                        }
+                    idx++;
+
+                    // don't add W to right corner
+                    if (s_Rows > i || j < i - 1)
+                    {
+                        // add W spaces to right of every other B piece
+                        if (s_Rows - 1 > i && i > 3 && 0 < j && j < i - 2) newHeight = s_boardLevels[2];
+                        else if (s_Rows > i && i > 1 && 0 <= j && j < i - 1) newHeight = s_boardLevels[1];
+                        else newHeight = s_boardLevels[0];
+
+                        // need to update all three components (right/down of B and also diff height)
+                        Vector3 newPosW = new Vector3(
+                            newPos.x - s_wOffset.x,
+                            newHeight,
+                            newPos.z + s_wOffset.z);
+
+                        hSpace = Instantiate(_spacePrefab, _spcParent);
+                        hSpace.transform.localPosition = newPosW;
+                        hSpace.transform.localRotation = Quaternion.identity;
+                        SpaceDict[(s_Rows - i, idx)] = hSpace;
+
+                        idx++;
                     }
                 }
-                // finish init, default to inactive
-                foreach ((int u, int a) k in SpaceDict.Keys)
-                {
-                    GameObject spc = SpaceDict[k];
-                    spc.SetActive(true);
-                    SpaceController spcController = spc.AddComponent<SpaceController>();
-                    spcController.SetSpace(k.u, k.a);
-                    spcController.SetMaterials(HighlightMaterials[0]);
-                    if (!IsBlack(k)) spc.transform.localRotation = Quaternion.AngleAxis(-180, Vector3.up);
-                    Synchronizer.OnLerpComplete.AddListener(spcController.FlipHighlightLerp);
-                }
-                SetSpaces(SpaceDict.Keys, false, false);
             }
+            // finish init, default to inactive
+            foreach ((int u, int a) k in SpaceDict.Keys)
+            {
+                GameObject spc = SpaceDict[k];
+                spc.SetActive(true);
+                SpaceController spcController = spc.AddComponent<SpaceController>();
+                spcController.SetSpace(k.u, k.a);
+                spcController.SetMaterials(_highlightMaterials[0]);
+                if (!IsBlack(k)) spc.transform.localRotation = Quaternion.AngleAxis(-180, Vector3.up);
+                _synchronizer.OnLerpComplete.AddListener(spcController.FlipHighlightLerp);
+            }
+            SetSpaces(SpaceDict.Keys, false, false);
+        }
 
         private void SetupPieces()
         {
@@ -218,18 +226,18 @@ namespace InhabitantChess.BoardGame
 
             _deadwood = new GameObject[Pieces.Count];
             _deadwoodIdx = 0;
-            }
+        }
 
         private GameObject InstantiatePiece(PieceType type, Transform parent)
         {
             return type switch
             {
                 PieceType.Blocker =>
-                    Instantiate(BlockerPrefab, parent),
+                    Instantiate(_blockerPrefab, parent),
                 PieceType.Antler =>
-                    Instantiate(AntlerPrefab, parent),
+                    Instantiate(_antlerPrefab, parent),
                 PieceType.Eye =>
-                    Instantiate(EyePrefab, parent),
+                    Instantiate(_eyePrefab, parent),
                 _ => throw new System.ArgumentOutOfRangeException(nameof(type), "invalid PieceType")
             };
         }
@@ -254,18 +262,17 @@ namespace InhabitantChess.BoardGame
             for (int i = 0; i < highlight.transform.childCount; i++)
             {
                 MeshRenderer highlightRenderer = highlight.transform.GetChild(i).GetComponent<MeshRenderer>();
-                highlightRenderer.material.shader = HighlightShader;
                 // each object is split up in bundle - prefabs contain partial meshes w one material per
                 // whereas ingame (PieceHighlights) the pieces are single meshes w 1-4 materials
                 if (type == PieceType.Antler)
                 {
                     // antler's meshes are reordered for some reason so there isn't a fancy index-based way
                     // to make them look right (0,1 - grey 2,3 - glowy)
-                    if (i >= 2) highlightRenderer.materials = new Material[] { HighlightMaterials[0] };
-                    else highlightRenderer.materials = new Material[] { HighlightMaterials[1] };
+                    if (i >= 2) highlightRenderer.materials = [_highlightMaterials[0]];
+                    else highlightRenderer.materials = [_highlightMaterials[1]];
                 }
                 else
-                    highlightRenderer.materials = new Material[] { HighlightMaterials[(i + 1) % 2] };
+                    highlightRenderer.materials = [_highlightMaterials[(i + 1) % 2]];
             }
         }
 
@@ -421,84 +428,84 @@ namespace InhabitantChess.BoardGame
 
             // reset (turn off) old spaces
             if (_beamSpaces != null)
-            SetSpaces(_beamSpaces, false, false, false);
+                SetSpaces(_beamSpaces, false, false, false);
 
             if (!clearBeam)
             {
-            // see who's been hit and remove
-            (int u, int a) eyePos = Pieces.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
-            // list of flags to keep track of blocked beams
-            bool[] blocked = { false, false, false };
+                // see who's been hit and remove
+                (int u, int a) eyePos = Pieces.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
+                // list of flags to keep track of blocked beams
+                bool[] blocked = { false, false, false };
 
-            for (int i = 1; i < s_Rows; i++)
-            {
-                var currDepthSpaces = new List<(int, int)>();
-                // check first row conditions
-                int lowerOffset() => eyePos.u - i == 0 ? 1 : 0;
-                int upperOffset() => eyePos.u + i == 1 ? 1 : 0;
-                // add spaces to list along 3 lines stretching from triangle vertices
-                if (IsBlack(eyePos))
+                for (int i = 1; i < s_Rows; i++)
                 {
-                    // below
-                    (int, int) below = (eyePos.u - i, eyePos.a - lowerOffset());
-                    blocked[0] = IsBlocked(below, blocked[0]);
-                    if (!blocked[0]) currDepthSpaces.Add(below);
-
-                    // upper R diagonal
-                    (int, int) upperR1 = (eyePos.u + i, eyePos.a + 3 * i - 1 + upperOffset());
-                    (int, int) upperR2 = (eyePos.u + i, eyePos.a + 3 * i + upperOffset());
-                    blocked[1] = IsBlocked(upperR1, blocked[1]);
-                    if (!blocked[1])
+                    var currDepthSpaces = new List<(int, int)>();
+                    // check first row conditions
+                    int lowerOffset() => eyePos.u - i == 0 ? 1 : 0;
+                    int upperOffset() => eyePos.u + i == 1 ? 1 : 0;
+                    // add spaces to list along 3 lines stretching from triangle vertices
+                    if (IsBlack(eyePos))
                     {
-                        currDepthSpaces.Add(upperR1);
-                        blocked[1] = IsBlocked(upperR2, blocked[1]);
-                        if (!blocked[1]) currDepthSpaces.Add(upperR2);
-                    }
+                        // below
+                        (int, int) below = (eyePos.u - i, eyePos.a - lowerOffset());
+                        blocked[0] = IsBlocked(below, blocked[0]);
+                        if (!blocked[0]) currDepthSpaces.Add(below);
 
-                    // upper L diagonal
-                    (int, int) upperL1 = (eyePos.u + i, eyePos.a - 3 * i + 1 + upperOffset());
-                    (int, int) upperL2 = (eyePos.u + i, eyePos.a - 3 * i + upperOffset());
-                    blocked[2] = IsBlocked(upperL1, blocked[2]);
-                    if (!blocked[2])
-                    {
-                        currDepthSpaces.Add(upperL1);
-                        blocked[2] = IsBlocked(upperL2, blocked[2]);
-                        if (!blocked[2]) currDepthSpaces.Add(upperL2);
+                        // upper R diagonal
+                        (int, int) upperR1 = (eyePos.u + i, eyePos.a + 3 * i - 1 + upperOffset());
+                        (int, int) upperR2 = (eyePos.u + i, eyePos.a + 3 * i + upperOffset());
+                        blocked[1] = IsBlocked(upperR1, blocked[1]);
+                        if (!blocked[1])
+                        {
+                            currDepthSpaces.Add(upperR1);
+                            blocked[1] = IsBlocked(upperR2, blocked[1]);
+                            if (!blocked[1]) currDepthSpaces.Add(upperR2);
+                        }
+
+                        // upper L diagonal
+                        (int, int) upperL1 = (eyePos.u + i, eyePos.a - 3 * i + 1 + upperOffset());
+                        (int, int) upperL2 = (eyePos.u + i, eyePos.a - 3 * i + upperOffset());
+                        blocked[2] = IsBlocked(upperL1, blocked[2]);
+                        if (!blocked[2])
+                        {
+                            currDepthSpaces.Add(upperL1);
+                            blocked[2] = IsBlocked(upperL2, blocked[2]);
+                            if (!blocked[2]) currDepthSpaces.Add(upperL2);
+                        }
                     }
+                    else
+                    {
+                        // above
+                        (int, int) above = (eyePos.u + i, eyePos.a + upperOffset());
+                        blocked[0] = IsBlocked(above, blocked[0]);
+                        if (!blocked[0]) currDepthSpaces.Add(above);
+
+                        // lower R diagonal
+                        (int, int) lowerR1 = (eyePos.u - i, eyePos.a + 3 * i - 1 - lowerOffset());
+                        (int, int) lowerR2 = (eyePos.u - i, eyePos.a + 3 * i - lowerOffset());
+                        blocked[1] = IsBlocked(lowerR1, blocked[1]);
+                        if (!blocked[1])
+                        {
+                            currDepthSpaces.Add(lowerR1);
+                            blocked[1] = IsBlocked(lowerR2, blocked[1]);
+                            if (!blocked[1]) currDepthSpaces.Add(lowerR2);
+                        }
+
+                        // lower L diagonal
+                        (int, int) lowerL1 = (eyePos.u - i, eyePos.a - 3 * i + 1 - lowerOffset());
+                        (int, int) lowerL2 = (eyePos.u - i, eyePos.a - 3 * i - lowerOffset());
+                        blocked[2] = IsBlocked(lowerL1, blocked[2]);
+                        if (!blocked[2])
+                        {
+                            currDepthSpaces.Add(lowerL1);
+                            blocked[2] = IsBlocked(lowerL2, blocked[2]);
+                            if (!blocked[2]) currDepthSpaces.Add(lowerL2);
+                        }
+                    }
+                    // filter out-of-bounds
+                    var currInBounds = currDepthSpaces.Where(InBounds);
+                    newBeamSpaces.AddRange(currInBounds.ToList());
                 }
-                else
-                {
-                    // above
-                    (int, int) above = (eyePos.u + i, eyePos.a + upperOffset());
-                    blocked[0] = IsBlocked(above, blocked[0]);
-                    if (!blocked[0]) currDepthSpaces.Add(above);
-
-                    // lower R diagonal
-                    (int, int) lowerR1 = (eyePos.u - i, eyePos.a + 3 * i - 1 - lowerOffset());
-                    (int, int) lowerR2 = (eyePos.u - i, eyePos.a + 3 * i - lowerOffset());
-                    blocked[1] = IsBlocked(lowerR1, blocked[1]);
-                    if (!blocked[1])
-                    {
-                        currDepthSpaces.Add(lowerR1);
-                        blocked[1] = IsBlocked(lowerR2, blocked[1]);
-                        if (!blocked[1]) currDepthSpaces.Add(lowerR2);
-                    }
-
-                    // lower L diagonal
-                    (int, int) lowerL1 = (eyePos.u - i, eyePos.a - 3 * i + 1 - lowerOffset());
-                    (int, int) lowerL2 = (eyePos.u - i, eyePos.a - 3 * i - lowerOffset());
-                    blocked[2] = IsBlocked(lowerL1, blocked[2]);
-                    if (!blocked[2])
-                    {
-                        currDepthSpaces.Add(lowerL1);
-                        blocked[2] = IsBlocked(lowerL2, blocked[2]);
-                        if (!blocked[2]) currDepthSpaces.Add(lowerL2);
-                    }
-                }
-                // filter out-of-bounds
-                var currInBounds = currDepthSpaces.Where(InBounds);
-                newBeamSpaces.AddRange(currInBounds.ToList());
-            }
             }
 
             // show new ones
