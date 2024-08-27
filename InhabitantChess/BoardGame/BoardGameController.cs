@@ -10,6 +10,7 @@ namespace InhabitantChess.BoardGame
     {
         public FirstPersonManipulator PlayerManip;
         public bool Playing { get; private set; }
+
         public delegate void PieceAudioEvent(int idx);
         public PieceAudioEvent OnPieceRemoved;
         public delegate void BoardGameAudioEvent();
@@ -17,16 +18,17 @@ namespace InhabitantChess.BoardGame
         public BoardGameAudioEvent OnStopGame;
 
         private static float s_CPUTurnTime = 1.0f, s_DestroyDelay = 2.0f;
+        private static (int, int) s_BadPos = (99, 99);
+
+        private List<GameObject> _toDestroy;
+        private List<(int, int)> _legalMoves;
+        private BoardController _board;
+        private SpaceController _selectedSpace;
+        private (GameObject g, (int up, int across) pos, PieceType type) _currentPlayer;
+        private (int u, int a) _currCPUPos;
         private float _destroyTime;
         private int _antlerCount, _gamesWon, _totalGames;
         private bool _reachedEye, _noLegalMoves, _movesHighlightEnabled, _pieceHighlightEnabled, _beamHighlightEnabled;
-        private (GameObject g, (int up, int across) pos, PieceType type) _currentPlayer;
-        private List<GameObject> _toDestroy;
-        private List<(int, int)> _legalMoves;
-        private (int u, int a) _currCPUPos;
-        private BoardController _board;
-        private BoardState _boardState = BoardState.Idle;
-        private SpaceController _selectedSpace;
 
         private enum BoardState
         {
@@ -35,37 +37,19 @@ namespace InhabitantChess.BoardGame
             DoneMoving,
             Idle,
         }
+        private BoardState _boardState;
 
         private void Start()
         {
-            _board = transform.Find("BoardGame_Board").gameObject.GetComponent<BoardController>();
-            _board.Init();
             _toDestroy = new();
+            _boardState = BoardState.Idle;
+            _board = transform.Find("BoardGame_Board").gameObject.GetComponent<BoardController>();
             OnHighlightConfigure(InhabitantChess.Instance.HighlightSettings);
-        }
-
-        public void OnHighlightConfigure((bool moves, bool pieces, bool beam) hConfig)
-        {
-            _movesHighlightEnabled = hConfig.moves;
-            _pieceHighlightEnabled = hConfig.pieces;
-            _beamHighlightEnabled = hConfig.beam;
-
-            if (_board != null && _board.IsInitialized) RefreshHighlighting();
-        }
-
-        private void RefreshHighlighting()
-        {
-            if (_boardState == BoardState.WaitingForInput)
-            {
-                _board.SetSpaces(_legalMoves, _movesHighlightEnabled, true);
-                _board.SetPieceHighlight(_currentPlayer.g, _pieceHighlightEnabled);
-            }
-            _board.UpdateBeam(_beamHighlightEnabled);
         }
 
         private void Update()
         {
-            if (!_board.IsInitialized) return;
+            if (!Playing) return;
 
             // delay destruction to let AudioSources finish playing
             if (_toDestroy.Count > 0 && Time.time >= _destroyTime + s_DestroyDelay)
@@ -97,17 +81,14 @@ namespace InhabitantChess.BoardGame
             }
         }
 
-        public void OnPressInteract()
+        private void RefreshHighlighting()
         {
-            // does nothing if mid-game
-            if (Playing) return;
-
-            _board.ResetBoard();
-            _antlerCount = _board.Pieces.Where(piece => piece.type == PieceType.Antler).Count();
-            _noLegalMoves = _reachedEye = false;
-            _currCPUPos = (99, 99);
-            Playing = true;
-            StartCoroutine(Play());
+            if (_boardState == BoardState.WaitingForInput)
+            {
+                _board.SetSpaces(_legalMoves, _movesHighlightEnabled, true);
+                _board.SetPieceHighlight(_currentPlayer.g, _pieceHighlightEnabled);
+            }
+            _board.UpdateBeam(_beamHighlightEnabled);
         }
 
         // loop controlling turns, game state
@@ -265,6 +246,28 @@ namespace InhabitantChess.BoardGame
             }
             _destroyTime = Time.time;
             return i;
+        }
+
+        public void OnPressInteract()
+        {
+            // does nothing if mid-game
+            if (Playing) return;
+
+            _board.ResetBoard();
+            _antlerCount = _board.Pieces.Where(piece => piece.type == PieceType.Antler).Count();
+            _noLegalMoves = _reachedEye = false;
+            _currCPUPos = s_BadPos;
+            Playing = true;
+            StartCoroutine(Play());
+        }
+
+        public void OnHighlightConfigure((bool moves, bool pieces, bool beam) hConfig)
+        {
+            _movesHighlightEnabled = hConfig.moves;
+            _pieceHighlightEnabled = hConfig.pieces;
+            _beamHighlightEnabled = hConfig.beam;
+
+            if (Playing) RefreshHighlighting();
         }
     }
 }

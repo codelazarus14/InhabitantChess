@@ -78,7 +78,7 @@ namespace InhabitantChess
             _gameController.OnStopGame += () => StopAmbience();
             _gameController.OnStopGame += PlayGameOver;
             _gameController.OnPieceRemoved += PlayPieceRemoved;
-            _board.OnBoardInitialized += GetPieceSources;
+            _board.OnBoardReset += GetPieceSources;
             _board.OnPieceFinishedMoving += PlayPieceMoved;
             _instance.PrisonerSequence.OnSpotlightTorch += PlayTorchSpotlight;
             _instance.PrisonerSequence.OnPrisonerCurious += PlayPrisonerCurious;
@@ -98,7 +98,7 @@ namespace InhabitantChess
             _gameController.OnStopGame -= () => StopAmbience();
             _gameController.OnStopGame -= PlayGameOver;
             _gameController.OnPieceRemoved -= PlayPieceRemoved;
-            _board.OnBoardInitialized -= GetPieceSources;
+            _board.OnBoardReset -= GetPieceSources;
             _board.OnPieceFinishedMoving -= PlayPieceMoved;
             _instance.PrisonerSequence.OnSpotlightTorch -= PlayTorchSpotlight;
             _instance.PrisonerSequence.OnPrisonerCurious -= PlayPrisonerCurious;

@@ -90,8 +90,7 @@ namespace InhabitantChess
                 return;
             }
             _cameraAPI = ModHelper.Interaction.TryGetModApi<ICommonCameraAPI>("xen.CommonCameraUtility");
-            var dependants = GetDependants();
-            bool instancing = dependants.Count > 0;
+            bool instancing = GetDependants().Count > 0;
             if (instancing)
                 Logger.Log($"Dependencies detected - enabling chess game instancing");
 

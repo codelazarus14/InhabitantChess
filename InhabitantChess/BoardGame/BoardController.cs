@@ -14,17 +14,17 @@ namespace InhabitantChess.BoardGame
         public Shader HighlightShader;
         public Material[] HighlightMaterials;
 
+        // TODO: turn piece into struct/type?
         public List<(GameObject g, (int up, int across) pos, PieceType type)> Pieces { get; private set; }
         // this may change in future bc it depends on world, not local space
         // TODO: matrix of SpaceControllers?
         public Dictionary<(int up, int across), GameObject> SpaceDict { get; private set; }
-        public bool IsInitialized { get; private set; }
         public bool Moving { get; private set; }
 
         public delegate void BoardAudioEvent(int idx);
         public BoardAudioEvent OnPieceFinishedMoving;
         public delegate void BoardEvent();
-        public BoardEvent OnBoardInitialized;
+        public BoardEvent OnBoardReset;
 
         private static float s_triSize = 0.19346f;
         private static float s_triHeight = Mathf.Sqrt(3) / 2 * s_triSize;
@@ -32,18 +32,27 @@ namespace InhabitantChess.BoardGame
         private static Vector3 s_wOffset = new Vector3(-0.05584711f, 0, 0.09673002f);
         private static Vector3 s_startingPos = new Vector3(0.3350971f, s_boardLevels[0], -0.58038f);
         private static int s_Rows = 7;
-        private static ((int, int) pos, PieceType type)[] _startingPieces;
 
-        private float _travelTime = 0.75f, _initMoveTime, _curveHeight = 0.33f;
+        private static ((int, int) pos, PieceType type)[] s_startingPieces =
+        {
+            ((0, 0), PieceType.Blocker),
+            ((0, 12), PieceType.Blocker),
+            ((2, 4), PieceType.Antler),
+            ((2, 10), PieceType.Antler),
+            ((6, 7), PieceType.Eye)
+        };
+
+        private List<(int, int)> _beamSpaces;
+        private Transform _spcParent, _pieceParent, _deadwoodParent;
+
         private GameObject _movingPiece;
         private Vector3 _startMovePos, _destMovePos;
         private Quaternion _startLookRot, _destLookRot;
+        private float _travelTime = 0.75f, _initMoveTime, _curveHeight = 0.33f;
 
-        private int _deadwoodIdx, _movingPieceIdx;
-        private Vector3 _deadwoodOffset = new Vector3(s_startingPos.x, 0, -s_startingPos.z + 0.25f);
         private GameObject[] _deadwood;
-        private List<(int, int)> _beamSpaces;
-        private Transform _spcParent, _pieceParent, _deadwoodParent;
+        private Vector3 _deadwoodOffset = new Vector3(s_startingPos.x, 0, -s_startingPos.z + 0.25f);
+        private int _deadwoodIdx, _movingPieceIdx;
 
         private void Update()
         {
@@ -68,31 +77,22 @@ namespace InhabitantChess.BoardGame
             }
         }
 
-        public void Init()
+        public void ResetBoard()
         {
-            _startingPieces = new[]
-            {
-                ((0, 0), PieceType.Blocker),
-                ((0, 12), PieceType.Blocker),
-                ((2, 4), PieceType.Antler),
-                ((2, 10), PieceType.Antler),
-                ((6, 7), PieceType.Eye)
-            };
+            // clear beam spaces
+            UpdateBeam(false, true);
 
             GenerateBoard();
-            SetupPieces(_pieceParent == null);
+            SetupPieces();
 
-            _beamSpaces = new List<(int, int)>();
-            _deadwood = new GameObject[Pieces.Count];
-            _deadwoodIdx = 0;
-            IsInitialized = true;
-            OnBoardInitialized?.Invoke();
+            OnBoardReset?.Invoke();
         }
 
         private void GenerateBoard()
         {
-            if (SpaceDict == null)
-            {
+            // skip if board already exists
+            if (SpaceDict != null) return;
+
                 SpaceDict = new Dictionary<(int up, int across), GameObject>();
 
                 _spcParent = new GameObject("BoardGame_Spaces").transform;
@@ -186,29 +186,39 @@ namespace InhabitantChess.BoardGame
                 }
                 SetSpaces(SpaceDict.Keys, false, false);
             }
-        }
 
-        private void SetupPieces(bool newParents = false)
+        private void SetupPieces()
         {
+            // delete old game pieces/deadwood
+            if (Pieces != null)
+                foreach (var p in Pieces) Destroy(p.g);
+            if (_deadwood != null)
+                foreach (var d in _deadwood) Destroy(d);
+
             Pieces = new List<(GameObject g, (int up, int across) pos, PieceType type)>();
-            if (newParents)
+
+            if (_pieceParent == null)
             {
                 _pieceParent = new GameObject("BoardGame_Pieces").transform;
                 _pieceParent.SetParent(transform.parent);
                 _pieceParent.localPosition = Vector3.zero;
                 _pieceParent.localRotation = Quaternion.identity;
+            }
 
+            if (_deadwoodParent == null)
+            {
                 _deadwoodParent = new GameObject("BoardGame_Deadwood").transform;
                 _deadwoodParent.SetParent(transform.parent);
                 _deadwoodParent.localPosition = _deadwoodOffset;
                 _deadwoodParent.localRotation = Quaternion.identity;
             }
 
-            foreach (var (pos, type) in _startingPieces)
-            {
+            foreach (var (pos, type) in s_startingPieces)
                 CreateAndPlacePiece(_pieceParent, pos, type);
+
+            _deadwood = new GameObject[Pieces.Count];
+            _deadwoodIdx = 0;
             }
-        }
 
         private GameObject InstantiatePiece(PieceType type, Transform parent)
         {
@@ -275,22 +285,6 @@ namespace InhabitantChess.BoardGame
                         break;
                 }
             }
-        }
-
-        public void ResetBoard()
-        {
-            IsInitialized = false;
-            UpdateBeam(false, true);
-            // delete old game pieces before we lose track of them
-            foreach (var p in Pieces)
-            {
-                Destroy(p.g);
-            }
-            foreach (var d in _deadwood)
-            {
-                Destroy(d);
-            }
-            Init();
         }
 
         public List<(int, int)> LegalMoves((int u, int a) pos, PieceType type, bool ignoreOccupied = false)
@@ -423,13 +417,15 @@ namespace InhabitantChess.BoardGame
 
         public void UpdateBeam(bool visible, bool clearBeam = false)
         {
+            List<(int, int)> newBeamSpaces = new List<(int, int)>();
+
             // reset (turn off) old spaces
+            if (_beamSpaces != null)
             SetSpaces(_beamSpaces, false, false, false);
 
-            if (clearBeam) return;
-
+            if (!clearBeam)
+            {
             // see who's been hit and remove
-            var newBeamSpaces = new List<(int, int)>();
             (int u, int a) eyePos = Pieces.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
             // list of flags to keep track of blocked beams
             bool[] blocked = { false, false, false };
@@ -502,6 +498,7 @@ namespace InhabitantChess.BoardGame
                 // filter out-of-bounds
                 var currInBounds = currDepthSpaces.Where(InBounds);
                 newBeamSpaces.AddRange(currInBounds.ToList());
+            }
             }
 
             // show new ones
