@@ -4,8 +4,10 @@ using UnityEngine;
 
 namespace InhabitantChess
 {
-    public class ScreenPrompts : MonoBehaviour
+    public class ScreenPromptController : MonoBehaviour
     {
+        public static ScreenPromptController Instance { get; private set; }
+
         private Dictionary<PromptType, ScreenPrompt> _prompts;
         private Dictionary<PromptType, bool> _activePrompts;
 
@@ -15,6 +17,11 @@ namespace InhabitantChess
             BoardMove,
             Overhead,
             Lean
+        }
+
+        private void Awake()
+        {
+            Instance = this;
         }
 
         private void Start()

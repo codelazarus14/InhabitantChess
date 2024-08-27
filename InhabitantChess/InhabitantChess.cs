@@ -65,7 +65,6 @@ namespace InhabitantChess
         private BoardGameController _bgController;
         private PlayerCameraController _playerCamController;
         private OverheadCameraController _overheadCamController;
-        private ScreenPrompts _screenPrompts;
         private GameObject _cockpitClone;
         private PlayerAttachPoint _attachPoint;
         private InteractZone _seatInteract;
@@ -73,6 +72,8 @@ namespace InhabitantChess
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
         private float _oldLeanAmt, _leanAmt, _lastLeanSoundTime, _maxLeanAmt = 1f, _leanSpeed = 1.5f, _leanSoundCooldown = 1f;
         private bool _hasCachedData;
+
+        private ScreenPromptController ScreenPrompts => ScreenPromptController.Instance;
 
         private void Awake()
         {
@@ -111,6 +112,7 @@ namespace InhabitantChess
                     return;
                 }
 
+                gameObject.AddComponent<ScreenPromptController>();
                 PlayerState = ChessPlayerState.None;
 
                 if (instancing) return;
@@ -127,7 +129,6 @@ namespace InhabitantChess
 
                 StartCoroutine(CreateGameSeat(BoardGame.transform, Vector3.right, Quaternion.Euler(0, 270, 0)));
 
-                _screenPrompts = BoardGame.AddComponent<ScreenPrompts>();
                 PrisonerSequence = PrisonCell.AddComponent<PrisonerSequence>();
                 PrisonerSequence.SetText(prisonerDialogue);
                 Shortcut = PrisonCell.AddComponent<Shortcut>();
@@ -182,7 +183,7 @@ namespace InhabitantChess
                     _seatInteract.ChangePrompt((UITextType)Translations.GetUITextType("IC_PLAYAGAIN"));
 
                     (int won, int lost) = _bgController.GetScore();
-                    _screenPrompts.SetScore(won, lost);
+                    ScreenPrompts.SetScore(won, lost);
                 }
             }
             if (PlayerState != ChessPlayerState.EnteringOverhead)
@@ -306,8 +307,8 @@ namespace InhabitantChess
             // my ability to directly lift mobius' code grows stronger with every passing day
             PlayerState = ChessPlayerState.EnteringOverhead;
             _initOverheadTime = Time.time;
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, false);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, false);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, false);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, false);
 
             _playerCamController.SnapToDegreesOverSeconds(0f, -48.5f, 0.5f, true);
             _playerCamController.SnapToFieldOfView(24f, 0.5f, true);
@@ -318,8 +319,8 @@ namespace InhabitantChess
         {
             PlayerState = ChessPlayerState.ExitingOverhead;
             _exitOverheadTime = Time.time;
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, true);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, true);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, true);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, true);
 
             _cameraAPI.ExitCamera(_overheadCamController.OverheadCam);
             _overheadCamController.ResetPosition();
@@ -334,10 +335,10 @@ namespace InhabitantChess
             _seatInteract.ResetInteraction();
             _seatInteract.EnableInteraction();
             PrisonerSequence.EnableConversation();
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Score, false);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, false);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, false);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, false);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Score, false);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, false);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Overhead, false);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, false);
             PlayerState = ChessPlayerState.None;
             OnStandUp?.Invoke();
         }
@@ -391,11 +392,11 @@ namespace InhabitantChess
             _seatInteract.DisableInteraction();
             PrisonerSequence.DisableConversation();
             (int won, int lost) = _bgController.GetScore();
-            _screenPrompts.SetScore(won, lost);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Score, true);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.BoardMove, true);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Overhead, true);
-            _screenPrompts.SetPromptVisibility(ScreenPrompts.PromptType.Lean, true);
+            ScreenPrompts.SetScore(won, lost);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Score, true);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, true);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Overhead, true);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, true);
             PlayerState = ChessPlayerState.Seated;
             OnSitDown?.Invoke();
         }
