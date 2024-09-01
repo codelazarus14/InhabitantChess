@@ -8,7 +8,7 @@ namespace InhabitantChess
         public OWCamera OverheadCam;
 
         private Vector2 _position;
-        private static float _height = 3f, _panSpeed = 1.5f, _maxPanDistance = 0.5f;
+        private const float Height = 3f, PanSpeed = 1.5f, MaxPanDistance = 0.5f;
         //private float _initSnapTime, _snapDuration, _snapTargetX, 
         //    _snapTargetY, _initSnapDegreesX, _initSnapDegreesY;
         //private bool _isSnapping;
@@ -36,7 +36,7 @@ namespace InhabitantChess
             //    float posY = Mathf.Lerp(_initSnapDegreesY, _snapTargetY, num);
             //    _position = new Vector2(posX, posY);
             //}
-            transform.localPosition = Vector3.Lerp(transform.localPosition, new Vector3(_position.x, _height, _position.y), 0.1f);
+            transform.localPosition = Vector3.Lerp(transform.localPosition, new Vector3(_position.x, Height, _position.y), 0.1f);
         }
 
         private void LateUpdate()
@@ -47,11 +47,11 @@ namespace InhabitantChess
                 {
                     Vector2 vector = OWInput.GetAxisValue(InputLibrary.moveXZ);
                     // flipped, camera is rotated 270 on creation (InhabitantChess) to face board correctly
-                    _position.x -= vector.y * _panSpeed * Time.deltaTime;
-                    _position.y += vector.x * _panSpeed * Time.deltaTime;
-                    if (_position.sqrMagnitude > _maxPanDistance * _maxPanDistance)
+                    _position.x -= vector.y * PanSpeed * Time.deltaTime;
+                    _position.y += vector.x * PanSpeed * Time.deltaTime;
+                    if (_position.sqrMagnitude > MaxPanDistance * MaxPanDistance)
                     {
-                        _position = _position.normalized * _maxPanDistance;
+                        _position = _position.normalized * MaxPanDistance;
                     }
                 }
             }

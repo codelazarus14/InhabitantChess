@@ -28,7 +28,7 @@ namespace InhabitantChess
             }
 
             // detect if we're playing the game and treat camera input like cockpit
-            flag = flag || InhabitantChess.Instance.PlayerState == ChessPlayerState.Seated;
+            flag = flag || ChessGame.PlayerState == ChessPlayerState.Seated;
 
             if (flag)
             {
@@ -56,7 +56,7 @@ namespace InhabitantChess
                     __instance._degreesX = Mathf.Clamp(__instance._degreesX, -60f, 60f);
                     __instance._degreesY = Mathf.Clamp(__instance._degreesY, -35f, 80f);
                 }
-                else if (InhabitantChess.Instance.PlayerState == ChessPlayerState.Seated)
+                else if (ChessGame.PlayerState == ChessPlayerState.Seated)
                 {
                     __instance._degreesX = Mathf.Clamp(__instance._degreesX, -80f, 80f);
                     __instance._degreesY = Mathf.Clamp(__instance._degreesY, -80f, 35f);
@@ -79,9 +79,9 @@ namespace InhabitantChess
         [HarmonyPatch(typeof(PlayerCameraController), nameof(PlayerCameraController.UpdateCamera))]
         public static void PlayerCameraController_UpdateCamera_Postfix(PlayerCameraController __instance)
         {
-            if (InhabitantChess.Instance.PlayerState == ChessPlayerState.Seated)
+            if (ChessGame.PlayerState == ChessPlayerState.Seated)
             {
-                float lean = InhabitantChess.Instance.GetLean();
+                float lean = InhabitantChess.Instance.CurrentGame.GetLean();
                 __instance._targetLocalPosition = new Vector3(__instance._targetLocalPosition.x, __instance._targetLocalPosition.y, lean);
                 __instance.transform.localPosition = Vector3.Lerp(__instance.transform.localPosition, __instance._targetLocalPosition, 0.1f);
             }

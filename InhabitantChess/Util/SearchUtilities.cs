@@ -27,8 +27,11 @@ namespace InhabitantChess.Util
             return current.parent.GetPath() + "/" + current.name;
         }
 
-        public static GameObject FindChild(this GameObject g, string childPath) =>
-            g.transform.Find(childPath)?.gameObject;
+        public static GameObject FindChild(this GameObject g, string childPath)
+        {
+            Transform childTrans = g.transform.Find(childPath);
+            return childTrans == null ? null : childTrans.gameObject;
+        }
 
         /// <summary>
         /// finds active or inactive object by path,

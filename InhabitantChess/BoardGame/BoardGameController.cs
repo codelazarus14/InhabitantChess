@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using Logger = InhabitantChess.Util.Logger;
 
 namespace InhabitantChess.BoardGame
 {
@@ -17,7 +16,7 @@ namespace InhabitantChess.BoardGame
         public BoardGameAudioEvent OnStartGame;
         public BoardGameAudioEvent OnStopGame;
 
-        private static float s_CPUTurnTime = 1.0f, s_DestroyDelay = 2.0f;
+        private const float CPUTurnTime = 1.0f, DestroyDelay = 2.0f;
         private static (int, int) s_BadPos = (99, 99);
 
         private List<GameObject> _toDestroy;
@@ -39,12 +38,21 @@ namespace InhabitantChess.BoardGame
         }
         private BoardState _boardState;
 
+        private InhabitantChess InhabitantChess => InhabitantChess.Instance;
+
         private void Start()
         {
             _toDestroy = new();
             _boardState = BoardState.Idle;
             _board = transform.Find("BoardGame_Board").gameObject.GetComponent<BoardController>();
-            OnHighlightConfigure(InhabitantChess.Instance.HighlightSettings);
+
+            InhabitantChess.OnConfigure += OnConfigure;
+            OnConfigure();
+        }
+
+        private void OnDestroy()
+        {
+            InhabitantChess.OnConfigure -= OnConfigure;
         }
 
         private void Update()
@@ -52,7 +60,7 @@ namespace InhabitantChess.BoardGame
             if (!Playing) return;
 
             // delay destruction to let AudioSources finish playing
-            if (_toDestroy.Count > 0 && Time.time >= _destroyTime + s_DestroyDelay)
+            if (_toDestroy.Count > 0 && Time.time >= _destroyTime + DestroyDelay)
             {
                 foreach (var obj in _toDestroy) Destroy(obj);
                 _toDestroy.Clear();
@@ -124,7 +132,7 @@ namespace InhabitantChess.BoardGame
             OnStopGame?.Invoke();
             _totalGames++;
             if (PlayerWon()) _gamesWon++;
-            Logger.Log($"Game finished, win ratio {GetScore().Item1} - {GetScore().Item2}");
+            Util.Logger.Log($"Game finished, win ratio {GetScore().Item1} - {GetScore().Item2}");
         }
 
         private IEnumerator PlayerTurn(int pIdx)
@@ -178,7 +186,7 @@ namespace InhabitantChess.BoardGame
             _board.SetPieceHighlight(_currentPlayer.g, _pieceHighlightEnabled);
             // add artificial wait
             _boardState = BoardState.WaitingForInput;
-            yield return new WaitForSecondsRealtime(s_CPUTurnTime);
+            yield return new WaitForSecondsRealtime(CPUTurnTime);
             _boardState = BoardState.InputReceived;
             (int, int) randPos = ChooseCPUMove(_legalMoves);
             _selectedSpace = _board.SpaceDict[randPos].GetComponent<SpaceController>();
@@ -261,11 +269,11 @@ namespace InhabitantChess.BoardGame
             StartCoroutine(Play());
         }
 
-        public void OnHighlightConfigure((bool moves, bool pieces, bool beam) hConfig)
+        public void OnConfigure()
         {
-            _movesHighlightEnabled = hConfig.moves;
-            _pieceHighlightEnabled = hConfig.pieces;
-            _beamHighlightEnabled = hConfig.beam;
+            _movesHighlightEnabled = InhabitantChess.HighlightSettings.moves;
+            _pieceHighlightEnabled = InhabitantChess.HighlightSettings.pieces;
+            _beamHighlightEnabled = InhabitantChess.HighlightSettings.beam;
 
             if (Playing) RefreshHighlighting();
         }

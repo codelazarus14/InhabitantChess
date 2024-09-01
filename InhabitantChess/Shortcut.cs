@@ -11,19 +11,21 @@ namespace InhabitantChess
         // modified version of https://github.com/VioVayo/OWDreamWorldModAssist/blob/main/DWModAssist/DWModAssist.cs
 
         public DreamLanternItem Lantern;
-        public bool UsedShortcut;
+        public bool UsedShortcut { get; private set; }
 
-        private static RelativeLocationData _prisonLocationData, _campfireLocationData;
-        private static GameObject _itemDropSocket;
-        private static DreamCampfire _campfire;
-        private static DreamArrivalPoint _arrivalPoint;
-        private static PrisonCellElevator _cellevator;
-        private static SarcophagusController _vaultController;
-        private static OWTriggerVolume _zone4PrisonCell, _zone4PrisonCellAir;
-        private static DreamObjectProjector _lock1Projector, _lock2Projector, _lock3Projector;
-        private static PrisonerSequence _sequence;
-        private static MeshCollider _chairCollider;
-        private static SingularityController _singularityController;
+        private RelativeLocationData _prisonLocationData, _campfireLocationData;
+        private GameObject _itemDropSocket;
+        private DreamCampfire _campfire;
+        private DreamArrivalPoint _arrivalPoint;
+        private PrisonCellElevator _cellevator;
+        private SarcophagusController _vaultController;
+        private OWTriggerVolume _zone4PrisonCell, _zone4PrisonCellAir;
+        private DreamObjectProjector _lock1Projector, _lock2Projector, _lock3Projector;
+        private PrisonerSequence _sequence;
+        private MeshCollider _chairCollider;
+        private SingularityController _singularityController;
+
+        private InhabitantChess InhabitantChess => InhabitantChess.Instance;
 
         private void Start()
         {
@@ -40,20 +42,21 @@ namespace InhabitantChess
             Lantern.transform.localPosition = new Vector3(-1.33f, 0.45f, -1.28f);
             Lantern.transform.localRotation = Quaternion.Euler(0, 300, 0);
             Lantern.SetSector(Lantern.GetComponentInParent<Sector>());
+
             Lantern.onPickedUp += EngageWarp;
-            EnableShortcut(InhabitantChess.Instance.ShortcutEnabled);
+            InhabitantChess.OnConfigure += OnConfigure;
+            OnConfigure();
         }
 
         private void FindReferences()
         {
-            InhabitantChess ic = InhabitantChess.Instance;
             Lantern = GameObject.Find("Prefab_IP_DreamLanternItem_2").GetComponent<DreamLanternItem>();
             _itemDropSocket = new("ItemDropSocket");
             _itemDropSocket.transform.SetParent(GameObject.Find("Sector_DreamWorld").transform);
             _cellevator = FindObjectOfType<PrisonCellElevator>();
             _vaultController = FindObjectOfType<SarcophagusController>();
-            _sequence = ic.PrisonerSequence;
-            _chairCollider = ic.PrisonCell.FindChild("Props_PrisonCell/LowerCell/Prefab_IP_DW_Chair").GetComponent<MeshCollider>();
+            _sequence = InhabitantChess.PrisonerSequence;
+            _chairCollider = _sequence.gameObject.FindChild("Props_PrisonCell/LowerCell/Prefab_IP_DW_Chair").GetComponent<MeshCollider>();
             GameObject hole = GameObject.Find("Sector_TH/Sector_NomaiCrater/Interactables_NomaiCrater/Prefab_NOM_WarpReceiver/BlackHole");
             _singularityController = Instantiate(hole).GetComponentInChildren<SingularityController>();
 
@@ -75,10 +78,10 @@ namespace InhabitantChess
             }
         }
 
-        public void EnableShortcut(bool enabled)
+        private void OnDestroy()
         {
-            Lantern.gameObject?.SetActive(enabled);
-            UsedShortcut = !enabled;
+            Lantern.onPickedUp -= EngageWarp;
+            InhabitantChess.OnConfigure -= OnConfigure;
         }
 
         private void EngageWarp(OWItem item)
@@ -135,7 +138,7 @@ namespace InhabitantChess
         private IEnumerator WaitForFinalSetup()
         {
             while (!_chairCollider.enabled) yield return null;
-            _sequence.SetUpGame(false);
+            _sequence.SetUpGame();
         }
 
         private void GiveLantern(Vector3 worldDestinationPosition)
@@ -218,9 +221,10 @@ namespace InhabitantChess
             _vaultController.OnPressInteract();
         }
 
-        private void OnDestroy()
+        public void OnConfigure()
         {
-            Lantern.onPickedUp -= EngageWarp;
+            if (!UsedShortcut)
+                Lantern.gameObject.SetActive(InhabitantChess.ShortcutEnabled);
         }
     }
 }

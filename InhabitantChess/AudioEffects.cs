@@ -3,12 +3,14 @@ using InhabitantChess.Util;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Logger = InhabitantChess.Util.Logger;
 
 namespace InhabitantChess
 {
     public class AudioEffects : MonoBehaviour
     {
+        public delegate void FurnitureAudioEvent(bool isSetup);
+        public FurnitureAudioEvent OnFurnitureAudioFinished;
+
         private static AudioType[] s_furnitureNoises =
         [
             AudioType.ModelShipImpact,
@@ -48,14 +50,15 @@ namespace InhabitantChess
         private ICAudioSources _audioSources;
 
         private OWAudioSource[] _pieceSources;
-        private BoardController _board;
+        private ChessGame _game;
         private BoardGameController _gameController;
+        private BoardController _board;
         private PrisonerEffects _prisonerFX;
 
-        private float _initFadeOutTime, _initAmbienceTime, _ambienceInterval, _fadeDuration, _ambienceVolume = 0.05f, _creakVolume = 0.25f;
+        private const float AmbienceVolume = 0.05f, CreakVolume = 0.25f;
+        private float _initFadeOutTime, _initAmbienceTime, _ambienceInterval, _fadeDuration;
         private bool _playingAmbience;
 
-        // TODO: convert to ChessGame instance
         private InhabitantChess InhabitantChess => InhabitantChess.Instance;
         private PrisonerSequence PrisonerSequence => InhabitantChess.Instance.PrisonerSequence;
 
@@ -72,12 +75,13 @@ namespace InhabitantChess
 
         private void InitBoardGameSFX()
         {
-            _board = InhabitantChess.BoardGame.GetComponentInChildren<BoardController>();
-            _gameController = InhabitantChess.BoardGame.GetComponent<BoardGameController>();
+            _game = GetComponent<ChessGame>();
+            _gameController = GetComponent<BoardGameController>();
+            _board = GetComponentInChildren<BoardController>();
             _audioSources.playerAudio = Locator.GetPlayerAudioController()._oneShotExternalSource;
 
-            InhabitantChess.OnLeanForward += PlayLeanCreaking;
-            InhabitantChess.OnLeanBackward += PlayLeanCreaking;
+            _game.OnLeanForward += PlayLeanCreaking;
+            _game.OnLeanBackward += PlayLeanCreaking;
             _gameController.OnStopGame += PlayGameOver;
             _gameController.OnPieceRemoved += PlayPieceRemoved;
             _board.OnBoardReset += GetPieceSources;
@@ -88,21 +92,22 @@ namespace InhabitantChess
         {
             _prisonerFX = PrisonerSequence.PrisonerDirector._prisonerEffects;
             _audioSources.torchAudio = PrisonerSequence.TorchSocket.gameObject.AddComponent<OWAudioSource>();
-            _audioSources.lanternAudio = InhabitantChess.PrisonCell.FindChild("Props_PrisonCell/LowerCell/GhostLantern(Clone)/AudioSource_GhostLantern").GetComponent<OWAudioSource>();
+            _audioSources.lanternAudio = PrisonerSequence.gameObject.FindChild("Props_PrisonCell/LowerCell/GhostLantern(Clone)/AudioSource_GhostLantern").GetComponent<OWAudioSource>();
             _audioSources.playerMusic = PrisonerSequence.PrisonerDirector._musicSource;
 
-            InhabitantChess.OnSitDown += InitAmbience;
-            InhabitantChess.OnStandUp += () => StopAmbience();
+            _game.OnSitDown += OnSitDown;
+            _game.OnStoodUp += OnStoodUp;
             PrisonerSequence.OnSpotlightTorch += PlayTorchSpotlight;
             PrisonerSequence.OnPrisonerCurious += PlayPrisonerCurious;
-            PrisonerSequence.OnSetupGame += () => PlayFurnitureSounds(true);
-            PrisonerSequence.OnCleanupGame += () => PlayFurnitureSounds(false);
+            PrisonerSequence.OnSetupGame += OnSetupGame;
+            PrisonerSequence.OnCleanupGame += OnCleanupGame;
+            OnFurnitureAudioFinished += PrisonerSequence.OnFurnitureAudioFinished;
         }
 
         private void OnDestroy()
         {
-            InhabitantChess.OnLeanForward -= PlayLeanCreaking;
-            InhabitantChess.OnLeanBackward -= PlayLeanCreaking;
+            _game.OnLeanForward -= PlayLeanCreaking;
+            _game.OnLeanBackward -= PlayLeanCreaking;
             _gameController.OnStopGame -= PlayGameOver;
             _gameController.OnPieceRemoved -= PlayPieceRemoved;
             _board.OnBoardReset -= GetPieceSources;
@@ -110,12 +115,12 @@ namespace InhabitantChess
 
             if (PrisonerSequence != null)
             {
-                InhabitantChess.OnSitDown -= InitAmbience;
-                InhabitantChess.OnStandUp -= () => StopAmbience();
+                _game.OnSitDown -= OnSitDown;
+                _game.OnStoodUp -= OnStoodUp;
                 PrisonerSequence.OnSpotlightTorch -= PlayTorchSpotlight;
                 PrisonerSequence.OnPrisonerCurious -= PlayPrisonerCurious;
-                PrisonerSequence.OnSetupGame -= () => PlayFurnitureSounds(true);
-                PrisonerSequence.OnCleanupGame -= () => PlayFurnitureSounds(false);
+                PrisonerSequence.OnSetupGame -= OnSetupGame;
+                PrisonerSequence.OnCleanupGame -= OnCleanupGame;
             }
         }
 
@@ -138,7 +143,7 @@ namespace InhabitantChess
             }
             else if (source == null)
             {
-                Logger.LogError($"Couldn't find audio source {source}!");
+                Util.Logger.LogError($"Couldn't find audio source {source}!");
             }
         }
 
@@ -152,7 +157,7 @@ namespace InhabitantChess
             }
             else
             {
-                Logger.LogError($"Couldn't find audio source {source}!");
+                Util.Logger.LogError($"Couldn't find audio source {source}!");
             }
         }
 
@@ -161,32 +166,36 @@ namespace InhabitantChess
             PlayOneShot(_audioSources.torchAudio, AudioType.ShipCockpitHeadlightsOn);
         }
 
-        private void PlayFurnitureSounds(bool setup)
+        private void PlayFurnitureSounds(bool isSetup, bool shortcutSkip = false)
         {
-            StartCoroutine(FurnitureChaosAudio(setup));
+            StartCoroutine(FurnitureChaosAudio(isSetup, shortcutSkip));
         }
 
-        private IEnumerator FurnitureChaosAudio(bool setup)
+        private IEnumerator FurnitureChaosAudio(bool isSetup, bool shortcutSkip)
         {
-            List<AudioType> noises = new(s_furnitureNoises);
-            if (!setup) noises.Reverse();
-            bool playedPrisonerNoise = false;
-
-            // sequence of offscreen crashing and banging around
-            foreach (AudioType type in noises)
+            if (!shortcutSkip)
             {
-                PlayOneShot(_audioSources.playerAudio, type);
-                float randInterval = Random.Range(0.5f, 0.8f);
-                yield return new WaitForSecondsRealtime(randInterval);
+                List<AudioType> noises = new(s_furnitureNoises);
+                if (!isSetup) noises.Reverse();
+                bool playedPrisonerNoise = false;
 
-                if (!playedPrisonerNoise)
+                // sequence of offscreen crashing and banging around
+                foreach (AudioType type in noises)
                 {
-                    playedPrisonerNoise = true;
-                    int rIdx = (int)(randInterval * 10 % s_prisonerNoises.Length);
-                    PlayOneShot(_audioSources.playerAudio, s_prisonerNoises[rIdx]);
+                    PlayOneShot(_audioSources.playerAudio, type);
+                    float randInterval = Random.Range(0.5f, 0.8f);
+                    yield return new WaitForSecondsRealtime(randInterval);
+
+                    if (!playedPrisonerNoise)
+                    {
+                        playedPrisonerNoise = true;
+                        int rIdx = (int)(randInterval * 10 % s_prisonerNoises.Length);
+                        PlayOneShot(_audioSources.playerAudio, s_prisonerNoises[rIdx]);
+                    }
                 }
+                PlayOneShot(_audioSources.lanternAudio, AudioType.Artifact_Unconceal);
             }
-            PlayOneShot(_audioSources.lanternAudio, AudioType.Artifact_Unconceal);
+            OnFurnitureAudioFinished?.Invoke(isSetup);
         }
 
         private void PlayPrisonerCurious()
@@ -207,25 +216,27 @@ namespace InhabitantChess
 
         private void PlayLeanCreaking()
         {
-            PlayCreaking(_audioSources.playerAudio, AudioType.TH_BridgeCreaking_LP, _creakVolume, 2);
+            PlayCreaking(_audioSources.playerAudio, AudioType.TH_BridgeCreaking_LP, CreakVolume, 2);
         }
 
         private void Update()
         {
+            if (InhabitantChess.CurrentGame == null) return;
+
             if (!_playingAmbience && Time.time >= _initAmbienceTime)
             {
                 StartNextAmbience();
             }
             else if (_playingAmbience && Time.time >= _initFadeOutTime)
             {
-                StopAmbience(false);
+                StopAmbience(true);
             }
         }
 
         private void InitAmbience()
         {
             enabled = true;
-            _ambienceInterval = 90;
+            _ambienceInterval = 90f;
             _fadeDuration = _ambienceInterval / 5;
             _initAmbienceTime = Time.time + _ambienceInterval;
         }
@@ -241,7 +252,7 @@ namespace InhabitantChess
 
             _fadeDuration = Mathf.Min(20f, musicSource.clip.length / 4);
             musicSource.AssignAudioLibraryClip(_currentAmbience);
-            musicSource.FadeIn(_fadeDuration, true, targetVolume: _ambienceVolume);
+            musicSource.FadeIn(_fadeDuration, true, targetVolume: AmbienceVolume);
             // prepare for the next clip
             _ambienceInterval = 5 * _fadeDuration + 5 * Random.Range(0, _fadeDuration);
             float endTime = Time.time + musicSource.clip.length - musicSource.time;
@@ -257,12 +268,12 @@ namespace InhabitantChess
             PlayOneShot(_audioSources.playerAudio, gameOverSound);
         }
 
-        private void StopAmbience(bool endLoop = true)
+        private void StopAmbience(bool continueLoop = false)
         {
             OWAudioSource musicSource = _audioSources.playerMusic;
             if (musicSource == null) return;
 
-            float fadeTime = endLoop ? 5 : _fadeDuration;
+            float fadeTime = continueLoop ? _fadeDuration : 5f;
             // replace other fades with new fade out
             if (musicSource._isLocalFading)
             {
@@ -275,7 +286,27 @@ namespace InhabitantChess
             }
 
             _playingAmbience = false;
-            enabled = !endLoop;
+            enabled = continueLoop;
+        }
+        private void OnSitDown(ChessGame chess)
+        {
+            InitAmbience();
+        }
+
+        private void OnStoodUp(ChessGame chess)
+        {
+            StopAmbience();
+        }
+
+        private void OnSetupGame()
+        {
+            bool shortcutSkip = InhabitantChess.Shortcut != null && InhabitantChess.Shortcut.UsedShortcut;
+            PlayFurnitureSounds(true, shortcutSkip);
+        }
+
+        private void OnCleanupGame()
+        {
+            PlayFurnitureSounds(false);
         }
     }
 }

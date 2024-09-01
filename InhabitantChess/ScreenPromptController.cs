@@ -57,7 +57,8 @@ namespace InhabitantChess
         {
             foreach (var prompt in _prompts)
             {
-                Locator.GetPromptManager()?.RemoveScreenPrompt(prompt.Value, PromptPosition.UpperRight);
+                if (Locator.GetPromptManager() != null)
+                    Locator.GetPromptManager().RemoveScreenPrompt(prompt.Value, PromptPosition.UpperRight);
             }
         }
 

@@ -1,0 +1,252 @@
+﻿using InhabitantChess.BoardGame;
+using InhabitantChess.Util;
+using UnityEngine;
+
+namespace InhabitantChess
+{
+    public enum ChessPlayerState
+    {
+        None,
+        Seated,
+        StandingUp,
+        EnteringOverhead,
+        InOverhead,
+        ExitingOverhead
+    }
+
+    public class ChessGame : MonoBehaviour
+    {
+        public static ChessPlayerState PlayerState { get; private set; }
+        public AudioEffects AudioEffects { get; private set; }
+
+        public delegate void PlayerInteractionEvent(ChessGame chess);
+        public PlayerInteractionEvent OnSitDown;
+        public PlayerInteractionEvent OnStoodUp;
+
+        public delegate void ChessPlayerAudioEvent();
+        public ChessPlayerAudioEvent OnLeanForward;
+        public ChessPlayerAudioEvent OnLeanBackward;
+
+        private const float MaxLeanAmount = 1f, LeanSpeed = 1.5f, LeanSoundCooldown = 1f;
+
+        private PlayerCameraController _playerCamController;
+        private OverheadCameraController _overheadCamController;
+        private BoardGameController _bgController;
+        private BoardController _bController;
+        private PlayerAttachPoint _attachPoint;
+        private InteractZone _seatInteract;
+        private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
+        private float _oldLeanAmt, _leanAmt, _lastLeanSoundTime;
+
+        private InhabitantChess InhabitantChess => InhabitantChess.Instance;
+        private ScreenPromptController ScreenPrompts => ScreenPromptController.Instance;
+
+        private void Start()
+        {
+            InhabitantChess.ICPrefabs prefabs = InhabitantChess.Prefabs;
+            _bController = transform.Find("BoardGame_Board").gameObject.AddComponent<BoardController>();
+            _bController.Init(prefabs.space, prefabs.blocker, prefabs.antler, prefabs.eye, InhabitantChess.HighlightMaterials);
+            _bgController = gameObject.AddComponent<BoardGameController>();
+            AudioEffects = gameObject.AddComponent<AudioEffects>();
+
+            CreateGameSeat();
+            CreateOverheadCamera();
+
+            _seatInteract.OnPressInteract += OnPressInteract;
+            _seatInteract.OnPressInteract += _bgController.OnPressInteract;
+        }
+
+        private void OnDestroy()
+        {
+            _seatInteract.OnPressInteract -= OnPressInteract;
+            _seatInteract.OnPressInteract -= _bgController.OnPressInteract;
+        }
+
+        private void Update()
+        {
+            // TODO: toggle with enabled on interact/stand up instead?
+            if (_seatInteract == null || PlayerState == ChessPlayerState.None) return;
+
+            if (PlayerState == ChessPlayerState.Seated)
+            {
+                if (OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All))
+                {
+                    //_bgController.ExitGame();
+                    BeginStandingUp();
+                }
+                else if (OWInput.IsPressed(InputLibrary.moveXZ, InputMode.All))
+                {
+                    float v = OWInput.GetAxisValue(InputLibrary.moveXZ).y;
+                    _oldLeanAmt = _leanAmt;
+                    _leanAmt += v * LeanSpeed * Time.deltaTime;
+                    _leanAmt = Mathf.Clamp(_leanAmt, 0.0f, MaxLeanAmount);
+                    UpdateLeanSFX();
+                }
+                if (!_bgController.Playing)
+                {
+                    // TODO: confirm this actually does anything
+                    _seatInteract.ChangePrompt((UITextType)Translations.GetUITextType("IC_PLAYAGAIN"));
+                    RefreshScorePrompt();
+                }
+            }
+            if (PlayerState != ChessPlayerState.EnteringOverhead)
+            {
+                if (PlayerState == ChessPlayerState.Seated && OWInput.IsNewlyPressed(InputLibrary.landingCamera, InputMode.All))
+                {
+                    EnterOverheadView();
+                }
+                else if (PlayerState == ChessPlayerState.InOverhead && (OWInput.IsNewlyPressed(InputLibrary.landingCamera, InputMode.All) ||
+                        OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All)))
+                {
+                    InputLibrary.cancel.ConsumeInput();
+                    ExitOverheadView();
+                }
+            }
+            else
+            {
+                UpdateEnterOverheadTransition();
+            }
+        }
+
+        private void UpdateLeanSFX()
+        {
+            float leanThreshold = MaxLeanAmount / 3;
+            bool playedSound = false;
+
+            if (Time.time > _lastLeanSoundTime + LeanSoundCooldown)
+            {
+                // leaning forward
+                if (_oldLeanAmt <= leanThreshold && leanThreshold < _leanAmt)
+                {
+                    playedSound = true;
+                    OnLeanForward?.Invoke();
+                }
+                // leaning backward
+                else if (_leanAmt <= leanThreshold && leanThreshold < _oldLeanAmt)
+                {
+                    playedSound = true;
+                    OnLeanBackward?.Invoke();
+                }
+            }
+            if (playedSound) _lastLeanSoundTime = Time.time;
+        }
+
+        private void UpdateEnterOverheadTransition()
+        {
+            if (Time.time > _initOverheadTime + 0.45f)
+            {
+                PlayerState = ChessPlayerState.InOverhead;
+                InhabitantChess.CameraAPI.EnterCamera(_overheadCamController.OverheadCam);
+                _overheadCamController.ResetPosition();
+            }
+        }
+
+        private void FixedUpdate()
+        {
+            // delay copied from ship cockpit controller to force recentering of camera
+            if (PlayerState == ChessPlayerState.StandingUp && Time.time >= _exitSeatTime + 0.2f)
+            {
+                CompleteStandingUp();
+            }
+            if (PlayerState == ChessPlayerState.ExitingOverhead && Time.time >= _exitOverheadTime + 0.45f)
+            {
+                PlayerState = ChessPlayerState.Seated;
+            }
+        }
+
+        public float GetLean()
+        {
+            return _leanAmt;
+        }
+
+        private void CreateGameSeat()
+        {
+            GameObject gameSeat = Instantiate(InhabitantChess.CockpitClone, transform);
+            gameSeat.transform.localPosition = Vector3.right;
+            gameSeat.transform.localRotation = Quaternion.Euler(0, 270, 0);
+            gameSeat.SetActive(true);
+            _attachPoint = gameSeat.GetComponent<PlayerAttachPoint>();
+            _seatInteract = gameSeat.GetComponent<InteractZone>();
+        }
+
+        private void CreateOverheadCamera()
+        {
+            _bgController.PlayerManip = Locator.GetPlayerTransform().GetComponentInChildren<FirstPersonManipulator>();
+            _playerCamController = Locator.GetPlayerCameraController();
+            (OWCamera owCam, _) = InhabitantChess.CameraAPI.CreateCustomCamera("Overhead Camera");
+            owCam.transform.SetParent(transform);
+            owCam.transform.localPosition = new Vector3(0f, 2f, 0);
+            owCam.transform.localRotation = Quaternion.Euler(90, 270, 0);
+            _overheadCamController = owCam.gameObject.AddComponent<OverheadCameraController>();
+            _overheadCamController.Setup();
+        }
+
+        private void RefreshScorePrompt()
+        {
+            (int won, int lost) = _bgController.GetScore();
+            ScreenPrompts.SetScore(won, lost);
+        }
+
+        private void EnterOverheadView()
+        {
+            // my ability to directly lift mobius' code grows stronger with every passing day
+            PlayerState = ChessPlayerState.EnteringOverhead;
+            _initOverheadTime = Time.time;
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, false);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, false);
+
+            _playerCamController.SnapToDegreesOverSeconds(0f, -48.5f, 0.5f, true);
+            _playerCamController.SnapToFieldOfView(24f, 0.5f, true);
+            OWInput.ChangeInputMode(InputMode.Map);
+        }
+
+        private void ExitOverheadView()
+        {
+            PlayerState = ChessPlayerState.ExitingOverhead;
+            _exitOverheadTime = Time.time;
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, true);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, true);
+
+            InhabitantChess.CameraAPI.ExitCamera(_overheadCamController.OverheadCam);
+            _overheadCamController.ResetPosition();
+            _playerCamController.CenterCameraOverSeconds(0.5f, true);
+            _playerCamController.SnapToInitFieldOfView(0.5f, true);
+            OWInput.ChangeInputMode(InputMode.Character);
+        }
+
+        private void BeginStandingUp()
+        {
+            _leanAmt = 0f;
+            _oldLeanAmt = 0f;
+            _playerCamController.CenterCameraOverSeconds(0.2f, false);
+            _exitSeatTime = Time.time;
+            PlayerState = ChessPlayerState.StandingUp;
+        }
+
+        private void CompleteStandingUp()
+        {
+            _attachPoint.DetachPlayer();
+            _seatInteract.ResetInteraction();
+            _seatInteract.EnableInteraction();
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Score, false);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, false);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Overhead, false);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, false);
+            PlayerState = ChessPlayerState.None;
+            OnStoodUp?.Invoke(this);
+        }
+
+        private void OnPressInteract()
+        {
+            _attachPoint.AttachPlayer();
+            _seatInteract.DisableInteraction();
+            RefreshScorePrompt();
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Score, true);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, true);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Overhead, true);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, true);
+            PlayerState = ChessPlayerState.Seated;
+            OnSitDown?.Invoke(this);
+        }
+    }
+}

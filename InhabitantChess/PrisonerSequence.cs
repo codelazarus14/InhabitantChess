@@ -16,21 +16,12 @@ namespace InhabitantChess
 
         public bool CanTriggerSequence;
 
-        public delegate void PrisonerSeqAudioEvent();
-        public PrisonerSeqAudioEvent OnSpotlightTorch;
-        public PrisonerSeqAudioEvent OnPrisonerCurious;
-        public PrisonerSeqAudioEvent OnSetupGame;
-        public PrisonerSeqAudioEvent OnCleanupGame;
+        public delegate void PrisonerSequenceEvent();
+        public PrisonerSequenceEvent OnSpotlightTorch;
+        public PrisonerSequenceEvent OnPrisonerCurious;
+        public PrisonerSequenceEvent OnSetupGame;
+        public PrisonerSequenceEvent OnCleanupGame;
 
-        private OWLight _torchSpotlight;
-        private DreamLanternController _prisonerLantern, _lanternCopy;
-        private Dictionary<string, GameObject> _props; // TODO: convert to struct
-        private List<(string name, Vector3 pos, Quaternion rot)> _ogTransforms, _movedTransforms;
-        private Transform _elevatorPos, _seatPos, _cueMarker;
-        private string _talkToText, _giveTorchText;
-        private float _chairCueZ = 5.2f, _elevatorCueZ = -9.2f;
-        private float _initTorchPlaceTime, _torchSpotlightDelay, _initWalkTime, _eyesCloseTime, _initFinalWordsTime;
-        private bool _spotlightingTorch, _eyesClosed;
         private enum PrisonerState
         {
             None,
@@ -44,16 +35,25 @@ namespace InhabitantChess
         }
         private PrisonerState _state;
 
+        private Dictionary<string, GameObject> _props; // TODO: convert to struct
+        private List<(string name, Vector3 pos, Quaternion rot)> _ogTransforms, _movedTransforms;
+        private DreamLanternController _prisonerLantern, _lanternCopy;
+        private OWLight _torchSpotlight;
+        private Transform _elevatorPos, _seatPos, _cueMarker;
+        private string _talkToText, _giveTorchText;
+        private float _chairCueZ = 5.2f, _elevatorCueZ = -9.2f;
+        private float _initTorchPlaceTime, _torchSpotlightDelay, _initWalkTime, _eyesCloseTime, _initFinalWordsTime;
+        private bool _spotlightingTorch, _eyesClosed;
+
         private void Start()
         {
             PrisonerDirector = FindObjectOfType<PrisonerDirector>();
             PrisonerDialogue = PrisonerDirector._characterDialogueTree;
 
-            GameObject prisonCell = InhabitantChess.Instance.PrisonCell;
             // make a copy of the prisoner's lantern to be used as a lighting prop
             GameObject lantern = PrisonerDirector._prisonerController._lantern.gameObject;
             GameObject lanternClone = Instantiate(lantern);
-            lanternClone.transform.SetParent(prisonCell.transform.Find("Props_PrisonCell/LowerCell"));
+            lanternClone.transform.SetParent(transform.Find("Props_PrisonCell/LowerCell"));
             lanternClone.transform.localPosition = new Vector3(6.075f, 0.96f, 0.35f);
             lanternClone.transform.localRotation = Quaternion.Euler(5, 260, 0);
             lanternClone.SetActive(false);
@@ -65,10 +65,10 @@ namespace InhabitantChess
 
             _props = new Dictionary<string, GameObject>
             {
-                { "crate", prisonCell.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_Crate_Sealed (1)") },
-                { "emptyBoard", prisonCell.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_BoardGame") },
-                { "playerChair", prisonCell.FindChild("Props_PrisonCell/LowerCell/Prefab_IP_DW_Chair") },
-                { "prisonerChair", prisonCell.FindChild("Interactibles_PrisonCell/PrisonerSequence/Prefab_IP_DW_Chair") }
+                { "crate", gameObject.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_Crate_Sealed (1)") },
+                { "emptyBoard", gameObject.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_BoardGame") },
+                { "playerChair", gameObject.FindChild("Props_PrisonCell/LowerCell/Prefab_IP_DW_Chair") },
+                { "prisonerChair", gameObject.FindChild("Interactibles_PrisonCell/PrisonerSequence/Prefab_IP_DW_Chair") }
             };
             GameObject torchSocket = Instantiate(FindObjectOfType<VisionTorchSocket>().gameObject, _props["playerChair"].transform);
             torchSocket.transform.localPosition = new Vector3(-0.9f, 0.9f, 0);
@@ -191,6 +191,7 @@ namespace InhabitantChess
             bool readyToLeave = DialogueConditionManager.SharedInstance.GetConditionState("IC_READY_TO_LEAVE");
             if (readyToLeave)
             {
+                DisableConversation();
                 PrisonerDialogue.OnEndConversation -= OnFinishGameDialogue;
                 _cueMarker.localPosition = new Vector3(_cueMarker.localPosition.x, _cueMarker.localPosition.y, _elevatorCueZ);
                 _initFinalWordsTime = Time.time;
@@ -237,8 +238,6 @@ namespace InhabitantChess
             if (_state == PrisonerState.SaidFinalWords && t >= _initFinalWordsTime + 2f)
             {
                 _state = PrisonerState.BeingRestored;
-                if (InhabitantChess.Instance.PlayerState == ChessPlayerState.Seated)
-                    InhabitantChess.Instance.StandUp();
                 SleepPlayer();
             }
             if (_eyesClosed)
@@ -260,16 +259,14 @@ namespace InhabitantChess
             }
         }
 
-        public void SetUpGame(bool withAudio = true)
+        public void SetUpGame()
         {
             SeatPrisoner(_seatPos);
             MoveProps();
             PrisonerDialogue._interactVolume._screenPrompt.SetText(_talkToText);
             EnableConversation();
             SetPlayerChairCollision(false);
-            InhabitantChess.Instance.BoardGame.SetActive(true);
-            if (withAudio)
-                OnSetupGame?.Invoke();
+            OnSetupGame?.Invoke();
         }
 
         public void CleanUpGame()
@@ -282,8 +279,6 @@ namespace InhabitantChess
             // VisionTorchItem is disabled by director at start, and only enabled by the vision-sharing sequence
             // I put it down here - might as well avoid affecting other stuff earlier
             TorchSocket._socketedItem.EnableInteraction(true);
-            InhabitantChess.Instance.BoardGame.SetActive(false);
-            InhabitantChess.Instance.ShortcutUnlocked();
             OnCleanupGame?.Invoke();
         }
 
@@ -380,6 +375,12 @@ namespace InhabitantChess
         public void DisableConversation()
         {
             PrisonerDialogue._interactVolume.DisableInteraction();
+        }
+
+        public void OnFurnitureAudioFinished(bool isGameActive)
+        {
+            // delayed after event fired from SetUp/CleanUpGame
+            InhabitantChess.Instance.PrisonerSequenceGame.gameObject.SetActive(isGameActive);
         }
 
         private void OnDestroy()
