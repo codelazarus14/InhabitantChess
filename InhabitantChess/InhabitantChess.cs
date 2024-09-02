@@ -56,6 +56,7 @@ namespace InhabitantChess
         private static Shader s_standardShader = Shader.Find("Standard");
 
         private List<ChessGame> _chessGames;
+        private TextAsset _prisonerDialogue;
         private bool _hasCachedData;
 
         private void Awake()
@@ -77,12 +78,12 @@ namespace InhabitantChess
                 Util.Logger.Log($"Dependencies detected - enabling chess game instancing");
 
             // TODO testing - delete later
-            //instancing = true;
+            instancing = true;
 
             CameraAPI = ModHelper.Interaction.TryGetModApi<ICommonCameraAPI>("xen.CommonCameraUtility");
             AssetBundle bundle = ModHelper.Assets.LoadBundle("Assets/triboard");
             Prefabs = LoadPrefabs(bundle, "assets/prefabs/triboard/");
-            TextAsset prisonerDialogue = LoadText("Assets/PrisonerDialogue.xml");
+            _prisonerDialogue = LoadText("Assets/PrisonerDialogue.xml");
             Translations.LoadTranslations();
 
             LoadManager.OnCompleteSceneLoad += (scene, loadScene) =>
@@ -95,34 +96,25 @@ namespace InhabitantChess
                     return;
                 }
 
+                _chessGames = [];
                 gameObject.AddComponent<ScreenPromptController>();
 
-                if (instancing) return;
-
-                GameObject prisonCell = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_Underground/Sector_PrisonCell");
-
-                Pose prisonerChessPose = new Pose { position = new Vector3(4, -35.105f, 0.2f), rotation = Quaternion.Euler(0, 270, 0) };
-                PrisonerSequenceGame = InstantiateChessGame(prisonCell.transform, prisonerChessPose);
-                _chessGames = [PrisonerSequenceGame];
-
-                PrisonerSequence = prisonCell.AddComponent<PrisonerSequence>();
-                PrisonerSequence.SetText(prisonerDialogue);
-                Shortcut = prisonCell.AddComponent<Shortcut>();
+                if (!instancing)
+                    CreatePrisonerChessGame();
 
                 TextTranslation.Get().OnLanguageChanged += Translations.OnLanguageChanged;
-                PrisonerSequence.OnCleanupGame += OnCleanupGame;
-
-                Util.Logger.LogSuccess("Finished setup");
             };
+            Util.Logger.LogSuccess("Finished setup");
         }
 
         private void OnDestroy()
         {
+            TextTranslation.Get().OnLanguageChanged -= Translations.OnLanguageChanged;
             foreach (ChessGame chess in _chessGames)
                 Destroy(chess.gameObject);
             _chessGames.Clear();
-            TextTranslation.Get().OnLanguageChanged -= Translations.OnLanguageChanged;
-            PrisonerSequence.OnCleanupGame -= OnCleanupGame;
+            if (PrisonerSequence != null)
+                PrisonerSequence.OnCleanupGame -= OnCleanupGame;
         }
 
         public override void Configure(IModConfig config)
@@ -172,7 +164,22 @@ namespace InhabitantChess
             chess.transform.localRotation = pose.rotation;
             chess.OnSitDown += OnSitDown;
             chess.OnStoodUp += OnStoodUp;
+            _chessGames.Add(chess);
             return chess;
+        }
+
+        private void CreatePrisonerChessGame()
+        {
+            GameObject prisonCell = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_Underground/Sector_PrisonCell");
+
+            Pose prisonerChessPose = new Pose { position = new Vector3(4, -35.105f, 0.2f), rotation = Quaternion.Euler(0, 270, 0) };
+            PrisonerSequenceGame = InstantiateChessGame(prisonCell.transform, prisonerChessPose);
+
+            PrisonerSequence = prisonCell.AddComponent<PrisonerSequence>();
+            PrisonerSequence.SetText(_prisonerDialogue);
+            Shortcut = prisonCell.AddComponent<Shortcut>();
+
+            PrisonerSequence.OnCleanupGame += OnCleanupGame;
         }
 
         private void OnSitDown(ChessGame chess)
