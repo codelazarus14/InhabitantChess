@@ -48,7 +48,6 @@ namespace InhabitantChess.BoardGame
         private GameObject _blockerPrefab;
         private GameObject _antlerPrefab;
         private GameObject _eyePrefab;
-        private Synchronizer _synchronizer;
         private Transform _spcParent, _pieceParent, _deadwoodParent;
 
         private GameObject _movingPiece;
@@ -90,7 +89,6 @@ namespace InhabitantChess.BoardGame
             _antlerPrefab = antlerPrefab;
             _eyePrefab = eyePrefab;
             _highlightMaterials = highlightMaterials;
-            _synchronizer = gameObject.AddComponent<Synchronizer>();
         }
 
         public void ResetBoard()
@@ -198,7 +196,6 @@ namespace InhabitantChess.BoardGame
                 spcController.SetSpace(k.u, k.a);
                 spcController.SetMaterials(_highlightMaterials[0]);
                 if (!IsBlack(k)) spc.transform.localRotation = Quaternion.AngleAxis(-180, Vector3.up);
-                _synchronizer.OnLerpComplete.AddListener(spcController.FlipHighlightLerp);
             }
             SetSpaces(SpaceDict.Keys, false, false);
         }

@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 
-
 namespace InhabitantChess.BoardGame
 {
     public class SpaceController : MonoBehaviour
@@ -8,21 +7,20 @@ namespace InhabitantChess.BoardGame
         public bool InBeam { get; private set; }
         public (int up, int across) Space { get; private set; }
 
+        private const float BeamEmissionMin = 0.2f, BeamEmissionMax = 0.8f;
+        private const float BeamEmissionTimeScale = 1f;
+
         private Material _ogMaterial, _beamMaterial;
         private MeshRenderer _meshRenderer;
         private Collider[] _colliders;
-        private float _min = 0.0f, _max = 0.4f;
 
         private void Update()
         {
-            // TODO: fix someday - MPB
+            if (!InBeam) return;
 
-            //if (InBeam)
-            //{
-            //    float o = Synchronizer.t;
-            //    var mat = GetComponent<MeshRenderer>().material;
-            //    mat.SetColor("_EmissionColor", new Color(o, o, o, o));
-            //}
+            float opacity = (Mathf.Sin(Time.time * BeamEmissionTimeScale) + 1f) / 2;
+            opacity = (BeamEmissionMax - BeamEmissionMin) * opacity + BeamEmissionMin;
+            _beamMaterial.SetFloat("_VertColor", opacity);
         }
 
         public void SetMaterials(Material beamMat)
@@ -50,13 +48,6 @@ namespace InhabitantChess.BoardGame
         {
             _meshRenderer.sharedMaterial = inBeam ? _beamMaterial : _ogMaterial;
             InBeam = inBeam;
-        }
-
-        public void FlipHighlightLerp()
-        {
-            float temp = _max;
-            _max = _min;
-            _min = temp;
         }
 
         public void SetSpace(int up, int across)

@@ -99,12 +99,13 @@ namespace InhabitantChess
                 _chessGames = [];
                 gameObject.AddComponent<ScreenPromptController>();
 
+                TextTranslation.Get().OnLanguageChanged += Translations.OnLanguageChanged;
+
+                Util.Logger.LogSuccess("Finished setup");
+
                 if (!instancing)
                     CreatePrisonerChessGame();
-
-                TextTranslation.Get().OnLanguageChanged += Translations.OnLanguageChanged;
             };
-            Util.Logger.LogSuccess("Finished setup");
         }
 
         private void OnDestroy()
