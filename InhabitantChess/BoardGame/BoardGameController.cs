@@ -22,8 +22,8 @@ namespace InhabitantChess.BoardGame
         private List<GameObject> _toDestroy;
         private List<(int, int)> _legalMoves;
         private BoardController _board;
+        private BoardController.ChessPiece _currentPlayer;
         private SpaceController _selectedSpace;
-        private (GameObject g, (int up, int across) pos, PieceType type) _currentPlayer;
         private (int u, int a) _currCPUPos;
         private float _destroyTime;
         private int _antlerCount, _gamesWon, _totalGames;
@@ -94,7 +94,7 @@ namespace InhabitantChess.BoardGame
             if (_boardState == BoardState.WaitingForInput)
             {
                 _board.SetSpaces(_legalMoves, _movesHighlightEnabled, true);
-                _board.SetPieceHighlight(_currentPlayer.g, _pieceHighlightEnabled);
+                _board.SetPieceHighlight(_currentPlayer.gameObject, _pieceHighlightEnabled);
             }
             _board.UpdateBeam(_beamHighlightEnabled);
         }
@@ -141,7 +141,7 @@ namespace InhabitantChess.BoardGame
             // fixed bug - reusing this variable without clearing it causes waiting for input loop to be skipped
             // if the previous piece's selected space was also legal (adjacent pieces)
             _selectedSpace = null;
-            _legalMoves = _board.LegalMoves(_currentPlayer.pos, _currentPlayer.type);
+            _legalMoves = _board.LegalMoves(_currentPlayer.type, _currentPlayer.up, _currentPlayer.across);
             if (_legalMoves.Count == 0)
             {
                 _noLegalMoves = true;
@@ -151,7 +151,7 @@ namespace InhabitantChess.BoardGame
 
             // TODO: visualize legal moves that are possibly dangerous (walking into beam) when beam visual is turned off?
             _board.SetSpaces(_legalMoves, _movesHighlightEnabled, true);
-            _board.SetPieceHighlight(_currentPlayer.g, _pieceHighlightEnabled);
+            _board.SetPieceHighlight(_currentPlayer.gameObject, _pieceHighlightEnabled);
             // wait for input, then move
             while (_selectedSpace == null || !_legalMoves.Contains(_selectedSpace.Space))
             {
@@ -164,7 +164,7 @@ namespace InhabitantChess.BoardGame
             _boardState = BoardState.DoneMoving;
             // reset highlighting/visibility and finish
             _board.SetSpaces(_legalMoves, false, false);
-            _board.SetPieceHighlight(_currentPlayer.g, false);
+            _board.SetPieceHighlight(_currentPlayer.gameObject, false);
             // blocker piece should update beam on move
             if (_currentPlayer.type == PieceType.Blocker)
             {
@@ -176,14 +176,14 @@ namespace InhabitantChess.BoardGame
         private IEnumerator CPUTurn(int pIdx)
         {
             _currentPlayer = _board.Pieces[pIdx];
-            _legalMoves = _board.LegalMoves(_currentPlayer.pos, _currentPlayer.type);
+            _legalMoves = _board.LegalMoves(_currentPlayer.type, _currentPlayer.up, _currentPlayer.across);
             if (_legalMoves.Count == 0)
             {
                 _noLegalMoves = true;
                 _boardState = BoardState.Idle;
                 yield break;
             }
-            _board.SetPieceHighlight(_currentPlayer.g, _pieceHighlightEnabled);
+            _board.SetPieceHighlight(_currentPlayer.gameObject, _pieceHighlightEnabled);
             // add artificial wait
             _boardState = BoardState.WaitingForInput;
             yield return new WaitForSecondsRealtime(CPUTurnTime);
@@ -196,7 +196,7 @@ namespace InhabitantChess.BoardGame
             _boardState = BoardState.DoneMoving;
             _board.UpdateBeam(_beamHighlightEnabled);
             // reset
-            _board.SetPieceHighlight(_currentPlayer.g, false);
+            _board.SetPieceHighlight(_currentPlayer.gameObject, false);
             _boardState = BoardState.Idle;
         }
 
@@ -212,14 +212,14 @@ namespace InhabitantChess.BoardGame
 
         private bool IsGameOver()
         {
-            var cpuAdjPositions = _board.LegalMoves(_currCPUPos, PieceType.Eye, true);
+            var cpuAdjPositions = _board.LegalMoves(PieceType.Eye, _currCPUPos.u, _currCPUPos.a, true);
             bool antlerAtEye = false;
-            foreach (var pos in cpuAdjPositions)
+            foreach (var (up, across) in cpuAdjPositions)
             {
-                antlerAtEye |= _board.Pieces.Any(piece => piece.pos == pos && piece.type == PieceType.Antler);
+                antlerAtEye |= _board.Pieces.Any(piece => piece.up == up && piece.across == across && piece.type == PieceType.Antler);
             }
             // completely blocked including at least one antler
-            _reachedEye = _board.LegalMoves(_currCPUPos, PieceType.Eye).Count == 0 && antlerAtEye;
+            _reachedEye = _board.LegalMoves(PieceType.Eye, _currCPUPos.u, _currCPUPos.a).Count == 0 && antlerAtEye;
 
             return _reachedEye || _noLegalMoves || _antlerCount < 1;
         }
@@ -247,8 +247,8 @@ namespace InhabitantChess.BoardGame
                 // dec currTurn if removed piece would shift piece list index up 1
                 // so we don't skip the next one in Play() loop
                 if (r <= i) i--;
-                plyr.g.transform.DestroyAllChildren();
-                _toDestroy.Add(plyr.g);
+                plyr.gameObject.transform.DestroyAllChildren();
+                _toDestroy.Add(plyr.gameObject);
                 OnPieceRemoved?.Invoke(r);
                 //Debug.Log($"Removed {plyr.g.name}, i = {i}, list length {_board.Pieces.Count}");
             }

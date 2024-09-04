@@ -128,7 +128,7 @@ namespace InhabitantChess
         {
             _pieceSources = new OWAudioSource[_board.Pieces.Count];
             for (int i = 0; i < _board.Pieces.Count; i++)
-                _pieceSources[i] = _board.Pieces[i].g.AddComponent<OWAudioSource>();
+                _pieceSources[i] = _board.Pieces[i].gameObject.AddComponent<OWAudioSource>();
         }
 
         private void PlayCreaking(OWAudioSource source, AudioType audio, float volume, float duration)

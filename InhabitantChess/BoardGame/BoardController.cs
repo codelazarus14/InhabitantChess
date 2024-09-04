@@ -6,10 +6,18 @@ namespace InhabitantChess.BoardGame
 {
     public class BoardController : MonoBehaviour
     {
-        // TODO: turn piece into struct/type?
-        public List<(GameObject g, (int up, int across) pos, PieceType type)> Pieces { get; private set; }
+        public struct ChessPiece(GameObject g, PieceType p, int u = ChessPiece.BadPosValue, int a = ChessPiece.BadPosValue)
+        {
+            public const int BadPosValue = 99;
+            public GameObject gameObject = g;
+            public PieceType type = p;
+            public int up = u;
+            public int across = a;
+        }
+
+        public List<ChessPiece> Pieces { get; private set; }
         // this may change in future bc it depends on world, not local space
-        // TODO: matrix of SpaceControllers?
+        // TODO: matrix of SpaceControllers? or compute as array mapping of up-across
         public Dictionary<(int up, int across), GameObject> SpaceDict { get; private set; }
         public bool Moving { get; private set; }
 
@@ -34,7 +42,7 @@ namespace InhabitantChess.BoardGame
             ((6, 7), PieceType.Eye)
         };
 
-        private List<(int, int)> _beamSpaces;
+        private List<(int, int)> _beamSpaces; // TODO: list of spacecontrollers
         private Material[] _highlightMaterials;
         private GameObject _spacePrefab;
         private GameObject _blockerPrefab;
@@ -199,11 +207,11 @@ namespace InhabitantChess.BoardGame
         {
             // delete old game pieces/deadwood
             if (Pieces != null)
-                foreach (var p in Pieces) Destroy(p.g);
+                foreach (var p in Pieces) Destroy(p.gameObject);
             if (_deadwood != null)
                 foreach (var d in _deadwood) Destroy(d);
 
-            Pieces = new List<(GameObject g, (int up, int across) pos, PieceType type)>();
+            Pieces = new List<ChessPiece>();
 
             if (_pieceParent == null)
             {
@@ -250,9 +258,7 @@ namespace InhabitantChess.BoardGame
             // fix rotation from prefab
             ChildRotationFix(pieceObj, type);
 
-            // create placeholder pos
-            (int, int) tempPos = (99, 99);
-            (GameObject, (int, int), PieceType) pieceTemp = (pieceObj, tempPos, type);
+            ChessPiece pieceTemp = new ChessPiece(pieceObj, type);
             Pieces.Add(pieceTemp);
             // update w starting pos
             DoMove(Pieces.Count - 1, pos, true);
@@ -294,9 +300,9 @@ namespace InhabitantChess.BoardGame
             }
         }
 
-        public List<(int, int)> LegalMoves((int u, int a) pos, PieceType type, bool ignoreOccupied = false)
+        public List<(int, int)> LegalMoves(PieceType type, int up, int across, bool ignoreOccupied = false)
         {
-            return GetAdjacent(pos.u, pos.a, ignoreOccupied);
+            return GetAdjacent(up, across, ignoreOccupied);
         }
 
         // return list of adjacent positions to (up, across)
@@ -332,7 +338,7 @@ namespace InhabitantChess.BoardGame
                     bool foundOccupied = false;
                     for (int j = 0; j < Pieces.Count && !foundOccupied; j++)
                     {
-                        if (Pieces[j].pos == adj[i])
+                        if ((Pieces[j].up, Pieces[j].across) == adj[i])
                         {
                             adj.RemoveAt(i);
                             i--;
@@ -387,21 +393,21 @@ namespace InhabitantChess.BoardGame
         public void DoMove(int pIdx, (int up, int across) newPos, bool settingUp = false)
         {
             var piece = Pieces[pIdx];
-            Pieces[pIdx] = (piece.g, newPos, piece.type);
-            GameObject newSpc = SpaceDict[(newPos.up, newPos.across)];
+            Pieces[pIdx] = new ChessPiece(piece.gameObject, piece.type, newPos.up, newPos.across);
+            GameObject newSpc = SpaceDict[newPos];
             // move/rotate piece
             if (!settingUp)
             {
                 Moving = true;
-                _movingPiece = piece.g;
+                _movingPiece = piece.gameObject;
                 _movingPieceIdx = pIdx;
 
-                GameObject oldSpc = SpaceDict[(piece.pos.up, piece.pos.across)];
+                GameObject oldSpc = SpaceDict[(piece.up, piece.across)];
 
                 // set up values to lerp between in Update()
                 _startMovePos = oldSpc.transform.localPosition;
                 _destMovePos = newSpc.transform.localPosition;
-                _startLookRot = piece.g.transform.localRotation;
+                _startLookRot = piece.gameObject.transform.localRotation;
                 Vector3 lookPos = newSpc.transform.localPosition - oldSpc.transform.localPosition;
                 // remove y component - only rotating in X/Z plane
                 lookPos.y = 0.0f;
@@ -410,14 +416,14 @@ namespace InhabitantChess.BoardGame
             }
             else
             {
-                piece.g.transform.localPosition = newSpc.transform.localPosition;
+                piece.gameObject.transform.localPosition = newSpc.transform.localPosition;
                 if (IsBlack(newPos))
                 {
-                    piece.g.transform.localRotation = Quaternion.AngleAxis(-30, Vector3.up);
+                    piece.gameObject.transform.localRotation = Quaternion.AngleAxis(-30, Vector3.up);
                 }
                 else
                 {
-                    piece.g.transform.localRotation = Quaternion.AngleAxis(-90, Vector3.up);
+                    piece.gameObject.transform.localRotation = Quaternion.AngleAxis(-90, Vector3.up);
                 }
             }
         }
@@ -433,7 +439,7 @@ namespace InhabitantChess.BoardGame
             if (!clearBeam)
             {
                 // see who's been hit and remove
-                (int u, int a) eyePos = Pieces.Where(p => p.type == PieceType.Eye).FirstOrDefault().pos;
+                ChessPiece eye = Pieces.Where(p => p.type == PieceType.Eye).FirstOrDefault();
                 // list of flags to keep track of blocked beams
                 bool[] blocked = { false, false, false };
 
@@ -441,19 +447,19 @@ namespace InhabitantChess.BoardGame
                 {
                     var currDepthSpaces = new List<(int, int)>();
                     // check first row conditions
-                    int lowerOffset() => eyePos.u - i == 0 ? 1 : 0;
-                    int upperOffset() => eyePos.u + i == 1 ? 1 : 0;
+                    int upperOffset() => eye.up + i == 1 ? 1 : 0;
+                    int lowerOffset() => eye.up - i == 0 ? 1 : 0;
                     // add spaces to list along 3 lines stretching from triangle vertices
-                    if (IsBlack(eyePos))
+                    if (IsBlack((eye.up, eye.across)))
                     {
                         // below
-                        (int, int) below = (eyePos.u - i, eyePos.a - lowerOffset());
+                        (int, int) below = (eye.up - i, eye.across - lowerOffset());
                         blocked[0] = IsBlocked(below, blocked[0]);
                         if (!blocked[0]) currDepthSpaces.Add(below);
 
                         // upper R diagonal
-                        (int, int) upperR1 = (eyePos.u + i, eyePos.a + 3 * i - 1 + upperOffset());
-                        (int, int) upperR2 = (eyePos.u + i, eyePos.a + 3 * i + upperOffset());
+                        (int, int) upperR1 = (eye.up + i, eye.across + 3 * i - 1 + upperOffset());
+                        (int, int) upperR2 = (eye.up + i, eye.across + 3 * i + upperOffset());
                         blocked[1] = IsBlocked(upperR1, blocked[1]);
                         if (!blocked[1])
                         {
@@ -463,8 +469,8 @@ namespace InhabitantChess.BoardGame
                         }
 
                         // upper L diagonal
-                        (int, int) upperL1 = (eyePos.u + i, eyePos.a - 3 * i + 1 + upperOffset());
-                        (int, int) upperL2 = (eyePos.u + i, eyePos.a - 3 * i + upperOffset());
+                        (int, int) upperL1 = (eye.up + i, eye.across - 3 * i + 1 + upperOffset());
+                        (int, int) upperL2 = (eye.up + i, eye.across - 3 * i + upperOffset());
                         blocked[2] = IsBlocked(upperL1, blocked[2]);
                         if (!blocked[2])
                         {
@@ -476,13 +482,13 @@ namespace InhabitantChess.BoardGame
                     else
                     {
                         // above
-                        (int, int) above = (eyePos.u + i, eyePos.a + upperOffset());
+                        (int, int) above = (eye.up + i, eye.across + upperOffset());
                         blocked[0] = IsBlocked(above, blocked[0]);
                         if (!blocked[0]) currDepthSpaces.Add(above);
 
                         // lower R diagonal
-                        (int, int) lowerR1 = (eyePos.u - i, eyePos.a + 3 * i - 1 - lowerOffset());
-                        (int, int) lowerR2 = (eyePos.u - i, eyePos.a + 3 * i - lowerOffset());
+                        (int, int) lowerR1 = (eye.up - i, eye.across + 3 * i - 1 - lowerOffset());
+                        (int, int) lowerR2 = (eye.up - i, eye.across + 3 * i - lowerOffset());
                         blocked[1] = IsBlocked(lowerR1, blocked[1]);
                         if (!blocked[1])
                         {
@@ -492,8 +498,8 @@ namespace InhabitantChess.BoardGame
                         }
 
                         // lower L diagonal
-                        (int, int) lowerL1 = (eyePos.u - i, eyePos.a - 3 * i + 1 - lowerOffset());
-                        (int, int) lowerL2 = (eyePos.u - i, eyePos.a - 3 * i - lowerOffset());
+                        (int, int) lowerL1 = (eye.up - i, eye.across - 3 * i + 1 - lowerOffset());
+                        (int, int) lowerL2 = (eye.up - i, eye.across - 3 * i - lowerOffset());
                         blocked[2] = IsBlocked(lowerL1, blocked[2]);
                         if (!blocked[2])
                         {
@@ -521,7 +527,7 @@ namespace InhabitantChess.BoardGame
             {
                 foreach ((int, int) spc in _beamSpaces)
                 {
-                    if (Pieces[i].pos == spc && Pieces[i].type != PieceType.Blocker)
+                    if ((Pieces[i].up, Pieces[i].across) == spc && Pieces[i].type != PieceType.Blocker)
                     {
                         //Logger.Log($"Piece {Pieces[i].g.name} hit at {Pieces[i].pos}");
                         result.Add(i);
@@ -538,7 +544,7 @@ namespace InhabitantChess.BoardGame
             bool blocked = wasBlocked;
             foreach (var p in Pieces)
             {
-                if (p.pos == pos && p.type == PieceType.Blocker)
+                if (p.up == pos.u && p.across == pos.a && p.type == PieceType.Blocker)
                     blocked = true;
             }
 
