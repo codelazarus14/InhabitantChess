@@ -32,13 +32,13 @@ namespace InhabitantChess.BoardGame
         private static int s_Rows = 7;
 
         private static (PieceType type, (int up, int across))[] s_startingPieces =
-        {
+        [
             (PieceType.Blocker, (0, 0)),
             (PieceType.Blocker, (0, 12)),
             (PieceType.Antler,  (2, 2)),
             (PieceType.Antler,  (2, 8)),
             (PieceType.Eye,     (6, 1))
-        };
+        ];
 
         private List<(int, int)> _beamPositions;
         private Material[] _highlightMaterials;

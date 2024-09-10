@@ -108,7 +108,6 @@ namespace InhabitantChess
         [HarmonyPatch(typeof(DeathManager), nameof(DeathManager.BeginEscapedTimeLoopSequence))]
         public static bool DeathManager_BeginEscapedTimeLoopSequence_Prefix(TimeloopEscapeType escapeType)
         {
-            // TODO: patch TimeLoopCoreController to stop it from ending player's existence early? or just rely on it as a safe timeout
             if (escapeType == TimeloopEscapeType.Dreamworld)
             {
                 InhabitantChess.Instance.PrisonerSequence.CanTriggerSequence = true;

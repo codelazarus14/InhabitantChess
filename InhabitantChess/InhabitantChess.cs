@@ -197,6 +197,8 @@ namespace InhabitantChess
 
         private void OnCleanupGame()
         {
+            CurrentGame.ForceStandUp();
+
             Util.Logger.Log("Player unlocked shortcut!");
             if (!_saveData.unlockedShortcut) _saveData.unlockedShortcut = true;
             ModHelper.Storage.Save(_saveData, SaveFileName);

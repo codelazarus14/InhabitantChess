@@ -1,8 +1,6 @@
 ﻿using InhabitantChess.Util;
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace InhabitantChess
@@ -35,8 +33,74 @@ namespace InhabitantChess
         }
         private PrisonerState _state;
 
-        private Dictionary<string, GameObject> _props; // TODO: convert to struct
-        private List<(string name, Vector3 pos, Quaternion rot)> _ogTransforms, _movedTransforms;
+        private struct Prop
+        {
+            public GameObject gameObject;
+            public Pose ogPose;
+            public Pose movedPose;
+
+            public Prop(GameObject gO, Pose moved)
+            {
+                gameObject = gO;
+                ogPose = new Pose(gO.transform.localPosition, gO.transform.localRotation);
+                movedPose = moved;
+            }
+
+            public void Move()
+            {
+                gameObject.transform.localPosition = movedPose.position;
+                gameObject.transform.localRotation = movedPose.rotation;
+            }
+
+            public void Reset()
+            {
+                gameObject.transform.localPosition = ogPose.position;
+                gameObject.transform.localRotation = ogPose.rotation;
+            }
+        }
+
+        private struct PrisonerProps
+        {
+            public Prop crate;
+            public Prop emptyBoard;
+            public Prop playerChair;
+            public Prop prisonerChair;
+            public Prop torchSocket;
+
+            private static Pose[] s_movedPoses =
+            [
+                new Pose(new Vector3(4, 0.035f, 0), Quaternion.Euler(0, 180, 0)),
+                new Pose(new Vector3(4, 0.85f, 0.2f), Quaternion.Euler(0, 270, 0)),
+                new Pose(new Vector3(4, 0.035f, 1.75f), Quaternion.Euler(0, 180, 0)),
+                new Pose(new Vector3(-0.75f, 0, 3.9f), Quaternion.Euler(0, 261.3473f, 0)),
+                new Pose(new Vector3(-2.5f, 0.9f, 1.5f), Quaternion.Euler(350, 250, 0)),
+            ];
+
+            public PrisonerProps(GameObject gO)
+            {
+                GameObject crateObj = gO.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_Crate_Sealed (1)");
+                GameObject emptyBoardObj = gO.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_BoardGame");
+                GameObject playerChairObj = gO.FindChild("Props_PrisonCell/LowerCell/Prefab_IP_DW_Chair");
+                GameObject prisonerChairObj = gO.FindChild("Interactibles_PrisonCell/PrisonerSequence/Prefab_IP_DW_Chair");
+
+                GameObject torchObj = Instantiate(FindObjectOfType<VisionTorchSocket>().gameObject, playerChairObj.transform);
+                torchObj.transform.localPosition = new Vector3(-0.9f, 0.9f, 0);
+                torchObj.transform.localRotation = Quaternion.Euler(5, 20, 350);
+
+                crate = new Prop(crateObj, s_movedPoses[0]);
+                emptyBoard = new Prop(emptyBoardObj, s_movedPoses[1]);
+                playerChair = new Prop(playerChairObj, s_movedPoses[2]);
+                prisonerChair = new Prop(prisonerChairObj, s_movedPoses[3]);
+                torchSocket = new Prop(torchObj, s_movedPoses[4]);
+            }
+
+            public Prop[] GetProps()
+            {
+                return [crate, emptyBoard, playerChair, prisonerChair, torchSocket];
+            }
+        }
+
+        private PrisonerProps _props;
         private DreamLanternController _prisonerLantern, _lanternCopy;
         private OWLight _torchSpotlight;
         private Transform _elevatorPos, _seatPos, _cueMarker;
@@ -50,6 +114,8 @@ namespace InhabitantChess
             PrisonerDirector = FindObjectOfType<PrisonerDirector>();
             PrisonerDialogue = PrisonerDirector._characterDialogueTree;
 
+            _props = new PrisonerProps(gameObject);
+            SetTorchSocket(_props.torchSocket.gameObject.GetComponent<VisionTorchSocket>());
             // make a copy of the prisoner's lantern to be used as a lighting prop
             GameObject lantern = PrisonerDirector._prisonerController._lantern.gameObject;
             GameObject lanternClone = Instantiate(lantern);
@@ -62,35 +128,6 @@ namespace InhabitantChess
             _lanternCopy._light.transform.localPosition = new Vector3(0, 1, 0);
             _lanternCopy.SetLit(true);
             _lanternCopy.SetFocus(1);
-
-            _props = new Dictionary<string, GameObject>
-            {
-                { "crate", gameObject.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_Crate_Sealed (1)") },
-                { "emptyBoard", gameObject.FindChild("Props_PrisonCell/LowerCell/Props_IP_DW_BoardGame") },
-                { "playerChair", gameObject.FindChild("Props_PrisonCell/LowerCell/Prefab_IP_DW_Chair") },
-                { "prisonerChair", gameObject.FindChild("Interactibles_PrisonCell/PrisonerSequence/Prefab_IP_DW_Chair") }
-            };
-            GameObject torchSocket = Instantiate(FindObjectOfType<VisionTorchSocket>().gameObject, _props["playerChair"].transform);
-            torchSocket.transform.localPosition = new Vector3(-0.9f, 0.9f, 0);
-            torchSocket.transform.localRotation = Quaternion.Euler(5, 20, 350);
-            SetTorchSocket(torchSocket.GetComponent<VisionTorchSocket>());
-            _props.Add("torchSocket", torchSocket);
-
-            _ogTransforms = new();
-            _movedTransforms = new();
-            foreach (var p in _props)
-            {
-                GameObject prop = p.Value;
-                Transform pTrans = prop.transform;
-                Vector3 pos = new Vector3(pTrans.localPosition.x, pTrans.localPosition.y, pTrans.localPosition.z);
-                Quaternion rot = new Quaternion(pTrans.localRotation.x, pTrans.localRotation.y, pTrans.localRotation.z, pTrans.localRotation.w);
-                _ogTransforms.Add((p.Key, pos, rot));
-            }
-            _movedTransforms.Add((_props.ElementAt(0).Key, new Vector3(4, 0.035f, 0), Quaternion.Euler(0, 180, 0)));
-            _movedTransforms.Add((_props.ElementAt(1).Key, new Vector3(4, 0.85f, 0.2f), Quaternion.Euler(0, 270, 0)));
-            _movedTransforms.Add((_props.ElementAt(2).Key, new Vector3(4, 0.035f, 1.75f), Quaternion.Euler(0, 180, 0)));
-            _movedTransforms.Add((_props.ElementAt(3).Key, new Vector3(-0.75f, 0, 3.9f), Quaternion.Euler(0, 261.3473f, 0)));
-            _movedTransforms.Add((_props.ElementAt(4).Key, new Vector3(-2.5f, 0.9f, 1.5f), Quaternion.Euler(350, 250, 0)));
 
             _cueMarker = PrisonerDirector._torchReturnCueMarker;
             _seatPos = new GameObject().transform;
@@ -324,14 +361,11 @@ namespace InhabitantChess
 
         private void MoveProps()
         {
-            foreach (KeyValuePair<string, GameObject> p in _props)
-            {
-                var t = _movedTransforms.Where(t => t.name.Equals(p.Key)).FirstOrDefault();
-                p.Value.transform.localPosition = t.pos;
-                p.Value.transform.localRotation = t.rot;
-            }
+            foreach (Prop prop in _props.GetProps())
+                prop.Move();
+
             // make board invisible so we can use the collision
-            foreach (MeshRenderer mesh in _props["emptyBoard"].GetComponentsInChildren<MeshRenderer>())
+            foreach (MeshRenderer mesh in _props.emptyBoard.gameObject.GetComponentsInChildren<MeshRenderer>())
                 mesh.enabled = false;
             _prisonerLantern.gameObject.SetActive(false);
             _lanternCopy.gameObject.SetActive(true);
@@ -350,13 +384,10 @@ namespace InhabitantChess
 
         private void ResetProps()
         {
-            foreach (KeyValuePair<string, GameObject> p in _props)
-            {
-                var t = _ogTransforms.Where(t => t.name.Equals(p.Key)).FirstOrDefault();
-                p.Value.transform.localPosition = t.pos;
-                p.Value.transform.localRotation = t.rot;
-            }
-            foreach (MeshRenderer mesh in _props["emptyBoard"].GetComponentsInChildren<MeshRenderer>())
+            foreach (Prop prop in _props.GetProps())
+                prop.Reset();
+
+            foreach (MeshRenderer mesh in _props.emptyBoard.gameObject.GetComponentsInChildren<MeshRenderer>())
                 mesh.enabled = true;
             _prisonerLantern.gameObject.SetActive(true);
             _lanternCopy.gameObject.SetActive(false);
@@ -365,7 +396,7 @@ namespace InhabitantChess
 
         public void SetPlayerChairCollision(bool enabled)
         {
-            _props["playerChair"].GetComponent<MeshCollider>().enabled = enabled;
+            _props.playerChair.gameObject.GetComponent<MeshCollider>().enabled = enabled;
         }
         public void EnableConversation()
         {

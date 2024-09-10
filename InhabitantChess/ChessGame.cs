@@ -159,6 +159,12 @@ namespace InhabitantChess
             return _leanAmt;
         }
 
+        public void ForceStandUp()
+        {
+            if (PlayerState != ChessPlayerState.Seated) return;
+            CompleteStandingUp();
+        }
+
         private void CreateGameSeat()
         {
             GameObject gameSeat = Instantiate(InhabitantChess.CockpitClone, transform);
