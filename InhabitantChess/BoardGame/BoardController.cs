@@ -31,14 +31,13 @@ namespace InhabitantChess.BoardGame
         private static Vector3 s_startingPos = new Vector3(0.3350971f, 0, -0.58038f);
         private static int s_Rows = 7;
 
-        // TODO: get rid of unnecessary tuples
-        private static ((int, int) pos, PieceType type)[] s_startingPieces =
+        private static (PieceType type, (int up, int across))[] s_startingPieces =
         {
-            ((0, 0), PieceType.Blocker),
-            ((0, 12), PieceType.Blocker),
-            ((2, 2), PieceType.Antler),
-            ((2, 8), PieceType.Antler),
-            ((6, 1), PieceType.Eye)
+            (PieceType.Blocker, (0, 0)),
+            (PieceType.Blocker, (0, 12)),
+            (PieceType.Antler,  (2, 2)),
+            (PieceType.Antler,  (2, 8)),
+            (PieceType.Eye,     (6, 1))
         };
 
         private List<(int, int)> _beamPositions;
@@ -103,17 +102,17 @@ namespace InhabitantChess.BoardGame
 
         private void GenerateBoard()
         {
-            void CreateAndSetSpace(Vector3 localPos, (int up, int across) pos, ref List<(int, int)> posnsList)
+            void CreateAndSetSpace(Vector3 localPos, int up, int across, ref List<(int, int)> posnsList)
             {
                 SpaceController space = Instantiate(_spacePrefab, _spcParent).AddComponent<SpaceController>();
                 space.transform.localPosition = localPos;
-                space.transform.localRotation = IsBlack(pos) ? Quaternion.identity : Quaternion.AngleAxis(180, Vector3.up);
+                space.transform.localRotation = IsBlack(up, across) ? Quaternion.identity : Quaternion.AngleAxis(180, Vector3.up);
                 space.gameObject.SetActive(true);
-                space.SetPosition(pos.up, pos.across);
+                space.SetPosition(up, across);
                 space.SetMaterials(_highlightMaterials[0]);
 
-                Spaces[pos.up][pos.across] = space;
-                posnsList.Add(pos);
+                Spaces[up][across] = space;
+                posnsList.Add((up, across));
             }
 
             // skip if board already exists
@@ -148,7 +147,7 @@ namespace InhabitantChess.BoardGame
                         // add negative position offsets for white space to current pos
                         // edge spaces are always at lowest elevation
                         Vector3 wLeftEdgePos = worldPos + new Vector3(-s_wOffset.x, s_boardLevels[0], -s_wOffset.z);
-                        CreateAndSetSpace(wLeftEdgePos, (i, spaceCount++), ref spacePosns);
+                        CreateAndSetSpace(wLeftEdgePos, i, spaceCount++, ref spacePosns);
                     }
 
                     // default to lowest elevation/height above the board's surface
@@ -162,7 +161,7 @@ namespace InhabitantChess.BoardGame
 
                     Vector3 bSpacePos = worldPos + Vector3.up * elevation;
                     // add B space
-                    CreateAndSetSpace(bSpacePos, (i, spaceCount++), ref spacePosns);
+                    CreateAndSetSpace(bSpacePos, i, spaceCount++, ref spacePosns);
 
                     // add W space to right of every B space, except for first row's right corner
                     if (i > 0 || j < s_Rows - i - 1)
@@ -176,7 +175,7 @@ namespace InhabitantChess.BoardGame
 
                         // add white position offset and elevation
                         Vector3 wSpacePos = worldPos + new Vector3(-s_wOffset.x, elevation, s_wOffset.z);
-                        CreateAndSetSpace(wSpacePos, (i, spaceCount++), ref spacePosns);
+                        CreateAndSetSpace(wSpacePos, i, spaceCount++, ref spacePosns);
                     }
                 }
             }
@@ -210,8 +209,8 @@ namespace InhabitantChess.BoardGame
                 _deadwoodParent.localRotation = Quaternion.identity;
             }
 
-            foreach (var (pos, type) in s_startingPieces)
-                CreateAndPlacePiece(_pieceParent, pos, type);
+            foreach (var (type, pos) in s_startingPieces)
+                CreateAndPlacePiece(_pieceParent, type, pos);
 
             _deadwood = new GameObject[Pieces.Count];
             _deadwoodIdx = 0;
@@ -231,7 +230,7 @@ namespace InhabitantChess.BoardGame
             };
         }
 
-        private void CreateAndPlacePiece(Transform parent, (int up, int across) pos, PieceType type)
+        private void CreateAndPlacePiece(Transform parent, PieceType type, (int up, int across) pos)
         {
             void ChildRotationFix(GameObject g, PieceType type)
             {
@@ -299,7 +298,7 @@ namespace InhabitantChess.BoardGame
 
             // B has upper face, W has lower face
             (int u, int a) upOrDown;
-            if (IsBlack((up, across)))
+            if (IsBlack(up, across))
             {
                 if (up == 0) upOrDown = (up + 1, across);
                 else upOrDown = (up + 1, across - 1);
@@ -330,12 +329,17 @@ namespace InhabitantChess.BoardGame
         }
 
         // determine B/W based on coords
-        private bool IsBlack((int up, int across) pos)
+        private bool IsBlack(int up, int across)
         {
-            bool isOdd = pos.across % 2 == 1;
-            bool firstRow = pos.up == 0;
+            bool isOdd = across % 2 == 1;
+            bool firstRow = up == 0;
             // black is only even on first row
             return (firstRow && !isOdd) || (!firstRow && isOdd);
+        }
+
+        private bool IsBlack((int up, int across) pos)
+        {
+            return IsBlack(pos.up, pos.across);
         }
 
         // check if coord pos is in bounds
@@ -404,10 +408,9 @@ namespace InhabitantChess.BoardGame
 
         public void UpdateBeam(bool visible, bool clearBeam = false)
         {
-            void IsBlocked((int u, int a) pos, ref bool blocked)
+            void UpdateBlockedFlag((int u, int a) pos, ref bool blocked)
             {
-                // basically just check any pieces past blocker so that
-                // everything behind it is shielded
+                // update flag if potential beam position matches that of a blocker
                 foreach (var p in Pieces)
                 {
                     if (p.up == pos.u && p.across == pos.a && p.type == PieceType.Blocker)
@@ -427,7 +430,7 @@ namespace InhabitantChess.BoardGame
                 ChessPiece eye = Pieces.Where(p => p.type == PieceType.Eye).FirstOrDefault();
                 // list of flags to keep track of blocked beams
                 bool[] blocked = [false, false, false];
-                bool isBlack = IsBlack((eye.up, eye.across));
+                bool isBlack = IsBlack(eye.up, eye.across);
 
                 for (int i = 1; i < s_Rows; i++)
                 {
@@ -441,28 +444,28 @@ namespace InhabitantChess.BoardGame
                     {
                         // below
                         (int, int) below = (eye.up - i, eye.across + i + lowerOffset());
-                        IsBlocked(below, ref blocked[0]);
+                        UpdateBlockedFlag(below, ref blocked[0]);
                         if (!blocked[0]) currDepthSpaces.Add(below);
 
                         // upper R diagonal
                         (int, int) upperR1 = (eye.up + i, eye.across + 2 * i - 1 + upperOffset());
                         (int, int) upperR2 = (eye.up + i, eye.across + 2 * i + upperOffset());
-                        IsBlocked(upperR1, ref blocked[1]);
+                        UpdateBlockedFlag(upperR1, ref blocked[1]);
                         if (!blocked[1])
                         {
                             currDepthSpaces.Add(upperR1);
-                            IsBlocked(upperR2, ref blocked[1]);
+                            UpdateBlockedFlag(upperR2, ref blocked[1]);
                             if (!blocked[1]) currDepthSpaces.Add(upperR2);
                         }
 
                         // upper L diagonal
                         (int, int) upperL1 = (eye.up + i, eye.across - 4 * i + 1 + upperOffset());
                         (int, int) upperL2 = (eye.up + i, eye.across - 4 * i + upperOffset());
-                        IsBlocked(upperL1, ref blocked[2]);
+                        UpdateBlockedFlag(upperL1, ref blocked[2]);
                         if (!blocked[2])
                         {
                             currDepthSpaces.Add(upperL1);
-                            IsBlocked(upperL2, ref blocked[2]);
+                            UpdateBlockedFlag(upperL2, ref blocked[2]);
                             if (!blocked[2]) currDepthSpaces.Add(upperL2);
                         }
                     }
@@ -470,28 +473,28 @@ namespace InhabitantChess.BoardGame
                     {
                         // above
                         (int, int) above = (eye.up + i, eye.across - i + upperOffset());
-                        IsBlocked(above, ref blocked[0]);
+                        UpdateBlockedFlag(above, ref blocked[0]);
                         if (!blocked[0]) currDepthSpaces.Add(above);
 
                         // lower R diagonal
                         (int, int) lowerR1 = (eye.up - i, eye.across + 4 * i - 1 + lowerOffset());
                         (int, int) lowerR2 = (eye.up - i, eye.across + 4 * i + lowerOffset());
-                        IsBlocked(lowerR1, ref blocked[1]);
+                        UpdateBlockedFlag(lowerR1, ref blocked[1]);
                         if (!blocked[1])
                         {
                             currDepthSpaces.Add(lowerR1);
-                            IsBlocked(lowerR2, ref blocked[1]);
+                            UpdateBlockedFlag(lowerR2, ref blocked[1]);
                             if (!blocked[1]) currDepthSpaces.Add(lowerR2);
                         }
 
                         // lower L diagonal
                         (int, int) lowerL1 = (eye.up - i, eye.across - 2 * i + 1 + lowerOffset());
                         (int, int) lowerL2 = (eye.up - i, eye.across - 2 * i + lowerOffset());
-                        IsBlocked(lowerL1, ref blocked[2]);
+                        UpdateBlockedFlag(lowerL1, ref blocked[2]);
                         if (!blocked[2])
                         {
                             currDepthSpaces.Add(lowerL1);
-                            IsBlocked(lowerL2, ref blocked[2]);
+                            UpdateBlockedFlag(lowerL2, ref blocked[2]);
                             if (!blocked[2]) currDepthSpaces.Add(lowerL2);
                         }
                     }
