@@ -153,13 +153,13 @@ namespace InhabitantChess.BoardGame
             _board.SetSpaces(_legalMoves, _movesHighlightEnabled, true);
             _board.SetPieceHighlight(_currentPlayer.gameObject, _pieceHighlightEnabled);
             // wait for input, then move
-            while (_selectedSpace == null || !_legalMoves.Contains(_selectedSpace.Space))
+            while (_selectedSpace == null || !_legalMoves.Contains(_selectedSpace.Position))
             {
                 _boardState = BoardState.WaitingForInput;
                 yield return new WaitUntil(() => _boardState == BoardState.InputReceived);
             }
             // we're ready to move
-            _board.DoMove(pIdx, _selectedSpace.Space);
+            _board.DoMove(pIdx, _selectedSpace.Position);
             yield return new WaitUntil(() => !_board.Moving);
             _boardState = BoardState.DoneMoving;
             // reset highlighting/visibility and finish
@@ -188,10 +188,10 @@ namespace InhabitantChess.BoardGame
             _boardState = BoardState.WaitingForInput;
             yield return new WaitForSecondsRealtime(CPUTurnTime);
             _boardState = BoardState.InputReceived;
-            (int, int) randPos = ChooseCPUMove(_legalMoves);
-            _selectedSpace = _board.SpaceDict[randPos].GetComponent<SpaceController>();
+            (int randU, int randA) = ChooseCPUMove(_legalMoves);
+            _selectedSpace = _board.Spaces[randU][randA];
             // move to space
-            _board.DoMove(pIdx, _selectedSpace.Space);
+            _board.DoMove(pIdx, _selectedSpace.Position);
             yield return new WaitUntil(() => !_board.Moving);
             _boardState = BoardState.DoneMoving;
             _board.UpdateBeam(_beamHighlightEnabled);

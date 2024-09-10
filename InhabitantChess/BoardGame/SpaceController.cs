@@ -5,7 +5,7 @@ namespace InhabitantChess.BoardGame
     public class SpaceController : MonoBehaviour
     {
         public bool InBeam { get; private set; }
-        public (int up, int across) Space { get; private set; }
+        public (int up, int across) Position { get; private set; }
 
         private const float BeamEmissionMin = 0.2f, BeamEmissionMax = 0.8f;
         private const float BeamEmissionTimeScale = 1f;
@@ -50,9 +50,9 @@ namespace InhabitantChess.BoardGame
             InBeam = inBeam;
         }
 
-        public void SetSpace(int up, int across)
+        public void SetPosition(int up, int across)
         {
-            Space = (up, across);
+            Position = (up, across);
         }
     }
 }
