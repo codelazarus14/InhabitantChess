@@ -86,7 +86,6 @@ namespace InhabitantChess
 
         private void EngageWarp(OWItem item)
         {
-            // this is really only for avoiding a conflict w DWAssist rn, remove later?
             if (UsedShortcut) return;
             Lantern.onPickedUp -= EngageWarp;
 

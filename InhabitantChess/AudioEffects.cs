@@ -8,8 +8,8 @@ namespace InhabitantChess
 {
     public class AudioEffects : MonoBehaviour
     {
-        public delegate void FurnitureAudioEvent(bool isSetup);
-        public FurnitureAudioEvent OnFurnitureAudioFinished;
+        public delegate void FurnitureAudioEvent();
+        public FurnitureAudioEvent OnFurnitureCleanupFinished;
 
         private static AudioType[] s_furnitureNoises =
         [
@@ -101,7 +101,7 @@ namespace InhabitantChess
             PrisonerSequence.OnPrisonerCurious += PlayPrisonerCurious;
             PrisonerSequence.OnSetupGame += OnSetupGame;
             PrisonerSequence.OnCleanupGame += OnCleanupGame;
-            OnFurnitureAudioFinished += PrisonerSequence.OnFurnitureAudioFinished;
+            OnFurnitureCleanupFinished += PrisonerSequence.OnFurnitureCleanupFinished;
         }
 
         private void OnDestroy()
@@ -195,7 +195,8 @@ namespace InhabitantChess
                 }
                 PlayOneShot(_audioSources.lanternAudio, AudioType.Artifact_Unconceal);
             }
-            OnFurnitureAudioFinished?.Invoke(isSetup);
+            if (!isSetup)
+                OnFurnitureCleanupFinished?.Invoke();
         }
 
         private void PlayPrisonerCurious()

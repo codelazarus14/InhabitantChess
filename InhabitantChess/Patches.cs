@@ -92,13 +92,28 @@ namespace InhabitantChess
         [HarmonyPatch(typeof(ItemTool), nameof(ItemTool.UpdateState))]
         public static void ItemTool_UpdateState_Postfix(ItemTool __instance, ItemTool.PromptState newState, string itemName)
         {
-            if (Locator.GetPlayerSectorDetector().IsWithinSector(Sector.Name.TimberHearth))
+            SectorDetector sectorDetector = Locator.GetPlayerSectorDetector();
+            ToolModeSwapper toolModeSwapper = Locator.GetToolModeSwapper();
+            // shortcut text on lantern at camp
+            Shortcut shortcut = InhabitantChess.Instance.Shortcut;
+            if (shortcut != null && sectorDetector.IsWithinSector(Sector.Name.TimberHearth))
             {
-                Shortcut shortcut = InhabitantChess.Instance.Shortcut;
-                if (shortcut != null && !shortcut.UsedShortcut && itemName.Equals(shortcut.Lantern.GetDisplayName()))
+                if (!shortcut.UsedShortcut && itemName.Equals(shortcut.Lantern.GetDisplayName()))
                 {
                     __instance._interactButtonPrompt.SetText(UITextLibrary.GetString(UITextType.TakePrompt) + " " +
                                                                 Translations.GetTranslation("IC_SHORTCUT"));
+                }
+            }
+
+            // place torch text in prisoner sequence
+            PrisonerSequence sequence = InhabitantChess.Instance.PrisonerSequence;
+            if (sequence != null && sectorDetector.IsWithinSector(Sector.Name.DreamWorld))
+            {
+                OWItemSocket focusedSocket = toolModeSwapper._firstPersonManipulator.GetFocusedItemSocket();
+                OWItem heldItem = toolModeSwapper.GetItemCarryTool()._heldItem;
+                if (sequence.TorchSocket == focusedSocket && heldItem != null && sequence.TorchSocket.AcceptsItem(heldItem))
+                {
+                    __instance._interactButtonPrompt.SetText(Translations.GetTranslation("IC_PLACEITEM") + " " + itemName);
                 }
             }
         }

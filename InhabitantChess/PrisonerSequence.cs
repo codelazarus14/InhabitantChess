@@ -101,6 +101,7 @@ namespace InhabitantChess
         }
 
         private PrisonerProps _props;
+        private ChessGame _chessGame;
         private DreamLanternController _prisonerLantern, _lanternCopy;
         private OWLight _torchSpotlight;
         private Transform _elevatorPos, _seatPos, _cueMarker;
@@ -113,6 +114,10 @@ namespace InhabitantChess
         {
             PrisonerDirector = FindObjectOfType<PrisonerDirector>();
             PrisonerDialogue = PrisonerDirector._characterDialogueTree;
+
+            Pose prisonerChessPose = new Pose { position = new Vector3(4, -35.105f, 0.2f), rotation = Quaternion.Euler(0, 270, 0) };
+            _chessGame = InhabitantChess.Instance.InstantiateChessGame(transform, prisonerChessPose);
+            _chessGame.gameObject.SetActive(false);
 
             _props = new PrisonerProps(gameObject);
             SetTorchSocket(_props.torchSocket.gameObject.GetComponent<VisionTorchSocket>());
@@ -151,7 +156,6 @@ namespace InhabitantChess
 
         private void SetTorchSocket(VisionTorchSocket socket)
         {
-            // TODO: Patch "Give" prompt into a "Place" in FirstPersonManipulator? seems hardcoded to be give/take
             TorchSocket = socket;
             TorchSocket.OnSocketablePlaced = (OWItemSocket.SocketEvent)Delegate.Combine(TorchSocket.OnSocketablePlaced, new OWItemSocket.SocketEvent(OnPlayerPlaceTorch));
             TorchSocket.EnableInteraction(false);
@@ -303,6 +307,7 @@ namespace InhabitantChess
             PrisonerDialogue._interactVolume._screenPrompt.SetText(_talkToText);
             EnableConversation();
             SetPlayerChairCollision(false);
+            _chessGame.gameObject.SetActive(true);
             OnSetupGame?.Invoke();
         }
 
@@ -398,6 +403,7 @@ namespace InhabitantChess
         {
             _props.playerChair.gameObject.GetComponent<MeshCollider>().enabled = enabled;
         }
+
         public void EnableConversation()
         {
             PrisonerDialogue._interactVolume.EnableInteraction();
@@ -408,10 +414,10 @@ namespace InhabitantChess
             PrisonerDialogue._interactVolume.DisableInteraction();
         }
 
-        public void OnFurnitureAudioFinished(bool isGameActive)
+        public void OnFurnitureCleanupFinished()
         {
-            // delayed after event fired from SetUp/CleanUpGame
-            InhabitantChess.Instance.PrisonerSequenceGame.gameObject.SetActive(isGameActive);
+            // delayed after event fired from CleanUpGame
+            _chessGame.gameObject.SetActive(false);
         }
 
         private void OnDestroy()

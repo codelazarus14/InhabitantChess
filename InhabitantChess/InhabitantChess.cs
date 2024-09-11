@@ -36,7 +36,6 @@ namespace InhabitantChess
         public Material[] HighlightMaterials { get; private set; }
         public GameObject CockpitClone { get; private set; }
         public ChessGame CurrentGame { get; private set; }
-        public ChessGame PrisonerSequenceGame { get; private set; }
         public PrisonerSequence PrisonerSequence { get; private set; }
         public Shortcut Shortcut { get; private set; }
         public ICommonCameraAPI CameraAPI { get; private set; }
@@ -104,7 +103,7 @@ namespace InhabitantChess
                 Util.Logger.LogSuccess("Finished setup");
 
                 if (!instancing)
-                    CreatePrisonerChessGame();
+                    InitPrisonerSequence();
             };
         }
 
@@ -128,6 +127,18 @@ namespace InhabitantChess
                                 config.GetSettingsValue<bool>("Piece Highlighting"),
                                 config.GetSettingsValue<bool>("Beam Highlighting"));
             OnConfigure?.Invoke();
+        }
+
+        public ChessGame InstantiateChessGame(Transform parent, Pose pose)
+        {
+            ChessGame chess = Instantiate(Prefabs.chess, parent).AddComponent<ChessGame>();
+            chess.gameObject.SetActive(true);
+            chess.transform.localPosition = pose.position;
+            chess.transform.localRotation = pose.rotation;
+            chess.OnSitDown += OnSitDown;
+            chess.OnStoodUp += OnStoodUp;
+            _chessGames.Add(chess);
+            return chess;
         }
 
         private void CacheExistingData()
@@ -157,24 +168,9 @@ namespace InhabitantChess
             Util.Logger.Log("Finished caching objects");
         }
 
-        private ChessGame InstantiateChessGame(Transform parent, Pose pose)
-        {
-            ChessGame chess = Instantiate(Prefabs.chess, parent).AddComponent<ChessGame>();
-            chess.gameObject.SetActive(true);
-            chess.transform.localPosition = pose.position;
-            chess.transform.localRotation = pose.rotation;
-            chess.OnSitDown += OnSitDown;
-            chess.OnStoodUp += OnStoodUp;
-            _chessGames.Add(chess);
-            return chess;
-        }
-
-        private void CreatePrisonerChessGame()
+        private void InitPrisonerSequence()
         {
             GameObject prisonCell = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_Underground/Sector_PrisonCell");
-
-            Pose prisonerChessPose = new Pose { position = new Vector3(4, -35.105f, 0.2f), rotation = Quaternion.Euler(0, 270, 0) };
-            PrisonerSequenceGame = InstantiateChessGame(prisonCell.transform, prisonerChessPose);
 
             PrisonerSequence = prisonCell.AddComponent<PrisonerSequence>();
             PrisonerSequence.SetText(_prisonerDialogue);
@@ -197,7 +193,10 @@ namespace InhabitantChess
 
         private void OnCleanupGame()
         {
+            if (CurrentGame != null)
             CurrentGame.ForceStandUp();
+            // override behavior of OnStoodUp()
+            PrisonerSequence.DisableConversation();
 
             Util.Logger.Log("Player unlocked shortcut!");
             if (!_saveData.unlockedShortcut) _saveData.unlockedShortcut = true;

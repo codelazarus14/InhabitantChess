@@ -1,7 +1,8 @@
 {
     "IC_INTERACT": "Interact",
     "IC_NOINTERACT": "Can't interact: holding lantern!",
-    "IC_SCORE" : "Score:",
+    "IC_PLACEITEM": "Place",
+    "IC_SCORE": "Score:",
     "IC_BOARDMOVE": "Select Move",
     "IC_OVERHEAD": "Toggle Overhead",
     "IC_LEAN": "Lean Forward/Back",
