@@ -78,7 +78,7 @@ namespace InhabitantChess.BoardGame
                 if (Physics.Raycast(manipTrans.position, manipTrans.forward, out RaycastHit hit, 75f, OWLayerMask.blockableInteractMask))
                 {
                     _focusedSpace = hit.collider.gameObject.GetComponent<SpaceController>();
-                    if (_focusedSpace != null && isInteract)
+                    if (_focusedSpace != null && _legalMoves.Contains(_focusedSpace.Position) && isInteract)
                     {
                         // allow PlayerTurn to proceed
                         _boardState = BoardState.InputReceived;
