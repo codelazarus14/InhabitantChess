@@ -87,7 +87,8 @@ namespace InhabitantChess
 
             LoadManager.OnCompleteSceneLoad += (scene, loadScene) =>
             {
-                if (loadScene == OWScene.SolarSystem && !_hasCachedData)
+                bool inSolarSystem = loadScene == OWScene.SolarSystem;
+                if (inSolarSystem && !_hasCachedData)
                     CacheExistingData();
                 else if (!_hasCachedData)
                 {
@@ -96,13 +97,13 @@ namespace InhabitantChess
                 }
 
                 _chessGames = [];
-                gameObject.AddComponent<ScreenPromptController>();
+                gameObject.GetAddComponent<ScreenPromptController>();
 
                 TextTranslation.Get().OnLanguageChanged += Translations.OnLanguageChanged;
 
                 Util.Logger.LogSuccess("Finished setup");
 
-                if (!instancing)
+                if (!instancing && inSolarSystem)
                     InitPrisonerSequence();
             };
         }
