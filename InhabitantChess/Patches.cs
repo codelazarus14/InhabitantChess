@@ -100,8 +100,7 @@ namespace InhabitantChess
             {
                 if (!shortcut.UsedShortcut && itemName.Equals(shortcut.Lantern.GetDisplayName()))
                 {
-                    __instance._interactButtonPrompt.SetText(UITextLibrary.GetString(UITextType.TakePrompt) + " " +
-                                                                Translations.GetTranslation("IC_SHORTCUT"));
+                    __instance._interactButtonPrompt.SetText(Translations.GetTranslation("IC_SHORTCUT"));
                 }
             }
 
