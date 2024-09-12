@@ -159,6 +159,16 @@ namespace InhabitantChess
             return _leanAmt;
         }
 
+        public (BoardController.ChessPiece, (int, int))? GetPlayerFocusedSpace()
+        {
+            BoardController.ChessPiece? currentPlayer = _bgController.GetCurrentPlayer();
+            SpaceController focusedSpace = _bgController.GetPlayerFocusedSpace();
+
+            if (currentPlayer != null && focusedSpace != null)
+                return (currentPlayer.Value, focusedSpace.Position);
+            return null;
+        }
+
         public void ForceStandUp()
         {
             if (PlayerState != ChessPlayerState.Seated) return;

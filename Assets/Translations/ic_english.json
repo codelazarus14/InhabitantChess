@@ -4,6 +4,7 @@
     "IC_PLACEITEM": "Place",
     "IC_SCORE": "Score:",
     "IC_BOARDMOVE": "Select Move",
+    "IC_PIECEMOVE": "Move To",
     "IC_OVERHEAD": "Toggle Overhead",
     "IC_LEAN": "Lean Forward/Back",
     "IC_SILENCE": "...",

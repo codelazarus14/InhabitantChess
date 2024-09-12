@@ -9,11 +9,8 @@ using System.Reflection;
 using UnityEngine;
 
 // TODO: eyes of the past branch
-// - game instancing system: move some of the per-game logic (instantiation, player state, audio, update loops) to separate class
-//   to support creating separate game instances and npc encounters in the world
 // - same w prisoner sequence - make some generic class for wrapping dialogue/scripted sequences around setting up and clearing away the game
-// - remove shortcut?
-// - interacting with the board - prompt user to interact w spaces (screenprompt, highlight glows brighter)
+// - interacting with the board - prompt user to interact w spaces (highlight glows brighter)
 // - display rules (ask the inhabitant diff options thru dialogue, optional "can i review the rules")
 // - difficulty options (per game/instance), parameter for decision making, dialogue option
 
@@ -144,7 +141,6 @@ namespace InhabitantChess
 
         private void CacheExistingData()
         {
-            // TODO: see if we can replace this with Resources.loading stuff, creating objects on the fly
             GameObject sampleBoardGame = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_1/Simulation_DreamZone_1/Props_DreamZone_1/Props_GenericHouse_B (1)/Effects_IP_SIM_BoardGame");
             MeshRenderer sampleMesh = sampleBoardGame.GetComponent<MeshRenderer>();
             HighlightMaterials = [sampleMesh.sharedMaterials[0], sampleMesh.sharedMaterials[1]];

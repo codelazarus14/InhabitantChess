@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using InhabitantChess.BoardGame;
 using InhabitantChess.Util;
 using UnityEngine;
 
@@ -95,24 +96,40 @@ namespace InhabitantChess
             SectorDetector sectorDetector = Locator.GetPlayerSectorDetector();
             ToolModeSwapper toolModeSwapper = Locator.GetToolModeSwapper();
             // shortcut text on lantern at camp
-            Shortcut shortcut = InhabitantChess.Instance.Shortcut;
-            if (shortcut != null && sectorDetector.IsWithinSector(Sector.Name.TimberHearth))
+            if (sectorDetector.IsWithinSector(Sector.Name.TimberHearth))
             {
-                if (!shortcut.UsedShortcut && itemName.Equals(shortcut.Lantern.GetDisplayName()))
+                Shortcut shortcut = InhabitantChess.Instance.Shortcut;
+                if (shortcut != null && !shortcut.UsedShortcut && itemName.Equals(shortcut.Lantern.GetDisplayName()))
                 {
                     __instance._interactButtonPrompt.SetText(Translations.GetTranslation("IC_SHORTCUT"));
                 }
             }
 
-            // place torch text in prisoner sequence
-            PrisonerSequence sequence = InhabitantChess.Instance.PrisonerSequence;
-            if (sequence != null && sectorDetector.IsWithinSector(Sector.Name.DreamWorld))
+            if (sectorDetector.IsWithinSector(Sector.Name.DreamWorld))
             {
-                OWItemSocket focusedSocket = toolModeSwapper._firstPersonManipulator.GetFocusedItemSocket();
-                OWItem heldItem = toolModeSwapper.GetItemCarryTool()._heldItem;
-                if (sequence.TorchSocket == focusedSocket && heldItem != null && sequence.TorchSocket.AcceptsItem(heldItem))
+                // place torch text in prisoner sequence
+                PrisonerSequence sequence = InhabitantChess.Instance.PrisonerSequence;
+                if (sequence != null)
                 {
-                    __instance._interactButtonPrompt.SetText(Translations.GetTranslation("IC_PLACEITEM") + " " + itemName);
+                    OWItemSocket focusedSocket = toolModeSwapper._firstPersonManipulator.GetFocusedItemSocket();
+                    OWItem heldItem = toolModeSwapper.GetItemCarryTool()._heldItem;
+                    if (sequence.TorchSocket == focusedSocket && heldItem != null && sequence.TorchSocket.AcceptsItem(heldItem))
+                    {
+                        __instance._interactButtonPrompt.SetText(Translations.GetTranslation("IC_PLACEITEM") + " " + itemName);
+                    }
+                }
+
+                // show interact prompt for board game moves
+                ChessGame currentGame = InhabitantChess.Instance.CurrentGame;
+                if (currentGame != null)
+                {
+                    (BoardController.ChessPiece, (int u, int a) pos)? focusInfo = currentGame.GetPlayerFocusedSpace();
+                    if (focusInfo.HasValue)
+                    {
+                        string spacePos = $"{focusInfo.Value.pos.u}, {focusInfo.Value.pos.a}";
+                        __instance._interactButtonPrompt.SetText(Translations.GetTranslation("IC_PIECEMOVE") + " " + spacePos);
+                    }
+                    __instance._interactButtonPrompt.SetVisibility(focusInfo.HasValue);
                 }
             }
         }

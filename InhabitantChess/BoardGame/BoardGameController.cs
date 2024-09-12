@@ -17,15 +17,14 @@ namespace InhabitantChess.BoardGame
         public BoardGameAudioEvent OnStopGame;
 
         private const float CPUTurnTime = 1.0f, DestroyDelay = 2.0f;
-        private static (int, int) s_BadPos = (99, 99);
 
         private List<GameObject> _toDestroy;
         private List<(int, int)> _legalMoves;
         private BoardController _board;
         private BoardController.ChessPiece _currentPlayer;
-        private SpaceController _selectedSpace;
-        private (int u, int a) _currCPUPos;
+        private SpaceController _focusedSpace;
         private float _destroyTime;
+        private int _cpuIndex;
         private int _antlerCount, _gamesWon, _totalGames;
         private bool _reachedEye, _noLegalMoves, _movesHighlightEnabled, _pieceHighlightEnabled, _beamHighlightEnabled;
 
@@ -67,23 +66,22 @@ namespace InhabitantChess.BoardGame
             }
 
             // check for user input - should probably add a prompt to show space under cursor
-            if (_boardState == BoardState.WaitingForInput && OWInput.IsNewlyPressed(InputLibrary.interact, InputMode.All))
+            if (_boardState == BoardState.WaitingForInput)
             {
-                CastRay();
+                CastRay(OWInput.IsNewlyPressed(InputLibrary.interact, InputMode.All));
             }
 
-            void CastRay()
+            void CastRay(bool isInteract)
             {
+                _focusedSpace = null;
                 Transform manipTrans = PlayerManip.transform;
-                RaycastHit hit;
-                if (Physics.Raycast(manipTrans.position, manipTrans.forward, out hit, 75f, OWLayerMask.blockableInteractMask))
+                if (Physics.Raycast(manipTrans.position, manipTrans.forward, out RaycastHit hit, 75f, OWLayerMask.blockableInteractMask))
                 {
-                    SpaceController hitSpc = hit.collider.gameObject.GetComponent<SpaceController>();
-                    if (hitSpc != null)
+                    _focusedSpace = hit.collider.gameObject.GetComponent<SpaceController>();
+                    if (_focusedSpace != null && isInteract)
                     {
                         // allow PlayerTurn to proceed
                         _boardState = BoardState.InputReceived;
-                        _selectedSpace = hitSpc;
                     }
                 }
             }
@@ -138,10 +136,7 @@ namespace InhabitantChess.BoardGame
         private IEnumerator PlayerTurn(int pIdx)
         {
             _currentPlayer = _board.Pieces[pIdx];
-            // fixed bug - reusing this variable without clearing it causes waiting for input loop to be skipped
-            // if the previous piece's selected space was also legal (adjacent pieces)
-            _selectedSpace = null;
-            _legalMoves = _board.LegalMoves(_currentPlayer.type, _currentPlayer.up, _currentPlayer.across);
+            _legalMoves = _board.LegalMoves(_currentPlayer);
             if (_legalMoves.Count == 0)
             {
                 _noLegalMoves = true;
@@ -153,13 +148,10 @@ namespace InhabitantChess.BoardGame
             _board.SetSpaces(_legalMoves, _movesHighlightEnabled, true);
             _board.SetPieceHighlight(_currentPlayer.gameObject, _pieceHighlightEnabled);
             // wait for input, then move
-            while (_selectedSpace == null || !_legalMoves.Contains(_selectedSpace.Position))
-            {
                 _boardState = BoardState.WaitingForInput;
                 yield return new WaitUntil(() => _boardState == BoardState.InputReceived);
-            }
-            // we're ready to move
-            _board.DoMove(pIdx, _selectedSpace.Position);
+            // move and wait for animation to finish
+            _board.DoMove(pIdx, _focusedSpace.Position);
             yield return new WaitUntil(() => !_board.Moving);
             _boardState = BoardState.DoneMoving;
             // reset highlighting/visibility and finish
@@ -176,7 +168,7 @@ namespace InhabitantChess.BoardGame
         private IEnumerator CPUTurn(int pIdx)
         {
             _currentPlayer = _board.Pieces[pIdx];
-            _legalMoves = _board.LegalMoves(_currentPlayer.type, _currentPlayer.up, _currentPlayer.across);
+            _legalMoves = _board.LegalMoves(_currentPlayer);
             if (_legalMoves.Count == 0)
             {
                 _noLegalMoves = true;
@@ -189,9 +181,9 @@ namespace InhabitantChess.BoardGame
             yield return new WaitForSecondsRealtime(CPUTurnTime);
             _boardState = BoardState.InputReceived;
             (int randU, int randA) = ChooseCPUMove(_legalMoves);
-            _selectedSpace = _board.Spaces[randU][randA];
+            SpaceController targetSpace = _board.Spaces[randU][randA];
             // move to space
-            _board.DoMove(pIdx, _selectedSpace.Position);
+            _board.DoMove(pIdx, targetSpace.Position);
             yield return new WaitUntil(() => !_board.Moving);
             _boardState = BoardState.DoneMoving;
             _board.UpdateBeam(_beamHighlightEnabled);
@@ -202,24 +194,25 @@ namespace InhabitantChess.BoardGame
 
         private (int, int) ChooseCPUMove(List<(int, int)> legalMoves)
         {
+            BoardController.ChessPiece cpuPiece = _board.Pieces[_cpuIndex];
+            (int, int) newPos;
             // randomly choose a space
-            (int, int) newPos = legalMoves[Random.Range(0, legalMoves.Count)];
-            // roll twice if we get a repeated position
-            if (_currCPUPos == newPos) newPos = legalMoves[Random.Range(0, legalMoves.Count)];
-            _currCPUPos = newPos;
+            do
+                newPos = legalMoves[Random.Range(0, legalMoves.Count)];
+            while ((cpuPiece.up, cpuPiece.across) == newPos);
             return newPos;
         }
 
         private bool IsGameOver()
         {
-            var cpuAdjPositions = _board.LegalMoves(PieceType.Eye, _currCPUPos.u, _currCPUPos.a, true);
+            var cpuAdjPositions = _board.LegalMoves(_board.Pieces[_cpuIndex], true);
             bool antlerAtEye = false;
-            foreach (var (up, across) in cpuAdjPositions)
+            foreach ((int, int) adjPos in cpuAdjPositions)
             {
-                antlerAtEye |= _board.Pieces.Any(piece => piece.up == up && piece.across == across && piece.type == PieceType.Antler);
+                antlerAtEye |= _board.Pieces.Any(piece => (piece.up, piece.across) == adjPos && piece.type == PieceType.Antler);
             }
             // completely blocked including at least one antler
-            _reachedEye = _board.LegalMoves(PieceType.Eye, _currCPUPos.u, _currCPUPos.a).Count == 0 && antlerAtEye;
+            _reachedEye = _board.LegalMoves(_board.Pieces[_cpuIndex]).Count == 0 && antlerAtEye;
 
             return _reachedEye || _noLegalMoves || _antlerCount < 1;
         }
@@ -232,6 +225,17 @@ namespace InhabitantChess.BoardGame
         public (int, int) GetScore()
         {
             return (_gamesWon, _totalGames - _gamesWon);
+        }
+
+        public BoardController.ChessPiece? GetCurrentPlayer()
+        {
+            return _currentPlayer.up != BoardController.ChessPiece.BadPosValue ? _currentPlayer : null;
+        }
+
+        public SpaceController GetPlayerFocusedSpace()
+        {
+            bool isFocusedLegal = _focusedSpace != null && _board.LegalMoves(_currentPlayer).Contains(_focusedSpace.Position);
+            return _boardState == BoardState.WaitingForInput && isFocusedLegal ? _focusedSpace : null;
         }
 
         private int RemovePieces(List<int> Pieces, int currTurn)
@@ -247,6 +251,8 @@ namespace InhabitantChess.BoardGame
                 // dec currTurn if removed piece would shift piece list index up 1
                 // so we don't skip the next one in Play() loop
                 if (r <= i) i--;
+                // same for cpu index
+                if (r <= _cpuIndex) _cpuIndex--;
                 plyr.gameObject.transform.DestroyAllChildren();
                 _toDestroy.Add(plyr.gameObject);
                 OnPieceRemoved?.Invoke(r);
@@ -264,7 +270,7 @@ namespace InhabitantChess.BoardGame
             _board.ResetBoard();
             _antlerCount = _board.Pieces.Where(piece => piece.type == PieceType.Antler).Count();
             _noLegalMoves = _reachedEye = false;
-            _currCPUPos = s_BadPos;
+            _cpuIndex = _board.Pieces.FindIndex(piece => piece.type == PieceType.Eye);
             Playing = true;
             StartCoroutine(Play());
         }

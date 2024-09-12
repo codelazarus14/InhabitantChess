@@ -280,9 +280,9 @@ namespace InhabitantChess.BoardGame
             }
         }
 
-        public List<(int, int)> LegalMoves(PieceType type, int up, int across, bool ignoreOccupied = false)
+        public List<(int, int)> LegalMoves(ChessPiece piece, bool ignoreOccupied = false)
         {
-            return GetAdjacent(up, across, ignoreOccupied);
+            return GetAdjacent(piece.up, piece.across, ignoreOccupied);
         }
 
         // return list of adjacent positions to (up, across)
