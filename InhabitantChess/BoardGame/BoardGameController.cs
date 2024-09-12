@@ -12,9 +12,9 @@ namespace InhabitantChess.BoardGame
 
         public delegate void PieceAudioEvent(int idx);
         public PieceAudioEvent OnPieceRemoved;
-        public delegate void BoardGameAudioEvent();
-        public BoardGameAudioEvent OnStartGame;
-        public BoardGameAudioEvent OnStopGame;
+        public delegate void BoardGameEvent();
+        public BoardGameEvent OnStartGame;
+        public BoardGameEvent OnStopGame;
 
         private const float CPUTurnTime = 1.0f, DestroyDelay = 2.0f;
 
@@ -127,10 +127,10 @@ namespace InhabitantChess.BoardGame
                 //Logger.Log($"Turn {++turnCount} complete");
             }
 
-            OnStopGame?.Invoke();
             _totalGames++;
             if (PlayerWon()) _gamesWon++;
             Util.Logger.Log($"Game finished, win ratio {GetScore().Item1} - {GetScore().Item2}");
+            OnStopGame?.Invoke();
         }
 
         private IEnumerator PlayerTurn(int pIdx)
@@ -148,8 +148,8 @@ namespace InhabitantChess.BoardGame
             _board.SetSpaces(_legalMoves, _movesHighlightEnabled, true);
             _board.SetPieceHighlight(_currentPlayer.gameObject, _pieceHighlightEnabled);
             // wait for input, then move
-                _boardState = BoardState.WaitingForInput;
-                yield return new WaitUntil(() => _boardState == BoardState.InputReceived);
+            _boardState = BoardState.WaitingForInput;
+            yield return new WaitUntil(() => _boardState == BoardState.InputReceived);
             // move and wait for animation to finish
             _board.DoMove(pIdx, _focusedSpace.Position);
             yield return new WaitUntil(() => !_board.Moving);

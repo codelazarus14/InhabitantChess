@@ -52,6 +52,8 @@ namespace InhabitantChess
             CreateGameSeat();
             CreateOverheadCamera();
 
+            _bgController.OnStartGame += OnStartGame;
+            _bgController.OnStopGame += OnStopGame;
             _seatInteract.OnPressInteract += OnPressInteract;
             _seatInteract.OnPressInteract += _bgController.OnPressInteract;
         }
@@ -81,12 +83,6 @@ namespace InhabitantChess
                     _leanAmt += v * LeanSpeed * Time.deltaTime;
                     _leanAmt = Mathf.Clamp(_leanAmt, 0.0f, MaxLeanAmount);
                     UpdateLeanSFX();
-                }
-                if (!_bgController.Playing)
-                {
-                    // TODO: confirm this actually does anything
-                    _seatInteract.ChangePrompt((UITextType)Translations.GetUITextType("IC_PLAYAGAIN"));
-                    RefreshScorePrompt();
                 }
             }
             if (PlayerState != ChessPlayerState.EnteringOverhead)
@@ -256,13 +252,24 @@ namespace InhabitantChess
         {
             _attachPoint.AttachPlayer();
             _seatInteract.DisableInteraction();
-            RefreshScorePrompt();
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Score, true);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, true);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Overhead, true);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, true);
             PlayerState = ChessPlayerState.Seated;
             OnSitDown?.Invoke(this);
+        }
+
+        private void OnStartGame()
+        {
+            RefreshScorePrompt();
+            _seatInteract.ChangePrompt((UITextType)Translations.GetUITextType("IC_INTERACT"));
+        }
+
+        private void OnStopGame()
+        {
+            RefreshScorePrompt();
+            _seatInteract.ChangePrompt((UITextType)Translations.GetUITextType("IC_PLAYAGAIN"));
         }
     }
 }
