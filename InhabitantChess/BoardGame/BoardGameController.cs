@@ -144,7 +144,7 @@ namespace InhabitantChess.BoardGame
                 yield break;
             }
 
-            // TODO: visualize legal moves that are possibly dangerous (walking into beam) when beam visual is turned off?
+            // TODO: visualize legal moves that are possibly dangerous (walking into beam)?
             _board.SetSpaces(_legalMoves, _movesHighlightEnabled, true);
             _board.SetPieceHighlight(_currentPlayer.gameObject, _pieceHighlightEnabled);
             // wait for input, then move

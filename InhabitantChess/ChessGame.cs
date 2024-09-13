@@ -43,6 +43,8 @@ namespace InhabitantChess
 
         private void Start()
         {
+            enabled = false;
+
             InhabitantChess.ICPrefabs prefabs = InhabitantChess.Prefabs;
             _bController = transform.Find("BoardGame_Board").gameObject.AddComponent<BoardController>();
             _bController.Init(prefabs.space, prefabs.blocker, prefabs.antler, prefabs.eye, InhabitantChess.HighlightMaterials);
@@ -66,9 +68,7 @@ namespace InhabitantChess
 
         private void Update()
         {
-            // TODO: toggle with enabled on interact/stand up instead?
-            if (_seatInteract == null || PlayerState == ChessPlayerState.None) return;
-
+            // leaning, exiting chair while seated
             if (PlayerState == ChessPlayerState.Seated)
             {
                 if (OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All))
@@ -85,6 +85,8 @@ namespace InhabitantChess
                     UpdateLeanSFX();
                 }
             }
+
+            // transition in/out of overhead, or update transition in progress
             if (PlayerState != ChessPlayerState.EnteringOverhead)
             {
                 if (PlayerState == ChessPlayerState.Seated && OWInput.IsNewlyPressed(InputLibrary.landingCamera, InputMode.All))
@@ -237,6 +239,7 @@ namespace InhabitantChess
 
         private void CompleteStandingUp()
         {
+            enabled = false;
             _attachPoint.DetachPlayer();
             _seatInteract.ResetInteraction();
             _seatInteract.EnableInteraction();
@@ -250,6 +253,7 @@ namespace InhabitantChess
 
         private void OnPressInteract()
         {
+            enabled = true;
             _attachPoint.AttachPlayer();
             _seatInteract.DisableInteraction();
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Score, true);
