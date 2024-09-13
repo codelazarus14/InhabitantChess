@@ -30,13 +30,17 @@ namespace InhabitantChess
 
         private static AudioType[] s_ambiences =
         [
-            AudioType.TH_Observatory,
-            AudioType.SecretLibrary, // forbidden archives
-            AudioType.Reel_3_Backdrop_A,
+            AudioType.GD_UnderwaterExploration,
             AudioType.Reel_3_Backdrop_C,
             AudioType.Reel_3_Beat_B,
+            AudioType.Reel_4_Beat_A,
             AudioType.Reel_LibraryPath_Backdrop,
-            AudioType.Reel_Secret_Beat_Tower_B
+            AudioType.Reel_Rule_Backdrop_Normal,
+            AudioType.Reel_Secret_Backdrop_A,
+            AudioType.Reel_Secret_Beat_Tower_A,
+            AudioType.Reel_Secret_Beat_Tower_B,
+            AudioType.SecretLibrary, // forbidden archives
+            AudioType.TH_Observatory
         ];
         private AudioType _currentAmbience;
 
@@ -238,7 +242,6 @@ namespace InhabitantChess
         {
             enabled = true;
             _ambienceInterval = 90f;
-            _fadeDuration = _ambienceInterval / 5;
             _initAmbienceTime = Time.time + _ambienceInterval;
         }
 
@@ -251,8 +254,8 @@ namespace InhabitantChess
             s_ambiences[rIdx] = s_ambiences[s_ambiences.Length - 1];
             s_ambiences[s_ambiences.Length - 1] = _currentAmbience;
 
-            _fadeDuration = Mathf.Min(20f, musicSource.clip.length / 4);
             musicSource.AssignAudioLibraryClip(_currentAmbience);
+            _fadeDuration = Mathf.Min(20f, musicSource.clip.length / 4);
             musicSource.FadeIn(_fadeDuration, true, targetVolume: AmbienceVolume);
             // prepare for the next clip
             _ambienceInterval = 5 * _fadeDuration + 5 * Random.Range(0, _fadeDuration);
@@ -265,6 +268,8 @@ namespace InhabitantChess
 
         private void PlayGameOver()
         {
+            // TODO: bug/unreliable playback sometimes, also sometimes the dialogue sounds after cut out?
+            // are we not resetting something audio related
             AudioType gameOverSound = _gameController.PlayerWon() ? AudioType.SecretKorok : AudioType.Ghost_Laugh;
             PlayOneShot(_audioSources.playerAudio, gameOverSound);
         }
