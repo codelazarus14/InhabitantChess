@@ -362,7 +362,7 @@ namespace InhabitantChess.BoardGame
                 spc.SetVisible(isVisible);
                 spc.SetInteractive(isInteractive);
                 if (inBeam != null)
-                    spc.SetBeam((bool)inBeam);
+                    spc.SetInBeam((bool)inBeam);
             }
         }
 

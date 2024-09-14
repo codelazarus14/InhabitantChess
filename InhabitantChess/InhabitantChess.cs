@@ -141,6 +141,7 @@ namespace InhabitantChess
 
         private void CacheExistingData()
         {
+            // TODO: move this to spacecontroller as static
             GameObject sampleBoardGame = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_1/Simulation_DreamZone_1/Props_DreamZone_1/Props_GenericHouse_B (1)/Effects_IP_SIM_BoardGame");
             MeshRenderer sampleMesh = sampleBoardGame.GetComponent<MeshRenderer>();
             HighlightMaterials = [sampleMesh.sharedMaterials[0], sampleMesh.sharedMaterials[1]];
