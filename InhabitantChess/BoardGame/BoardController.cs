@@ -351,18 +351,18 @@ namespace InhabitantChess.BoardGame
         }
 
         // set properties across multiple spaces (clickable, visible, is in beam)
-        public void SetSpaces(IEnumerable<(int up, int across)> posns, bool isVisible, bool isInteractive, bool? inBeam = null)
+        public void SetSpaces(IEnumerable<(int up, int across)> posns, bool isVisible, bool isInteractive, bool? isHighlightedMove = null, bool? inBeam = null)
         {
             foreach (var pos in posns)
             {
                 SpaceController spc = Spaces[pos.up][pos.across];
-                // don't toggle beam spaces if we're not updating the beam!
-                if (spc.InBeam && inBeam == null) continue;
 
                 spc.SetVisible(isVisible);
                 spc.SetInteractive(isInteractive);
-                if (inBeam != null)
-                    spc.SetInBeam((bool)inBeam);
+                if (inBeam.HasValue)
+                    spc.SetInBeam(inBeam.Value);
+                if (isHighlightedMove.HasValue)
+                    spc.SetHighlightedMove(isHighlightedMove.Value);
             }
         }
 
@@ -422,7 +422,7 @@ namespace InhabitantChess.BoardGame
 
             // reset (turn off) old spaces
             if (_beamPositions != null)
-                SetSpaces(_beamPositions, false, false, false);
+                SetSpaces(_beamPositions, false, false, false, false);
 
             // trace beam outward from eye piece
             if (!clearBeam)
@@ -506,7 +506,7 @@ namespace InhabitantChess.BoardGame
 
             // show new ones
             _beamPositions = newBeamPosns;
-            SetSpaces(_beamPositions, visible, true, true);
+            SetSpaces(_beamPositions, visible, true, false, true);
         }
 
         public List<int> CheckBeam()

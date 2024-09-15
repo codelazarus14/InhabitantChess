@@ -7,8 +7,15 @@ namespace InhabitantChess.BoardGame
     {
         public (int up, int across) Position { get; private set; }
 
-        private const float BeamEmissionMin = 0.2f, BeamEmissionMax = 0.8f;
+        private const int VertColorID = 621;
+        private const int VertexGradientColorID = 623;
+        // control range of opacity/glow of beam highlight
+        private const float BeamEmissionMin = 0.2f, BeamEmissionMax = 0.6f;
         private const float BeamEmissionTimeScale = 1f;
+
+        private static Color s_beamDefault = new Color(0.0786f, 4.5948f, 3.4089f);
+        private static Color s_beamHighlighted = new Color(3.0786f, 4.5948f, 0.4089f);
+        // TODO: add color variant for blocker (yellow - caution, green - good/blockable?)
 
         [Flags]
         private enum SpaceState
@@ -21,6 +28,7 @@ namespace InhabitantChess.BoardGame
         private SpaceState _state;
 
         private Material _defaultMaterial, _beamMaterial;
+        private MaterialPropertyBlock _beamMPB;
         private MeshRenderer _meshRenderer;
         private Collider[] _colliders;
 
@@ -30,12 +38,12 @@ namespace InhabitantChess.BoardGame
         {
             if (!InBeam) return;
 
-            // TODO: add new color for beam when it is also a legal move
             // sin wave
             float opacity = (Mathf.Sin(Time.time * BeamEmissionTimeScale) + 1f) / 2;
             // scale sin to specific min/max range
             opacity = (BeamEmissionMax - BeamEmissionMin) * opacity + BeamEmissionMin;
-            _beamMaterial.SetFloat("_VertColor", opacity);
+            _beamMPB.SetFloat(VertColorID, opacity);
+            _meshRenderer.SetPropertyBlock(_beamMPB);
         }
 
         public void SetMaterials(Material beamMat)
@@ -44,6 +52,8 @@ namespace InhabitantChess.BoardGame
                 _meshRenderer = GetComponent<MeshRenderer>();
             _defaultMaterial = _meshRenderer.sharedMaterial;
             _beamMaterial = beamMat;
+            _beamMPB = new MaterialPropertyBlock();
+        }
 
         public void SetPosition(int up, int across)
         {
@@ -73,7 +83,9 @@ namespace InhabitantChess.BoardGame
 
         public void SetHighlightedMove(bool highlightedMove)
         {
-            _beamMaterial.SetColor(VertexGradientColorID, highlightedMove ? _beamHighlightedMove : _beamDefault);
+            // SetVector works properly when setting a color, unlike SetColor
+            // (restricts color space? something to do with being a float4 behind the scenes?)
+            _beamMPB.SetVector(VertexGradientColorID, highlightedMove ? s_beamHighlighted : s_beamDefault);
             SetStateFlag(highlightedMove, SpaceState.HighlightedMove);
         }
 
