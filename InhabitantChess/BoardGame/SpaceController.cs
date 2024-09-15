@@ -5,6 +5,27 @@ namespace InhabitantChess.BoardGame
 {
     public class SpaceController : MonoBehaviour
     {
+        public struct SpaceInfo
+        {
+            public bool isVisible;
+            public bool isInteractive;
+            // nullable fields are optional for use with BoardController.SetSpaces
+            public bool? isHighlightedMove;
+            public bool? isBlockerMove;
+            public bool? inBeam;
+
+            public SpaceInfo(bool isVis, bool isInt, bool? isHi = null, bool? isBlo = null, bool? inBe = null)
+            {
+                isVisible = isVis;
+                isInteractive = isInt;
+                isHighlightedMove = isHi;
+                isBlockerMove = isBlo;
+                inBeam = inBe;
+            }
+        }
+
+        public static SpaceInfo ClearedSpace = new SpaceInfo(false, false, false, false, false);
+
         public (int up, int across) Position { get; private set; }
 
         private const int VertColorID = 621;
@@ -14,8 +35,8 @@ namespace InhabitantChess.BoardGame
         private const float BeamEmissionTimeScale = 1f;
 
         private static Color s_beamDefault = new Color(0.0786f, 4.5948f, 3.4089f);
-        private static Color s_beamHighlighted = new Color(3.0786f, 4.5948f, 0.4089f);
-        // TODO: add color variant for blocker (yellow - caution, green - good/blockable?)
+        private static Color s_beamCaution = new Color(3.0786f, 4.5948f, 0.4089f);
+        private static Color s_beamBlockable = new Color(0.0786f, 4.5948f, 0.4089f);
 
         [Flags]
         private enum SpaceState
@@ -23,7 +44,8 @@ namespace InhabitantChess.BoardGame
             Visible = 1,
             Interactive = 2,
             HighlightedMove = 4,
-            InBeam = 8
+            BlockerMove = 8,
+            InBeam = 16
         }
         private SpaceState _state;
 
@@ -31,6 +53,7 @@ namespace InhabitantChess.BoardGame
         private MaterialPropertyBlock _beamMPB;
         private MeshRenderer _meshRenderer;
         private Collider[] _colliders;
+        private Color _beamHighlight;
 
         public bool InBeam => _state.HasFlag(SpaceState.InBeam);
 
@@ -81,12 +104,20 @@ namespace InhabitantChess.BoardGame
             SetStateFlag(inBeam, SpaceState.InBeam);
         }
 
-        public void SetHighlightedMove(bool highlightedMove)
+        public void SetHighlightedMove(bool highlightedMove, bool? isBlockerMove = null)
         {
+            if (isBlockerMove.HasValue)
+                SetHighlightedMoveColor(isBlockerMove.Value);
             // SetVector works properly when setting a color, unlike SetColor
             // (restricts color space? something to do with being a float4 behind the scenes?)
-            _beamMPB.SetVector(VertexGradientColorID, highlightedMove ? s_beamHighlighted : s_beamDefault);
+            _beamMPB.SetVector(VertexGradientColorID, highlightedMove ? _beamHighlight : s_beamDefault);
             SetStateFlag(highlightedMove, SpaceState.HighlightedMove);
+        }
+
+        private void SetHighlightedMoveColor(bool isBlockerMove)
+        {
+            _beamHighlight = isBlockerMove ? s_beamBlockable : s_beamCaution;
+            SetStateFlag(isBlockerMove, SpaceState.BlockerMove);
         }
 
         private void SetStateFlag(bool value, SpaceState flag)

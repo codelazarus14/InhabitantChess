@@ -91,7 +91,7 @@ namespace InhabitantChess.BoardGame
         {
             if (_boardState == BoardState.WaitingForInput)
             {
-                _board.SetSpaces(_legalMoves, _movesHighlightEnabled, true, true);
+                _board.SetSpaces(_legalMoves, new SpaceController.SpaceInfo(_movesHighlightEnabled, true, true));
                 _board.SetPieceHighlight(_currentPlayer.gameObject, _pieceHighlightEnabled);
             }
             _board.UpdateBeam(_beamHighlightEnabled);
@@ -144,7 +144,8 @@ namespace InhabitantChess.BoardGame
                 yield break;
             }
 
-            _board.SetSpaces(_legalMoves, _movesHighlightEnabled, true, true);
+            bool isBlocker = _currentPlayer.type == PieceType.Blocker;
+            _board.SetSpaces(_legalMoves, new SpaceController.SpaceInfo(_movesHighlightEnabled, true, true, isBlocker));
             _board.SetPieceHighlight(_currentPlayer.gameObject, _pieceHighlightEnabled);
             // wait for input, then move
             _boardState = BoardState.WaitingForInput;
@@ -154,7 +155,7 @@ namespace InhabitantChess.BoardGame
             yield return new WaitUntil(() => !_board.Moving);
             _boardState = BoardState.DoneMoving;
             // reset highlighting/visibility and finish
-            _board.SetSpaces(_legalMoves, false, false, false);
+            _board.SetSpaces(_legalMoves, new SpaceController.SpaceInfo(false, false, false, false));
             _board.SetPieceHighlight(_currentPlayer.gameObject, false);
             _board.UpdateBeam(_beamHighlightEnabled);
             _boardState = BoardState.Idle;

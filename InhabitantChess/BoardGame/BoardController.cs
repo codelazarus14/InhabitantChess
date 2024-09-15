@@ -180,7 +180,7 @@ namespace InhabitantChess.BoardGame
                 }
             }
             // finish init, default to inactive
-            SetSpaces(spacePosns, false, false);
+            SetSpaces(spacePosns, SpaceController.ClearedSpace);
         }
 
         private void SetupPieces()
@@ -351,18 +351,18 @@ namespace InhabitantChess.BoardGame
         }
 
         // set properties across multiple spaces (clickable, visible, is in beam)
-        public void SetSpaces(IEnumerable<(int up, int across)> posns, bool isVisible, bool isInteractive, bool? isHighlightedMove = null, bool? inBeam = null)
+        public void SetSpaces(IEnumerable<(int up, int across)> posns, SpaceController.SpaceInfo info)
         {
             foreach (var pos in posns)
             {
                 SpaceController spc = Spaces[pos.up][pos.across];
 
-                spc.SetVisible(isVisible);
-                spc.SetInteractive(isInteractive);
-                if (inBeam.HasValue)
-                    spc.SetInBeam(inBeam.Value);
-                if (isHighlightedMove.HasValue)
-                    spc.SetHighlightedMove(isHighlightedMove.Value);
+                spc.SetVisible(info.isVisible);
+                spc.SetInteractive(info.isInteractive);
+                if (info.inBeam.HasValue)
+                    spc.SetInBeam(info.inBeam.Value);
+                if (info.isHighlightedMove.HasValue)
+                    spc.SetHighlightedMove(info.isHighlightedMove.Value, info.isBlockerMove);
             }
         }
 
@@ -422,7 +422,7 @@ namespace InhabitantChess.BoardGame
 
             // reset (turn off) old spaces
             if (_beamPositions != null)
-                SetSpaces(_beamPositions, false, false, false, false);
+                SetSpaces(_beamPositions, SpaceController.ClearedSpace);
 
             // trace beam outward from eye piece
             if (!clearBeam)
@@ -506,7 +506,7 @@ namespace InhabitantChess.BoardGame
 
             // show new ones
             _beamPositions = newBeamPosns;
-            SetSpaces(_beamPositions, visible, true, false, true);
+            SetSpaces(_beamPositions, new SpaceController.SpaceInfo(visible, true, false, false, true));
         }
 
         public List<int> CheckBeam()
