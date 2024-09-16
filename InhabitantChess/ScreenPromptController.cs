@@ -16,7 +16,8 @@ namespace InhabitantChess
             Score,
             BoardMove,
             Overhead,
-            Lean
+            Lean,
+            SpawnChessGame
         }
 
         private void Awake()
@@ -31,18 +32,17 @@ namespace InhabitantChess
                 _prompts = new Dictionary<PromptType, ScreenPrompt>
                 {
                     { PromptType.Score, new ScreenPrompt(Translations.GetTranslation("IC_SCORE")) },
-                    { PromptType.BoardMove, MakeScreenPrompt(InputLibrary.interact, Translations.GetTranslation("IC_BOARDMOVE") + "<CMD>") },
-                    { PromptType.Overhead, MakeScreenPrompt(InputLibrary.landingCamera, Translations.GetTranslation("IC_OVERHEAD") + "<CMD>") },
-                    { PromptType.Lean, MakeScreenPrompt(InputLibrary.moveXZ, Translations.GetTranslation("IC_LEAN") + "<CMD>") }
+                    { PromptType.BoardMove, MakeScreenPrompt(InputLibrary.interact, Translations.GetTranslation("IC_BOARDMOVE")) },
+                    { PromptType.Overhead, MakeScreenPrompt(InputLibrary.landingCamera, Translations.GetTranslation("IC_OVERHEAD")) },
+                    { PromptType.Lean, MakeScreenPrompt(InputLibrary.moveXZ, Translations.GetTranslation("IC_LEAN")) },
+                    { PromptType.SpawnChessGame, MakeScreenPrompt(InputLibrary.enter, Translations.GetTranslation("IC_SPAWNGAME")) }
                 };
                 _activePrompts = new();
             }
 
             PromptManager pm = Locator.GetPromptManager();
-            pm.AddScreenPrompt(_prompts[PromptType.Score], PromptPosition.UpperRight);
-            pm.AddScreenPrompt(_prompts[PromptType.BoardMove], PromptPosition.UpperRight);
-            pm.AddScreenPrompt(_prompts[PromptType.Overhead], PromptPosition.UpperRight);
-            pm.AddScreenPrompt(_prompts[PromptType.Lean], PromptPosition.UpperRight);
+            foreach ((_, var screenPrompt) in _prompts)
+                pm.AddScreenPrompt(screenPrompt, PromptPosition.UpperRight);
         }
 
         private void Update()
@@ -74,7 +74,7 @@ namespace InhabitantChess
 
         private ScreenPrompt MakeScreenPrompt(IInputCommands cmd, string prompt)
         {
-            return new ScreenPrompt(cmd, prompt, 0, ScreenPrompt.DisplayState.Normal, false);
+            return new ScreenPrompt(cmd, prompt + "<CMD>", 0, ScreenPrompt.DisplayState.Normal, false);
         }
     }
 }

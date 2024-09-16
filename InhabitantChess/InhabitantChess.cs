@@ -38,6 +38,7 @@ namespace InhabitantChess
         public ICommonCameraAPI CameraAPI { get; private set; }
         public (bool moves, bool pieces, bool beam) HighlightSettings { get; private set; }
         public bool ShortcutEnabled { get; private set; }
+        public bool Debugging { get; private set; }
 
         public delegate void ConfigureEvent();
         public ConfigureEvent OnConfigure;
@@ -95,6 +96,7 @@ namespace InhabitantChess
 
                 _chessGames = [];
                 gameObject.GetAddComponent<ScreenPromptController>();
+                gameObject.GetAddComponent<ICDebug>();
 
                 TextTranslation.Get().OnLanguageChanged += Translations.OnLanguageChanged;
 
@@ -120,6 +122,7 @@ namespace InhabitantChess
             _saveData ??= ModHelper.Storage.Load<ICData>(SaveFileName) ?? new();
             //Logger.Log($"Shortcut unlocked? {_saveData.unlockedShortcut}");
 
+            Debugging = config.GetSettingsValue<bool>("Debug");
             ShortcutEnabled = /*_saveData.unlockedShortcut &&*/ config.GetSettingsValue<bool>("Enable Shortcut");
             HighlightSettings = new(config.GetSettingsValue<bool>("Moves Highlighting"),
                                 config.GetSettingsValue<bool>("Piece Highlighting"),
@@ -141,7 +144,6 @@ namespace InhabitantChess
 
         private void CacheExistingData()
         {
-            // TODO: move this to spacecontroller as static
             GameObject sampleBoardGame = GameObject.Find("DreamWorld_Body/Sector_DreamWorld/Sector_DreamZone_1/Simulation_DreamZone_1/Props_DreamZone_1/Props_GenericHouse_B (1)/Effects_IP_SIM_BoardGame");
             MeshRenderer sampleMesh = sampleBoardGame.GetComponent<MeshRenderer>();
             HighlightMaterials = [sampleMesh.sharedMaterials[0], sampleMesh.sharedMaterials[1]];

@@ -247,6 +247,7 @@ namespace InhabitantChess
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, false);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Overhead, false);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, false);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.SpawnChessGame, InhabitantChess.Debugging);
             PlayerState = ChessPlayerState.None;
             OnStoodUp?.Invoke(this);
         }
@@ -260,6 +261,7 @@ namespace InhabitantChess
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, true);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Overhead, true);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, true);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.SpawnChessGame, false);
             PlayerState = ChessPlayerState.Seated;
             OnSitDown?.Invoke(this);
         }

@@ -12,5 +12,6 @@
     "IC_JK": "Uhh... nevermind.",
     "IC_DONE": "I think I'm done playing.",
     "IC_SHORTCUT": "Take A Shortcut",
-    "IC_PLAYAGAIN": "Play Again"
+    "IC_PLAYAGAIN": "Play Again",
+    "IC_SPAWNGAME": "Spawn Chess Game"
 }
