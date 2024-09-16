@@ -173,6 +173,19 @@ namespace InhabitantChess
             CompleteStandingUp();
         }
 
+        public void EnableSeatInteract()
+        {
+            if (_seatInteract == null) return;
+            _seatInteract.ResetInteraction();
+            _seatInteract.EnableInteraction();
+        }
+
+        public void DisableSeatInteract()
+        {
+            if (_seatInteract == null) return;
+            _seatInteract.DisableInteraction();
+        }
+
         private void CreateGameSeat()
         {
             GameObject gameSeat = Instantiate(InhabitantChess.CockpitClone, transform);
@@ -240,9 +253,8 @@ namespace InhabitantChess
         private void CompleteStandingUp()
         {
             enabled = false;
+            _bgController.enabled = false;
             _attachPoint.DetachPlayer();
-            _seatInteract.ResetInteraction();
-            _seatInteract.EnableInteraction();
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Score, false);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, false);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Overhead, false);
@@ -255,8 +267,9 @@ namespace InhabitantChess
         private void OnPressInteract()
         {
             enabled = true;
+            _bgController.enabled = true;
             _attachPoint.AttachPlayer();
-            _seatInteract.DisableInteraction();
+            RefreshScorePrompt();
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Score, true);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, true);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Overhead, true);
@@ -268,7 +281,6 @@ namespace InhabitantChess
 
         private void OnStartGame()
         {
-            RefreshScorePrompt();
             _seatInteract.ChangePrompt((UITextType)Translations.GetUITextType("IC_INTERACT"));
         }
 

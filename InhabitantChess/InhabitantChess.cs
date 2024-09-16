@@ -182,12 +182,20 @@ namespace InhabitantChess
         private void OnSitDown(ChessGame chess)
         {
             CurrentGame = chess;
+            foreach (ChessGame c in _chessGames)
+                c.DisableSeatInteract();
+
+            if (PrisonerSequence != null)
             PrisonerSequence.DisableConversation();
         }
 
         private void OnStoodUp(ChessGame chess)
         {
             CurrentGame = null;
+            foreach (ChessGame c in _chessGames)
+                c.EnableSeatInteract();
+
+            if (PrisonerSequence != null)
             PrisonerSequence.EnableConversation();
         }
 
