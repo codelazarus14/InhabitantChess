@@ -72,7 +72,7 @@ namespace InhabitantChess
             }
             bool instancing = GetDependants().Count > 0;
             if (instancing)
-                Util.Logger.Log($"Dependencies detected - enabling chess game instancing");
+                Util.Logger.Log("Dependencies detected - enabling chess game instancing");
 
             // TODO testing - delete later
             instancing = true;
