@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using InhabitantChess.API;
 using InhabitantChess.Util;
 using OWML.Common;
 using OWML.ModHelper;
@@ -100,6 +101,7 @@ namespace InhabitantChess
                     var obj = new GameObject();
                     obj.AddComponent<ScreenPromptController>();
                     obj.AddComponent<ICDebug>();
+                    obj.GetComponent<ICDebug>().MyAPI = ModHelper.Interaction.TryGetModApi<IInhabitantChessAPI>("codelazarus14.InhabitantChess");
                 }
 
                 TextTranslation.Get().OnLanguageChanged += Translations.OnLanguageChanged;
@@ -132,6 +134,11 @@ namespace InhabitantChess
                                 config.GetSettingsValue<bool>("Piece Highlighting"),
                                 config.GetSettingsValue<bool>("Beam Highlighting"));
             OnConfigure?.Invoke();
+        }
+
+        public override object GetApi()
+        {
+            return new InhabitantChessAPI();
         }
 
         public ChessGame InstantiateChessGame(Transform parent, Pose pose)

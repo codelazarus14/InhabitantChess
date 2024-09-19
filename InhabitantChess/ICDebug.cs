@@ -1,10 +1,12 @@
-﻿using UnityEngine;
+﻿using InhabitantChess.API;
+using UnityEngine;
 
 namespace InhabitantChess
 {
     public class ICDebug : MonoBehaviour
     {
         // TODO: test api from here
+        public IInhabitantChessAPI MyAPI;
 
         private InhabitantChess InhabitantChess => InhabitantChess.Instance;
 
@@ -39,7 +41,7 @@ namespace InhabitantChess
                     Quaternion rot = hit.rigidbody.transform.InverseTransformRotation(worldSpaceRot);
 
                     InhabitantChess.InstantiateChessGame(hit.rigidbody.transform, new Pose(pos, rot));
-                    Util.Logger.LogSuccess($"Instantiated chess game at {hit.rigidbody.transform}: {pos}");
+                    Util.Logger.LogSuccess(MyAPI.TestAPI($"Instantiated chess game at {hit.rigidbody.transform}: {pos}"));
                 }
             }
         }
