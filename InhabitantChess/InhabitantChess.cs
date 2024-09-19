@@ -95,8 +95,12 @@ namespace InhabitantChess
                 }
 
                 _chessGames = [];
-                gameObject.GetAddComponent<ScreenPromptController>();
-                gameObject.GetAddComponent<ICDebug>();
+                if (loadScene != OWScene.TitleScreen)
+                {
+                    var obj = new GameObject();
+                    obj.AddComponent<ScreenPromptController>();
+                    obj.AddComponent<ICDebug>();
+                }
 
                 TextTranslation.Get().OnLanguageChanged += Translations.OnLanguageChanged;
 

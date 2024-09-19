@@ -5,7 +5,6 @@ namespace InhabitantChess
     public class ICDebug : MonoBehaviour
     {
         // TODO: test api from here
-        // for now - create method to detect raycast onto terrain and spawn chess game where player is looking
 
         private InhabitantChess InhabitantChess => InhabitantChess.Instance;
 
