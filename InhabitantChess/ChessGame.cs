@@ -62,6 +62,8 @@ namespace InhabitantChess
 
         private void OnDestroy()
         {
+            if (InhabitantChess.CurrentGame == this)
+                PlayerState = ChessPlayerState.None;
             _seatInteract.OnPressInteract -= OnPressInteract;
             _seatInteract.OnPressInteract -= _bgController.OnPressInteract;
         }
