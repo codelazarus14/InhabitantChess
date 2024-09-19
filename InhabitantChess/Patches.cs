@@ -119,18 +119,19 @@ namespace InhabitantChess
                     }
                 }
 
-                // show interact prompt for board game moves
-                ChessGame currentGame = InhabitantChess.Instance.CurrentGame;
-                if (currentGame != null)
+            }
+
+            // show interact prompt for board game moves
+            ChessGame currentGame = InhabitantChess.Instance.CurrentGame;
+            if (currentGame != null)
+            {
+                (BoardController.ChessPiece, (int u, int a) pos)? focusInfo = currentGame.GetPlayerFocusedSpace();
+                if (focusInfo.HasValue)
                 {
-                    (BoardController.ChessPiece, (int u, int a) pos)? focusInfo = currentGame.GetPlayerFocusedSpace();
-                    if (focusInfo.HasValue)
-                    {
-                        string spacePos = $"{focusInfo.Value.pos.u}, {focusInfo.Value.pos.a}";
-                        __instance._interactButtonPrompt.SetText(Translations.GetTranslation("IC_PIECEMOVE") + " " + spacePos);
-                    }
-                    __instance._interactButtonPrompt.SetVisibility(focusInfo.HasValue);
+                    string spacePos = $"{focusInfo.Value.pos.u}, {focusInfo.Value.pos.a}";
+                    __instance._interactButtonPrompt.SetText(Translations.GetTranslation("IC_PIECEMOVE") + " " + spacePos);
                 }
+                __instance._interactButtonPrompt.SetVisibility(focusInfo.HasValue);
             }
         }
 
