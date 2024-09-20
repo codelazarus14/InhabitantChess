@@ -26,7 +26,7 @@ namespace InhabitantChess
             if (!InhabitantChess.Debugging || InhabitantChess.CurrentGame != null) return;
 
             // TODO: consolidate all input bindings somewhere
-            if (OWInput.IsNewlyPressed(InputLibrary.enter))
+            if (OWInput.IsNewlyPressed(Controls.SpawnGame))
             {
                 Transform manipTrans = Locator.GetPlayerTransform().GetComponentInChildren<FirstPersonManipulator>().transform;
                 if (Physics.Raycast(manipTrans.position, manipTrans.forward, out RaycastHit hit, 75f, OWLayerMask.physicalMask))

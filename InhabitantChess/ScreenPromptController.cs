@@ -32,10 +32,10 @@ namespace InhabitantChess
                 _prompts = new Dictionary<PromptType, ScreenPrompt>
                 {
                     { PromptType.Score, new ScreenPrompt(Translations.GetTranslation("IC_SCORE")) },
-                    { PromptType.BoardMove, MakeScreenPrompt(InputLibrary.interact, Translations.GetTranslation("IC_BOARDMOVE")) },
-                    { PromptType.Overhead, MakeScreenPrompt(InputLibrary.landingCamera, Translations.GetTranslation("IC_OVERHEAD")) },
-                    { PromptType.Lean, MakeScreenPrompt(InputLibrary.moveXZ, Translations.GetTranslation("IC_LEAN")) },
-                    { PromptType.SpawnChessGame, MakeScreenPrompt(InputLibrary.enter, Translations.GetTranslation("IC_SPAWNGAME")) }
+                    { PromptType.BoardMove, MakeScreenPrompt(Controls.Interact, Translations.GetTranslation("IC_BOARDMOVE")) },
+                    { PromptType.Overhead, MakeScreenPrompt(Controls.Overhead, Translations.GetTranslation("IC_OVERHEAD")) },
+                    { PromptType.Lean, MakeScreenPrompt(Controls.PanCamera, Translations.GetTranslation("IC_LEAN")) },
+                    { PromptType.SpawnChessGame, MakeScreenPrompt(Controls.SpawnGame, Translations.GetTranslation("IC_SPAWNGAME")) }
                 };
                 _activePrompts = new();
             }

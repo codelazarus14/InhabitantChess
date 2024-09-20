@@ -73,14 +73,14 @@ namespace InhabitantChess
             // leaning, exiting chair while seated
             if (PlayerState == ChessPlayerState.Seated)
             {
-                if (OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All))
+                if (OWInput.IsNewlyPressed(Controls.ExitOverhead, InputMode.All))
                 {
                     //_bgController.ExitGame();
                     BeginStandingUp();
                 }
-                else if (OWInput.IsPressed(InputLibrary.moveXZ, InputMode.All))
+                else if (OWInput.IsPressed(Controls.PanCamera, InputMode.All))
                 {
-                    float v = OWInput.GetAxisValue(InputLibrary.moveXZ).y;
+                    float v = OWInput.GetAxisValue(Controls.PanCamera).y;
                     _oldLeanAmt = _leanAmt;
                     _leanAmt += v * LeanSpeed * Time.deltaTime;
                     _leanAmt = Mathf.Clamp(_leanAmt, 0.0f, MaxLeanAmount);
@@ -91,14 +91,14 @@ namespace InhabitantChess
             // transition in/out of overhead, or update transition in progress
             if (PlayerState != ChessPlayerState.EnteringOverhead)
             {
-                if (PlayerState == ChessPlayerState.Seated && OWInput.IsNewlyPressed(InputLibrary.landingCamera, InputMode.All))
+                if (PlayerState == ChessPlayerState.Seated && OWInput.IsNewlyPressed(Controls.Overhead, InputMode.All))
                 {
                     EnterOverheadView();
                 }
-                else if (PlayerState == ChessPlayerState.InOverhead && (OWInput.IsNewlyPressed(InputLibrary.landingCamera, InputMode.All) ||
-                        OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.All)))
+                else if (PlayerState == ChessPlayerState.InOverhead && (OWInput.IsNewlyPressed(Controls.Overhead, InputMode.All) ||
+                    OWInput.IsNewlyPressed(Controls.ExitOverhead, InputMode.All)))
                 {
-                    InputLibrary.cancel.ConsumeInput();
+                    Controls.ExitOverhead.ConsumeInput();
                     ExitOverheadView();
                 }
             }
