@@ -39,8 +39,7 @@ namespace InhabitantChess
                     Quaternion worldSpaceRot = Quaternion.LookRotation(toOrigin, hit.normal);
                     Quaternion rot = hit.rigidbody.transform.InverseTransformRotation(worldSpaceRot);
 
-                    InhabitantChess.InstantiateChessGame(hit.rigidbody.transform, new Pose(pos, rot));
-                    Util.Logger.LogSuccess(MyAPI.TestAPI($"Instantiated chess game at {hit.rigidbody.transform}: {pos}"));
+                    MyAPI.CreateChessGame(hit.rigidbody.transform, new Pose(pos, rot));
                 }
             }
         }

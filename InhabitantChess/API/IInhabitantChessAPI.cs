@@ -1,7 +1,9 @@
+using UnityEngine;
+
 namespace InhabitantChess.API
 {
     public interface IInhabitantChessAPI
     {
-        public string TestAPI(string message);
+        public ChessGame CreateChessGame(Transform parent, Pose localPose);
     }
 }
