@@ -25,7 +25,6 @@ namespace InhabitantChess
         {
             if (!InhabitantChess.Debugging || InhabitantChess.CurrentGame != null) return;
 
-            // TODO: consolidate all input bindings somewhere
             if (OWInput.IsNewlyPressed(Controls.SpawnGame))
             {
                 Transform manipTrans = Locator.GetPlayerTransform().GetComponentInChildren<FirstPersonManipulator>().transform;
