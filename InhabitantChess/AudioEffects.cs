@@ -71,7 +71,7 @@ namespace InhabitantChess
             _audioSources = new ICAudioSources { };
 
             InitBoardGameSFX();
-            if (PrisonerSequence != null)
+            if (PrisonerSequence != null && PrisonerSequence.ChessGame == _game)
                 InitPrisonerSequenceSFX();
 
             enabled = false;
@@ -88,7 +88,7 @@ namespace InhabitantChess
             _game.OnLeanBackward += PlayLeanCreaking;
             _gameController.OnStopGame += PlayGameOver;
             _gameController.OnPieceRemoved += PlayPieceRemoved;
-            _board.OnBoardReset += GetPieceSources;
+            _board.OnBoardReset += RefreshPieceSources;
             _board.OnPieceFinishedMoving += PlayPieceMoved;
         }
 
@@ -114,7 +114,7 @@ namespace InhabitantChess
             _game.OnLeanBackward -= PlayLeanCreaking;
             _gameController.OnStopGame -= PlayGameOver;
             _gameController.OnPieceRemoved -= PlayPieceRemoved;
-            _board.OnBoardReset -= GetPieceSources;
+            _board.OnBoardReset -= RefreshPieceSources;
             _board.OnPieceFinishedMoving -= PlayPieceMoved;
 
             if (PrisonerSequence != null)
@@ -128,11 +128,11 @@ namespace InhabitantChess
             }
         }
 
-        private void GetPieceSources()
+        private void RefreshPieceSources()
         {
             _pieceSources = new OWAudioSource[_board.Pieces.Count];
             for (int i = 0; i < _board.Pieces.Count; i++)
-                _pieceSources[i] = _board.Pieces[i].gameObject.AddComponent<OWAudioSource>();
+                _pieceSources[i] = _board.Pieces[i].gameObject.GetAddComponent<OWAudioSource>();
         }
 
         private void PlayCreaking(OWAudioSource source, AudioType audio, float volume, float duration)
@@ -216,7 +216,7 @@ namespace InhabitantChess
         private void PlayPieceRemoved(int idx)
         {
             PlayOneShot(_pieceSources[idx], AudioType.Artifact_Extinguish);
-            GetPieceSources();
+            RefreshPieceSources();
         }
 
         private void PlayLeanCreaking()

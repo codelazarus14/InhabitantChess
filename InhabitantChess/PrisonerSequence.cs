@@ -11,6 +11,7 @@ namespace InhabitantChess
         public CharacterDialogueTree PrisonerDialogue { get; private set; }
         public TextAsset DialogueText { get; private set; }
         public VisionTorchSocket TorchSocket { get; private set; }
+        public ChessGame ChessGame { get; private set; }
 
         public bool CanTriggerSequence;
 
@@ -101,7 +102,6 @@ namespace InhabitantChess
         }
 
         private PrisonerProps _props;
-        private ChessGame _chessGame;
         private DreamLanternController _prisonerLantern, _lanternCopy;
         private OWLight _torchSpotlight;
         private Transform _elevatorPos, _seatPos, _cueMarker;
@@ -116,8 +116,8 @@ namespace InhabitantChess
             PrisonerDialogue = PrisonerDirector._characterDialogueTree;
 
             Pose prisonerChessPose = new Pose { position = new Vector3(4, -35.105f, 0.2f), rotation = Quaternion.Euler(0, 270, 0) };
-            _chessGame = InhabitantChess.Instance.InstantiateChessGame(transform, prisonerChessPose);
-            _chessGame.gameObject.SetActive(false);
+            ChessGame = InhabitantChess.Instance.InstantiateChessGame(transform, prisonerChessPose);
+            ChessGame.gameObject.SetActive(false);
 
             _props = new PrisonerProps(gameObject);
             SetTorchSocket(_props.torchSocket.gameObject.GetComponent<VisionTorchSocket>());
@@ -307,7 +307,7 @@ namespace InhabitantChess
             PrisonerDialogue._interactVolume._screenPrompt.SetText(_talkToText);
             EnableConversation();
             SetPlayerChairCollision(false);
-            _chessGame.gameObject.SetActive(true);
+            ChessGame.gameObject.SetActive(true);
             OnSetupGame?.Invoke();
         }
 
@@ -417,7 +417,7 @@ namespace InhabitantChess
         public void OnFurnitureCleanupFinished()
         {
             // delayed after event fired from CleanUpGame
-            _chessGame.gameObject.SetActive(false);
+            ChessGame.gameObject.SetActive(false);
         }
 
         private void OnDestroy()
