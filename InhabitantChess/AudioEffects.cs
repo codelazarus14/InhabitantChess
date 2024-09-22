@@ -196,7 +196,7 @@ namespace InhabitantChess
                 {
                     PlayOneShot(_audioSources.playerAudio, type);
                     float randInterval = Random.Range(0.5f, 0.8f);
-                    yield return new WaitForSecondsRealtime(randInterval);
+                    yield return new WaitForSeconds(randInterval);
 
                     if (!playedPrisonerNoise)
                     {

@@ -174,7 +174,7 @@ namespace InhabitantChess.BoardGame
             _board.SetPieceHighlight(_currentPlayer.gameObject, _pieceHighlightEnabled);
             // add artificial wait
             _boardState = BoardState.WaitingForInput;
-            yield return new WaitForSecondsRealtime(CPUTurnTime);
+            yield return new WaitForSeconds(CPUTurnTime);
             _boardState = BoardState.InputReceived;
             (int randU, int randA) = ChooseCPUMove(_legalMoves);
             SpaceController targetSpace = _board.Spaces[randU][randA];
