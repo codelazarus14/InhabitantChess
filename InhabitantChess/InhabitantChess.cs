@@ -71,12 +71,6 @@ namespace InhabitantChess
                 enabled = false;
                 return;
             }
-            bool instancing = GetDependants().Count > 0;
-            if (instancing)
-                Util.Logger.Log("Dependencies detected - enabling chess game instancing");
-
-            // TODO testing - delete later
-            instancing = true;
 
             CameraAPI = ModHelper.Interaction.TryGetModApi<ICommonCameraAPI>("xen.CommonCameraUtility");
             AssetBundle bundle = ModHelper.Assets.LoadBundle("Assets/triboard");
@@ -108,7 +102,7 @@ namespace InhabitantChess
 
                 Util.Logger.LogSuccess("Finished setup");
 
-                if (!instancing && inSolarSystem)
+                if (inSolarSystem)
                     InitPrisonerSequence();
             };
         }
@@ -197,7 +191,7 @@ namespace InhabitantChess
                 c.DisableSeatInteract();
 
             if (PrisonerSequence != null)
-            PrisonerSequence.DisableConversation();
+                PrisonerSequence.DisableConversation();
         }
 
         private void OnStoodUp(ChessGame chess)
@@ -207,13 +201,13 @@ namespace InhabitantChess
                 c.EnableSeatInteract();
 
             if (PrisonerSequence != null)
-            PrisonerSequence.EnableConversation();
+                PrisonerSequence.EnableConversation();
         }
 
         private void OnCleanupGame()
         {
             if (CurrentGame != null)
-            CurrentGame.ForceStandUp();
+                CurrentGame.ForceStandUp();
             // override behavior of OnStoodUp()
             PrisonerSequence.DisableConversation();
 
