@@ -86,7 +86,6 @@ namespace InhabitantChess
 
             _game.OnLeanForward += PlayLeanCreaking;
             _game.OnLeanBackward += PlayLeanCreaking;
-            _gameController.OnStopGame += PlayGameOver;
             _gameController.OnPieceRemoved += PlayPieceRemoved;
             _board.OnBoardReset += RefreshPieceSources;
             _board.OnPieceFinishedMoving += PlayPieceMoved;
@@ -101,6 +100,7 @@ namespace InhabitantChess
 
             _game.OnSitDown += OnSitDown;
             _game.OnStoodUp += OnStoodUp;
+            _gameController.OnStopGame += PlayGameOver;
             PrisonerSequence.OnSpotlightTorch += PlayTorchSpotlight;
             PrisonerSequence.OnPrisonerCurious += PlayPrisonerCurious;
             PrisonerSequence.OnSetupGame += OnSetupGame;
@@ -144,11 +144,19 @@ namespace InhabitantChess
                 source.Play();
                 source.RandomizePlayhead();
                 source.FadeOut(duration);
+                StartCoroutine(ResetAfterCreakingFinishes(source, duration));
             }
             else if (source == null)
             {
                 Util.Logger.LogError($"Couldn't find audio source {source}!");
             }
+        }
+
+        private IEnumerator ResetAfterCreakingFinishes(OWAudioSource source, float duration)
+        {
+            // wait for fade to end before resetting volume
+            yield return new WaitForSeconds(duration);
+            source.FadeTo(1f, 0f, OWAudioSource.FadeOutCompleteAction.STOP);
         }
 
         private void PlayOneShot(OWAudioSource source, AudioType audio)
@@ -268,8 +276,6 @@ namespace InhabitantChess
 
         private void PlayGameOver()
         {
-            // TODO: bug/unreliable playback sometimes, also sometimes the dialogue sounds after cut out?
-            // are we not resetting something audio related
             AudioType gameOverSound = _gameController.PlayerWon() ? AudioType.SecretKorok : AudioType.Ghost_Laugh;
             PlayOneShot(_audioSources.playerAudio, gameOverSound);
         }
@@ -294,6 +300,7 @@ namespace InhabitantChess
             _playingAmbience = false;
             enabled = continueLoop;
         }
+
         private void OnSitDown(ChessGame chess)
         {
             InitAmbience();
