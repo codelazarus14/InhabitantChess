@@ -5,7 +5,6 @@ namespace InhabitantChess
 {
     public class ICDebug : MonoBehaviour
     {
-        // TODO: test api from here
         public IInhabitantChessAPI MyAPI;
 
         private InhabitantChess InhabitantChess => InhabitantChess.Instance;
@@ -42,6 +41,16 @@ namespace InhabitantChess
                     MyAPI.CreateChessGame(hit.rigidbody.transform, new Pose(pos, rot));
                 }
             }
+        }
+
+        private void TestEnable(ChessGame game)
+        {
+            MyAPI.EnableInteraction(game);
+        }
+
+        private void TestDisable(ChessGame game)
+        {
+            MyAPI.DisableInteraction(game);
         }
 
         private void OnConfigure()

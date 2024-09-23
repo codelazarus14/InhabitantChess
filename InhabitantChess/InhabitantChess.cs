@@ -11,7 +11,6 @@ using UnityEngine;
 
 // TODO: eyes of the past branch
 // - same w prisoner sequence - make some generic class for wrapping dialogue/scripted sequences around setting up and clearing away the game
-// - interacting with the board - prompt user to interact w spaces (highlight glows brighter)
 // - display rules (ask the inhabitant diff options thru dialogue, optional "can i review the rules")
 // - difficulty options (per game/instance), parameter for decision making, dialogue option
 
@@ -135,10 +134,14 @@ namespace InhabitantChess
             return new InhabitantChessAPI();
         }
 
-        public ChessGame InstantiateChessGame(Transform parent, Pose pose)
+        public ChessGame InstantiateChessGame(Transform parent, Pose pose, bool canInteract = true)
         {
             ChessGame chess = Instantiate(Prefabs.chess, parent).AddComponent<ChessGame>();
             chess.gameObject.SetActive(true);
+            if (canInteract)
+                chess.EnableInteraction();
+            else
+                chess.DisableInteraction();
             chess.transform.localPosition = pose.position;
             chess.transform.localRotation = pose.rotation;
             chess.OnSitDown += OnSitDown;
@@ -188,7 +191,7 @@ namespace InhabitantChess
         {
             CurrentGame = chess;
             foreach (ChessGame c in _chessGames)
-                c.DisableSeatInteract();
+                c.UpdateSeatInteract(true);
 
             if (PrisonerSequence != null)
                 PrisonerSequence.DisableConversation();
@@ -198,7 +201,7 @@ namespace InhabitantChess
         {
             CurrentGame = null;
             foreach (ChessGame c in _chessGames)
-                c.EnableSeatInteract();
+                c.UpdateSeatInteract(false);
 
             if (PrisonerSequence != null)
                 PrisonerSequence.EnableConversation();

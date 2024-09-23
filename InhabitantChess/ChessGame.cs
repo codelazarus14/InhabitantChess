@@ -37,9 +37,11 @@ namespace InhabitantChess
         private InteractZone _seatInteract;
         private float _exitSeatTime, _initOverheadTime, _exitOverheadTime;
         private float _oldLeanAmt, _leanAmt, _lastLeanSoundTime;
+        private bool _interactEnabled;
 
         private InhabitantChess InhabitantChess => InhabitantChess.Instance;
         private ScreenPromptController ScreenPrompts => ScreenPromptController.Instance;
+        private bool IsPlayerSeated => InhabitantChess.CurrentGame != null;
 
         private void Start()
         {
@@ -175,17 +177,33 @@ namespace InhabitantChess
             CompleteStandingUp();
         }
 
-        public void EnableSeatInteract()
+        public void EnableInteraction()
         {
-            if (_seatInteract == null) return;
-            _seatInteract.ResetInteraction();
-            _seatInteract.EnableInteraction();
+            _interactEnabled = true;
+            UpdateSeatInteract(IsPlayerSeated);
         }
 
-        public void DisableSeatInteract()
+        public void DisableInteraction()
+        {
+            _interactEnabled = false;
+            UpdateSeatInteract(IsPlayerSeated);
+        }
+
+        public void UpdateSeatInteract(bool isSeated)
         {
             if (_seatInteract == null) return;
-            _seatInteract.DisableInteraction();
+
+            // only enable seat interaction when player isn't sitting
+            // and this instance is also enabled
+            if (_interactEnabled && !isSeated)
+            {
+                _seatInteract.ResetInteraction();
+                _seatInteract.EnableInteraction();
+            }
+            else
+            {
+                _seatInteract.DisableInteraction();
+            }
         }
 
         private void CreateGameSeat()
@@ -196,6 +214,7 @@ namespace InhabitantChess
             gameSeat.SetActive(true);
             _attachPoint = gameSeat.GetComponent<PlayerAttachPoint>();
             _seatInteract = gameSeat.GetComponent<InteractZone>();
+            UpdateSeatInteract(IsPlayerSeated);
         }
 
         private void CreateOverheadCamera()
