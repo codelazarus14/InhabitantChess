@@ -10,9 +10,7 @@ using System.Reflection;
 using UnityEngine;
 
 // TODO: eyes of the past branch
-// - same w prisoner sequence - make some generic class for wrapping dialogue/scripted sequences around setting up and clearing away the game
-// - display rules (ask the inhabitant diff options thru dialogue, optional "can i review the rules")
-// - difficulty options (per game/instance), parameter for decision making, dialogue option
+// - difficulty options (per game/instance), AI picks better/worse options while reusing same monte-carlo search
 
 namespace InhabitantChess
 {
