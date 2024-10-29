@@ -80,9 +80,9 @@ namespace InhabitantChess
                     //_bgController.ExitGame();
                     BeginStandingUp();
                 }
-                else if (OWInput.IsPressed(Controls.PanCamera, InputMode.All))
+                else if (OWInput.IsPressed(Controls.MoveCamera, InputMode.All))
                 {
-                    float v = OWInput.GetAxisValue(Controls.PanCamera).y;
+                    float v = OWInput.GetAxisValue(Controls.MoveCamera).y;
                     _oldLeanAmt = _leanAmt;
                     _leanAmt += v * LeanSpeed * Time.deltaTime;
                     _leanAmt = Mathf.Clamp(_leanAmt, 0.0f, MaxLeanAmount);
@@ -241,7 +241,7 @@ namespace InhabitantChess
             PlayerState = ChessPlayerState.EnteringOverhead;
             _initOverheadTime = Time.time;
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, false);
-            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, false);
+            ScreenPrompts.SetLeanOrPan(false);
 
             _playerCamController.SnapToDegreesOverSeconds(0f, -48.5f, 0.5f, true);
             _playerCamController.SnapToFieldOfView(24f, 0.5f, true);
@@ -253,7 +253,7 @@ namespace InhabitantChess
             PlayerState = ChessPlayerState.ExitingOverhead;
             _exitOverheadTime = Time.time;
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, true);
-            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, true);
+            ScreenPrompts.SetLeanOrPan(true);
 
             InhabitantChess.CameraAPI.ExitCamera(_overheadCamController.OverheadCam);
             _overheadCamController.ResetPosition();
@@ -279,7 +279,7 @@ namespace InhabitantChess
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Score, false);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, false);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Overhead, false);
-            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, false);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.MoveCamera, false);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.SpawnChessGame, InhabitantChess.Debugging);
             PlayerState = ChessPlayerState.None;
             OnStoodUp?.Invoke(this);
@@ -294,7 +294,7 @@ namespace InhabitantChess
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Score, true);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.BoardMove, true);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Overhead, true);
-            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.Lean, true);
+            ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.MoveCamera, true);
             ScreenPrompts.SetPromptVisibility(ScreenPromptController.PromptType.SpawnChessGame, false);
             PlayerState = ChessPlayerState.Seated;
             OnSitDown?.Invoke(this);

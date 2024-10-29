@@ -43,9 +43,9 @@ namespace InhabitantChess
         {
             if (OverheadCam != null && !OWTime.IsPaused() /*&& !_isSnapping*/)
             {
-                if (OWInput.IsPressed(Controls.PanCamera))
+                if (OWInput.IsPressed(Controls.MoveCamera))
                 {
-                    Vector2 vector = OWInput.GetAxisValue(Controls.PanCamera);
+                    Vector2 vector = OWInput.GetAxisValue(Controls.MoveCamera);
                     // flipped, camera is rotated 270 on creation (InhabitantChess) to face board correctly
                     _position.x -= vector.y * PanSpeed * Time.deltaTime;
                     _position.y += vector.x * PanSpeed * Time.deltaTime;

@@ -8,8 +8,7 @@
         public static IInputCommands BoardMove => InputLibrary.lockOn;
         public static IInputCommands Overhead => InputLibrary.landingCamera;
         public static IInputCommands ExitOverhead => InputLibrary.cancel;
-        // TODO: make camera panning prompt visible while in overhead, with updated text (lean fwd/back <-> pan camera overhead)
-        public static IInputCommands PanCamera => InputLibrary.moveXZ;
+        public static IInputCommands MoveCamera => InputLibrary.moveXZ;
         public static IInputCommands SpawnGame => InputLibrary.autopilot;
     }
 }

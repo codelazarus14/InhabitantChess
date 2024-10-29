@@ -16,7 +16,7 @@ namespace InhabitantChess
             Score,
             BoardMove,
             Overhead,
-            Lean,
+            MoveCamera,
             SpawnChessGame
         }
 
@@ -34,7 +34,7 @@ namespace InhabitantChess
                     { PromptType.Score, new ScreenPrompt(Translations.GetTranslation("IC_SCORE")) },
                     { PromptType.BoardMove, MakeScreenPrompt(Controls.BoardMove, Translations.GetTranslation("IC_BOARDMOVE")) },
                     { PromptType.Overhead, MakeScreenPrompt(Controls.Overhead, Translations.GetTranslation("IC_OVERHEAD")) },
-                    { PromptType.Lean, MakeScreenPrompt(Controls.PanCamera, Translations.GetTranslation("IC_LEAN")) },
+                    { PromptType.MoveCamera, MakeScreenPrompt(Controls.MoveCamera, Translations.GetTranslation("IC_LEAN")) },
                     { PromptType.SpawnChessGame, MakeScreenPrompt(Controls.SpawnGame, Translations.GetTranslation("IC_SPAWNGAME")) }
                 };
                 _activePrompts = new();
@@ -65,6 +65,11 @@ namespace InhabitantChess
         public void SetPromptVisibility(PromptType type, bool visible)
         {
             _activePrompts[type] = visible;
+        }
+
+        public void SetLeanOrPan(bool isLean)
+        {
+            _prompts[PromptType.MoveCamera].SetText(Translations.GetTranslation(isLean ? "IC_LEAN" : "IC_PANCAMERA") + "<CMD>");
         }
 
         public void SetScore(int playerWins, int playerLosses)
