@@ -68,7 +68,7 @@ namespace InhabitantChess.BoardGame
             // check for user input - should probably add a prompt to show space under cursor
             if (_boardState == BoardState.WaitingForInput)
             {
-                CastRay(OWInput.IsNewlyPressed(Controls.Interact, InputMode.All));
+                CastRay(OWInput.IsNewlyPressed(Controls.BoardMove, InputMode.All));
             }
 
             void CastRay(bool isInteract)
