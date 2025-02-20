@@ -43,12 +43,12 @@ namespace InhabitantChess
             }
         }
 
-        private void TestEnable(ChessGame game)
+        private void TestEnable(GameObject game)
         {
             MyAPI.EnableInteraction(game);
         }
 
-        private void TestDisable(ChessGame game)
+        private void TestDisable(GameObject game)
         {
             MyAPI.DisableInteraction(game);
         }
